@@ -62,58 +62,115 @@ class ScheduleScreen extends ConsumerWidget {
   }
 }
 
-/// Large top app bar: дата, заголовок и аватар.
+/// Medium flexible app bar из M3 Expressive: заголовок, подзаголовок и аватар.
 ///
-/// Высоты — по спеке M3: развёрнутая 152dp, свёрнутая 64dp.
-/// https://m3.material.io/components/top-app-bar/specs
+/// Medium и large app bar в MDC объявлены устаревшими (TopAppBar.md), им на
+/// смену пришли flexible-варианты. Токены `md.comp.app-bar.medium-flexible`:
+/// развёрнутая высота 112dp, заголовок `headlineMedium`, подзаголовок
+/// `labelLarge` цвета `onSurfaceVariant` под заголовком. Свёрнутое состояние —
+/// small app bar 64dp (`titleLarge` / `labelMedium`). Отступы —
+/// `m3_appbar_expanded_title_margin_horizontal` / `_bottom`: 16dp.
 class _ScheduleAppBar extends StatelessWidget {
   const _ScheduleAppBar();
 
+  static const double _margin = 16;
+
   @override
   Widget build(BuildContext context) {
-    // Высоты large top app bar — 152dp / 64dp; при увеличенном системном
-    // шрифте они растут вместе с заголовком, иначе он обрезался бы.
+    final ColorScheme colors = context.colors;
     final TextScaler scaler = MediaQuery.textScalerOf(context);
-    final double headline = scaler.scale(36);
-    final double dateLine = scaler.scale(20);
-    final double collapsed = math.max(64, headline + 24);
-    final double expanded = math.max(152, collapsed + dateLine + 40);
+
+    final TextStyle expandedTitle = context.text.headlineMedium!.emphasized;
+    final TextStyle collapsedTitle = context.text.titleLarge!.emphasized;
+    final TextStyle expandedSubtitle = context.text.labelLarge!.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+    final TextStyle collapsedSubtitle = context.text.labelMedium!.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+
+    // Высота блока «заголовок + подзаголовок» при текущем масштабе шрифта.
+    double blockHeight(TextStyle title, TextStyle subtitle) =>
+        scaler.scale(title.fontSize!) * title.height! +
+        scaler.scale(subtitle.fontSize!) * subtitle.height!;
+
+    final double collapsedBlock = blockHeight(
+      collapsedTitle,
+      collapsedSubtitle,
+    );
+    final double expandedBlock = blockHeight(expandedTitle, expandedSubtitle);
+
+    // 64 / 112dp по токенам; при крупном системном шрифте растут с текстом.
+    final double collapsed = math.max(64, collapsedBlock + 2 * 8);
+    final double expanded = math.max(112, expandedBlock + 2 * _margin + 24);
 
     return SliverAppBar(
       pinned: true,
       expandedHeight: expanded,
       collapsedHeight: collapsed,
       toolbarHeight: collapsed,
-      backgroundColor: context.colors.surface,
-      actions: const [_ProfileAvatar(), SizedBox(width: 16)],
-      flexibleSpace: FlexibleSpaceBar(
-        // Заголовок не масштабируется: в макете он одного размера в обоих
-        // состояниях, меняется только положение.
-        expandedTitleScale: 1.0,
-        titlePadding: const EdgeInsets.only(left: 22, right: 72, bottom: 14),
-        title: Text(
-          'Расписание',
-          style: context.text.headlineMedium!.emphasized,
-        ),
-        // Дата живёт только в развёрнутом состоянии: FlexibleSpaceBar гасит
-        // background при сворачивании, и в свёрнутые 64dp остаётся заголовок,
-        // как и предписывает спека large top app bar.
-        background: Align(
-          alignment: Alignment.bottomLeft,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 22,
-              right: 72,
-              bottom: 14 + headline + 4,
+      backgroundColor: colors.surface,
+      actions: const [
+        _ProfileAvatar(),
+        SizedBox(width: _margin),
+      ],
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          // 0 — свёрнута, 1 — развёрнута полностью.
+          final double t =
+              ((constraints.maxHeight - collapsed) / (expanded - collapsed))
+                  .clamp(0.0, 1.0);
+
+          final TextStyle title = TextStyle.lerp(
+            collapsedTitle,
+            expandedTitle,
+            t,
+          )!;
+          final TextStyle subtitle = TextStyle.lerp(
+            collapsedSubtitle,
+            expandedSubtitle,
+            t,
+          )!;
+
+          // Свёрнутая: блок по центру 64dp. Развёрнутая: прижат к низу с
+          // отступом 16dp.
+          final double collapsedBottom = (collapsed - collapsedBlock) / 2;
+          final double bottom =
+              collapsedBottom + (_margin - collapsedBottom) * t;
+
+          return Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: _margin,
+              // Место под аватар справа.
+              end: 72,
+              bottom: bottom,
             ),
-            child: Text(
-              MockData.headerDate,
-              style: context.text.labelLarge!.copyWith(
-                color: context.colors.onSurfaceVariant,
+            child: Align(
+              alignment: AlignmentDirectional.bottomStart,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Расписание',
+                      style: title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    MockData.headerDate,
+                    style: subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

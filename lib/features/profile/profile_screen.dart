@@ -11,6 +11,7 @@ import '../../state/settings_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/segmented_list.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -36,7 +37,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 18),
         _ProfileHeader(profile: profile),
         _SectionTitle('LMS Moodle'),
-        _Section(
+        _SegmentedSection(
           children: [
             _CredentialRow(
               icon: Symbols.badge,
@@ -44,7 +45,6 @@ class ProfileScreen extends ConsumerWidget {
               value: profile.moodleLogin,
               secret: false,
             ),
-            const Divider(height: 1),
             _CredentialRow(
               icon: Symbols.key,
               label: 'Пароль',
@@ -54,7 +54,7 @@ class ProfileScreen extends ConsumerWidget {
           ],
         ),
         _SectionTitle('Настройки'),
-        _Section(
+        _SegmentedSection(
           children: [
             SwitchListTile(
               secondary: const Icon(Symbols.dark_mode),
@@ -63,7 +63,6 @@ class ProfileScreen extends ConsumerWidget {
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: controller.setDark,
             ),
-            const Divider(height: 1),
             SwitchListTile(
               secondary: const Icon(Symbols.palette),
               title: const Text('Динамические цвета'),
@@ -71,7 +70,6 @@ class ProfileScreen extends ConsumerWidget {
               value: settings.dynamicColor,
               onChanged: controller.setDynamicColor,
             ),
-            const Divider(height: 1),
             SwitchListTile(
               secondary: const Icon(Symbols.notifications),
               title: const Text('Напоминать о паре'),
@@ -250,7 +248,8 @@ class _CredentialRowState extends State<_CredentialRow> {
     // Wrap, а не Row: при системном шрифте 200% «глаз» и «Копировать»
     // переезжают на вторую строку вместо горизонтального переполнения.
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      // Отступы пункта списка: m3_comp_list_list_item_leading/top_space.
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         alignment: WrapAlignment.spaceBetween,
@@ -377,33 +376,16 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.children});
+class _SegmentedSection extends StatelessWidget {
+  const _SegmentedSection({required this.children});
 
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-
-    // Именно Material, а не Container: ListTile рисует фон и ripple на
-    // ближайшем Material-предке, и непрозрачный контейнер их бы перекрыл.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Material(
-        color: colors.surfaceContainerLow,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppShapes.all(AppShapes.card),
-          side: BorderSide(color: colors.outlineVariant),
-        ),
-        // stretch, иначе строки с Wrap сжимаются по контенту и уезжают
-        // в центр вместо того, чтобы занять всю ширину секции.
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
-        ),
-      ),
+      child: SegmentedList(children: children),
     );
   }
 }

@@ -164,10 +164,15 @@ ThemeData buildTheme(ColorScheme scheme) {
       checkmarkColor: scheme.onSecondaryContainer,
     ),
 
+    // Outlined card по card/tokens.xml: фон surface, обводка outlineVariant 1dp.
+    // Радиус 28dp вместо medium — согласованное отступление.
     cardTheme: CardThemeData(
       elevation: 0,
-      color: scheme.surfaceContainerLow,
-      shape: AppShapes.rounded(AppShapes.card),
+      color: scheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppShapes.all(AppShapes.card),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
       margin: EdgeInsets.zero,
     ),
 
@@ -185,11 +190,14 @@ ThemeData buildTheme(ColorScheme scheme) {
       extendedIconLabelSpacing: 8,
     ),
 
+    // Bottom sheet по bottomsheet/tokens.xml: фон surfaceContainerLow, верхние
+    // углы extraLarge (28dp), ручка 32×4 onSurfaceVariant.
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: scheme.surfaceContainer,
+      backgroundColor: scheme.surfaceContainerLow,
       surfaceTintColor: Colors.transparent,
       shape: AppShapes.bottomSheetShape,
-      dragHandleColor: scheme.outlineVariant,
+      dragHandleColor: scheme.onSurfaceVariant,
+      dragHandleSize: const Size(32, 4),
       showDragHandle: true,
     ),
 

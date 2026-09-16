@@ -32,7 +32,8 @@ class LessonCard extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(isNow ? 22 : 20),
         decoration: BoxDecoration(
-          color: isNow ? colors.primary : colors.surfaceContainerLow,
+          // Outlined card по card/tokens.xml: фон surface, обводка outlineVariant.
+          color: isNow ? colors.primary : colors.surface,
           borderRadius: AppShapes.all(
             isNow ? AppShapes.cardEmphasized : AppShapes.card,
           ),

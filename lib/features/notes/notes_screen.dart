@@ -101,7 +101,8 @@ class _TaskCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
+          // Outlined card: фон surface, обводка outlineVariant.
+          color: colors.surface,
           border: Border.all(color: colors.outlineVariant),
           borderRadius: AppShapes.all(AppShapes.card),
         ),
