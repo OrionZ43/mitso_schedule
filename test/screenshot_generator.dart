@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -195,7 +196,12 @@ void main() {
       await _pumpApp(tester, dark: dark);
 
       for (int i = 0; i < _tabs.length; i++) {
-        await tester.tap(find.widgetWithText(NavigationDestination, _tabs[i]));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(M3NavigationBar),
+            matching: find.text(_tabs[i]),
+          ),
+        );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
         await _capture(tester, '${_fileNames[i]}-$theme');
@@ -213,7 +219,12 @@ void main() {
 
   _shot('скриншот шита отправки справки', (tester) async {
     await _pumpApp(tester, dark: false);
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Пропуски'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3NavigationBar),
+        matching: find.text('Пропуски'),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.text('Оправдать пропуск'));

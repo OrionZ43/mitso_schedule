@@ -46,3 +46,6 @@ app.*.map.json
 
 # Выгрузка гайдлайнов m3.material.io (tool/m3_guidelines.py)
 .m3-guidelines/
+
+# Worktree-и агентов Claude Code
+.claude/

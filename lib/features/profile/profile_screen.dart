@@ -13,7 +13,11 @@ import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.scrollController});
+
+  /// Прокрутка раздела — оболочка возвращает её к началу при повторном
+  /// выборе раздела в navigation bar.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,6 +27,7 @@ class ProfileScreen extends ConsumerWidget {
     );
 
     return ListView(
+      controller: scrollController,
       padding: const EdgeInsets.only(bottom: 120),
       children: [
         Padding(

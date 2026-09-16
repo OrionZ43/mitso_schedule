@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 
 import '../theme/app_motion.dart';
@@ -17,16 +16,9 @@ abstract final class M3Pager {
   static final SpringDescription snapSpring =
       SpringDescription.withDampingRatio(mass: 1, stiffness: 400, ratio: 1);
 
-  /// `PagerState.animateScrollToPage(animationSpec = spring())`: программный
-  /// переход — `Spring.StiffnessMedium` = 1500, без перелёта.
-  static final SpringDescription animateSpring =
-      SpringDescription.withDampingRatio(mass: 1, stiffness: 1500, ratio: 1);
-
   /// `MaxPagesForAnimateScroll`: дальше трёх страниц Compose сначала прыгает
   /// поближе и анимирует только остаток.
   static const int maxPagesForAnimateScroll = 3;
-
-  static final _SpringTiming _animateTiming = _SpringTiming(animateSpring);
 
   /// Переход к [page] как `animateScrollToPage`.
   static Future<void> animateToPage(
@@ -47,12 +39,13 @@ abstract final class M3Pager {
             : page + maxPagesForAnimateScroll,
       );
     }
-    // Критически задемпфированная пружина из покоя подобна себе при любом
-    // расстоянии, поэтому нормированная кривая точна для любого числа страниц.
+    // `PagerState.animateScrollToPage(animationSpec = spring())`. Критически
+    // задемпфированная пружина из покоя подобна себе при любом расстоянии,
+    // поэтому нормированная кривая точна для любого числа страниц.
     await controller.animateToPage(
       page,
-      duration: _animateTiming.duration,
-      curve: _animateTiming.curve,
+      duration: AppMotion.composeDefault.duration,
+      curve: AppMotion.composeDefault.curve,
     );
   }
 }
@@ -67,22 +60,6 @@ class M3PageScrollPhysics extends PageScrollPhysics {
 
   @override
   SpringDescription get spring => M3Pager.snapSpring;
-}
-
-class _SpringTiming {
-  _SpringTiming(SpringDescription spring) {
-    final SpringSimulation simulation = SpringSimulation(spring, 0, 1, 0);
-    double t = 0;
-    const double step = 1 / 1000;
-    while (!simulation.isDone(t) && t < 3) {
-      t += step;
-    }
-    duration = Duration(microseconds: (t * 1e6).round());
-    curve = SpringCurve(spring, settlingTime: t);
-  }
-
-  late final Duration duration;
-  late final Curve curve;
 }
 
 /// Горизонтальный pager, высота которого следует за высотой страниц.

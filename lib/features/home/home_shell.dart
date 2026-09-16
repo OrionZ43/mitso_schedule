@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../state/tasks_controller.dart';
+import '../../theme/app_motion.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_transitions.dart';
+import '../../widgets/m3_fab.dart';
+import '../../widgets/m3_navigation_bar.dart';
 import '../../widgets/m3_snackbar.dart';
 import '../absences/absences_screen.dart';
+import '../absences/widgets/certificate_sheet.dart';
 import '../notes/notes_screen.dart';
 import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
@@ -12,55 +19,132 @@ import '../schedule/schedule_screen.dart';
 /// приходят и из шитов, которые живут в отдельных маршрутах.
 final GlobalKey<M3SnackbarHostState> appSnackbarHost = GlobalKey();
 
-/// Каркас приложения: четыре вкладки и navigation bar.
+/// Каркас приложения: четыре раздела, navigation bar и FAB раздела.
 ///
-/// https://m3.material.io/components/navigation-bar/specs
-class HomeShell extends StatefulWidget {
+/// FAB живёт здесь, а не внутри раздела: гайдлайн FAB «Moving across tabs» —
+/// FAB не анимируется вместе с содержимым, а коротко исчезает и появляется,
+/// когда новый раздел встал на место (`Modifier.animateFloatingActionButton`).
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  static const List<({IconData icon, String label})> _destinations = [
-    (icon: Symbols.calendar_month, label: 'Расписание'),
-    (icon: Symbols.event_busy, label: 'Пропуски'),
-    (icon: Symbols.checklist, label: 'Заметки'),
-    (icon: Symbols.person, label: 'Профиль'),
+  /// Раздел, чей FAB показан. Меняется после перехода между разделами.
+  int _fabIndex = 0;
+
+  final List<ScrollController> _scrollControllers = [
+    for (int i = 0; i < 4; i++) ScrollController(),
   ];
+
+  static const List<M3NavigationDestination> _destinations = [
+    M3NavigationDestination(icon: Symbols.calendar_month, label: 'Расписание'),
+    M3NavigationDestination(icon: Symbols.event_busy, label: 'Пропуски'),
+    M3NavigationDestination(icon: Symbols.checklist, label: 'Заметки'),
+    M3NavigationDestination(icon: Symbols.person, label: 'Профиль'),
+  ];
+
+  /// Отступ FAB от краёв окна.
+  static const double fabMargin = AppSpacing.space200;
+
+  @override
+  void dispose() {
+    for (final ScrollController c in _scrollControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _select(int index) {
+    if (index == _index) return;
+    setState(() => _index = index);
+  }
+
+  /// Повторный выбор раздела возвращает его к началу (navigation bar →
+  /// Guidelines → Behavior). Прокрутка — `spring()` Compose по умолчанию.
+  void _reselect(int index) {
+    final ScrollController controller = _scrollControllers[index];
+    if (!controller.hasClients || controller.offset == 0) return;
+    if (reduceMotionOf(context)) {
+      controller.jumpTo(0);
+      return;
+    }
+    controller.animateTo(
+      0,
+      duration: AppMotion.composeDefault.duration,
+      curve: AppMotion.composeDefault.curve,
+    );
+  }
+
+  /// FAB раздела; `null` — у раздела его нет.
+  ({Widget fab, double height})? _fabFor(int index) => switch (index) {
+    // Главное действие длинного списка справок с подписью — extended FAB
+    // (стиль primary, как в макете; разрешён спекой).
+    1 => (
+      fab: M3ExtendedFab(
+        onPressed: () => showCertificateSheet(context),
+        icon: const Icon(Symbols.document_scanner, fill: 1),
+        label: 'Оправдать пропуск',
+        color: M3FabColor.primary,
+      ),
+      height: 56,
+    ),
+    // «Use a medium FAB for mobile layouts» — FAB guidelines.
+    2 => (
+      fab: M3Fab(
+        onPressed: ref.read(tasksControllerProvider.notifier).add,
+        icon: const Icon(Symbols.add, fill: 1),
+        size: M3FabSize.medium,
+        tooltip: 'Добавить задачу',
+      ),
+      height: M3FabSize.medium.containerSize,
+    ),
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
+    final fab = _fabFor(_fabIndex);
+    final bool fabVisible = _fabIndex == _index && fab != null;
+
     return Scaffold(
       body: M3SnackbarHost(
         key: appSnackbarHost,
-        child: SafeArea(
-          bottom: false,
-          child: FadeThroughStack(
-            index: _index,
-            children: const [
-              ScheduleScreen(),
-              AbsencesScreen(),
-              NotesScreen(),
-              ProfileScreen(),
-            ],
-          ),
+        bottomPadding: fabVisible ? fab.height + fabMargin : 0,
+        child: Stack(
+          children: [
+            FadeThroughStack(
+              index: _index,
+              onSettled: (index) => setState(() => _fabIndex = index),
+              children: [
+                ScheduleScreen(scrollController: _scrollControllers[0]),
+                AbsencesScreen(scrollController: _scrollControllers[1]),
+                NotesScreen(scrollController: _scrollControllers[2]),
+                ProfileScreen(scrollController: _scrollControllers[3]),
+              ],
+            ),
+            if (fab != null)
+              PositionedDirectional(
+                end: fabMargin,
+                bottom: fabMargin,
+                child: M3AnimatedFabVisibility(
+                  visible: fabVisible,
+                  alignment: AlignmentDirectional.bottomEnd,
+                  child: KeyedSubtree(key: ValueKey(_fabIndex), child: fab.fab),
+                ),
+              ),
+          ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: M3NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: [
-          for (final destination in _destinations)
-            NavigationDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.icon, fill: 1),
-              label: destination.label,
-            ),
-        ],
+        destinations: _destinations,
+        onSelected: _select,
+        onReselected: _reselect,
       ),
     );
   }
@@ -80,10 +164,14 @@ class FadeThroughStack extends StatefulWidget {
     super.key,
     required this.index,
     required this.children,
+    this.onSettled,
   });
 
   final int index;
   final List<Widget> children;
+
+  /// Переход завершён, раздел [index] на месте.
+  final ValueChanged<int>? onSettled;
 
   @override
   State<FadeThroughStack> createState() => _FadeThroughStackState();
@@ -98,7 +186,10 @@ class _FadeThroughStackState extends State<FadeThroughStack>
         value: 1,
       )..addStatusListener((status) {
         // Уходящая вкладка прячется, когда переход закончен.
-        if (status == AnimationStatus.completed) setState(() {});
+        if (status == AnimationStatus.completed) {
+          setState(() {});
+          widget.onSettled?.call(widget.index);
+        }
       });
 
   int? _previousIndex;

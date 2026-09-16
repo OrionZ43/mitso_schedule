@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:mitso_schedule/widgets/lesson_card.dart';
@@ -61,7 +62,12 @@ Future<FakeMitsoApi> pumpApp(
 
 /// Переход на вкладку по подписи в navigation bar.
 Future<void> openTab(WidgetTester tester, String label) async {
-  await tester.tap(find.widgetWithText(NavigationDestination, label));
+  await tester.tap(
+    find.descendant(
+      of: find.byType(M3NavigationBar),
+      matching: find.text(label),
+    ),
+  );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
@@ -287,7 +293,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(
-      Theme.of(tester.element(find.byType(NavigationBar))).brightness,
+      Theme.of(tester.element(find.byType(M3NavigationBar))).brightness,
       Brightness.dark,
     );
 

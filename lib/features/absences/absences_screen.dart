@@ -12,7 +12,11 @@ import 'widgets/absence_donut.dart';
 import 'widgets/certificate_sheet.dart';
 
 class AbsencesScreen extends ConsumerWidget {
-  const AbsencesScreen({super.key});
+  const AbsencesScreen({super.key, this.scrollController});
+
+  /// Прокрутка раздела — оболочка возвращает её к началу при повторном
+  /// выборе раздела в navigation bar.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,6 +37,7 @@ class AbsencesScreen extends ConsumerWidget {
         label: const Text('Оправдать пропуск'),
       ),
       body: ListView(
+        controller: scrollController,
         padding: const EdgeInsets.only(bottom: 120),
         children: [
           Padding(

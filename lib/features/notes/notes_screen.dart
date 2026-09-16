@@ -11,7 +11,11 @@ import '../../widgets/connected_button_group.dart';
 import '../../widgets/empty_state.dart';
 
 class NotesScreen extends ConsumerWidget {
-  const NotesScreen({super.key});
+  const NotesScreen({super.key, this.scrollController});
+
+  /// Прокрутка раздела — оболочка возвращает её к началу при повторном
+  /// выборе раздела в navigation bar.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,6 +31,7 @@ class NotesScreen extends ConsumerWidget {
         child: const Icon(Symbols.add),
       ),
       body: ListView(
+        controller: scrollController,
         padding: const EdgeInsets.only(bottom: 120),
         children: [
           Padding(

@@ -50,6 +50,14 @@ abstract final class AppMotion {
     stiffness: 800,
     dampingRatio: 1.0,
   );
+
+  /// `spring()` Compose по умолчанию: `Spring.StiffnessMedium` = 1500,
+  /// `DampingRatioNoBouncy` = 1. Им анимируют прокрутку
+  /// (`animateScrollBy`, `animateScrollToPage`), когда токена нет.
+  static final M3Spring composeDefault = M3Spring._(
+    stiffness: 1500,
+    dampingRatio: 1.0,
+  );
 }
 
 /// Пружинный токен: описание пружины + производные от неё [duration] и [curve].

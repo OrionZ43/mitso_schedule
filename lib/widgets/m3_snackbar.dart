@@ -13,10 +13,17 @@ import '../theme/app_typography.dart';
 /// высоте, а Compose (`SnackbarHost.kt`, `FadeInFadeOutWithScale`) делает
 /// прозрачность пружиной FastEffects и масштаб 0.8 ↔ 1 пружиной FastSpatial.
 class M3SnackbarHost extends StatefulWidget {
-  const M3SnackbarHost({super.key, required this.child});
+  const M3SnackbarHost({
+    super.key,
+    required this.child,
+    this.bottomPadding = 0,
+  });
 
   /// Экран, поверх которого внизу показываются снекбары.
   final Widget child;
+
+  /// Подъём над FAB (`Scaffold.kt`: снекбар стоит над FAB, если он есть).
+  final double bottomPadding;
 
   static M3SnackbarHostState of(BuildContext context) =>
       context.findAncestorStateOfType<M3SnackbarHostState>()!;
@@ -82,10 +89,12 @@ class M3SnackbarHostState extends State<M3SnackbarHost> {
     return Stack(
       children: [
         widget.child,
-        Positioned(
+        AnimatedPositioned(
+          duration: AppMotion.defaultSpatial.duration,
+          curve: AppMotion.defaultSpatial.curve,
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: widget.bottomPadding,
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Stack(

@@ -24,7 +24,11 @@ import '../group_picker/group_picker_sheet.dart';
 import 'lesson_details_page.dart';
 
 class ScheduleScreen extends ConsumerWidget {
-  const ScheduleScreen({super.key});
+  const ScheduleScreen({super.key, this.scrollController});
+
+  /// Прокрутка раздела — оболочка возвращает её к началу при повторном
+  /// выборе раздела в navigation bar.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,6 +89,7 @@ class ScheduleScreen extends ConsumerWidget {
     return M3PullToRefresh(
       onRefresh: ref.read(scheduleControllerProvider.notifier).refresh,
       child: CustomScrollView(
+        controller: scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           _ScheduleAppBar(now: now, group: group),
