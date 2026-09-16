@@ -1,5 +1,7 @@
 # Иконки (Icons / Material Symbols)
 
+> Разделы «В приложении → Расхождения» описывают состояние на 16.09.2026, до порта компонентов. Исправлено с тех пор: эталонная статичная схема и системные роли Android 14+, emphasized-веса по токенам, opsz и grade иконок, state layer, цвета tooltip, чипов и app bar при прокрутке, scrim 32%, выдуманные альфы, размеры шрифта и радиусы (карточка пары и метки удалены), пустое состояние из `MaterialShapes`, пружины кнопок, листов и снекбара, смена дня — lateral. Остаётся: breakpoints и navigation rail для окон шире 600dp (приложение для телефона), часть отступов вне токенов в старом коде.
+
 ## Источники
 
 - m3.material.io: https://m3.material.io/styles/icons (Overview, Designing icons, Applying icons) → `.m3-guidelines/styles__icons.md`

@@ -1,5 +1,7 @@
 # Типографика (Typography)
 
+> Разделы «В приложении → Расхождения» описывают состояние на 16.09.2026, до порта компонентов. Исправлено с тех пор: эталонная статичная схема и системные роли Android 14+, emphasized-веса по токенам, opsz и grade иконок, state layer, цвета tooltip, чипов и app bar при прокрутке, scrim 32%, выдуманные альфы, размеры шрифта и радиусы (карточка пары и метки удалены), пустое состояние из `MaterialShapes`, пружины кнопок, листов и снекбара, смена дня — lateral. Остаётся: breakpoints и navigation rail для окон шире 600dp (приложение для телефона), часть отступов вне токенов в старом коде.
+
 ## Источники
 
 - m3.material.io: https://m3.material.io/styles/typography (Overview, Fonts, Type scale & tokens, Applying type, Editorial treatments) → `.m3-guidelines/styles__typography.md`; блог M3 Expressive → `building-with-m3-expressive.md`; база токенов сайта (`.m3-guidelines/raw/tokens-*.json`: `md.ref.typeface.*`, `md.sys.typescale.*` с контекстами `3P`, `1P Baseline`, `Variable`)

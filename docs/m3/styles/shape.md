@@ -1,5 +1,7 @@
 # Форма (Shape)
 
+> Разделы «В приложении → Расхождения» описывают состояние на 16.09.2026, до порта компонентов. Исправлено с тех пор: эталонная статичная схема и системные роли Android 14+, emphasized-веса по токенам, opsz и grade иконок, state layer, цвета tooltip, чипов и app bar при прокрутке, scrim 32%, выдуманные альфы, размеры шрифта и радиусы (карточка пары и метки удалены), пустое состояние из `MaterialShapes`, пружины кнопок, листов и снекбара, смена дня — lateral. Остаётся: breakpoints и navigation rail для окон шире 600dp (приложение для телефона), часть отступов вне токенов в старом коде.
+
 ## Источники
 
 - m3.material.io: https://m3.material.io/styles/shape (вкладки Overview & principles, Corner radius scale, Shape morph) → `.m3-guidelines/styles__shape.md`; блог https://m3.material.io/blog/building-with-m3-expressive → `building-with-m3-expressive.md`
