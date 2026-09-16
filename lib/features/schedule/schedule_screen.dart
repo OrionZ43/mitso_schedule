@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +13,8 @@ import '../../theme/app_shapes.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/day_selector.dart';
+import '../../widgets/m3_buttons.dart';
+import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/lesson_card.dart';
 import '../../widgets/m3_loading_indicator.dart';
@@ -23,7 +23,7 @@ import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
 import 'lesson_details_page.dart';
 
-class ScheduleScreen extends ConsumerWidget {
+class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key, this.scrollController});
 
   /// Прокрутка раздела — оболочка возвращает её к началу при повторном
@@ -31,7 +31,26 @@ class ScheduleScreen extends ConsumerWidget {
   final ScrollController? scrollController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+
+class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
+  /// Обновление запущено кнопкой — индикатор pull-to-refresh выезжает и тогда
+  /// (`PullToRefreshBox.isRefreshing`).
+  bool _refreshingByButton = false;
+
+  Future<void> _refreshByButton() async {
+    if (_refreshingByButton) return;
+    setState(() => _refreshingByButton = true);
+    try {
+      await ref.read(scheduleControllerProvider.notifier).refresh();
+    } finally {
+      if (mounted) setState(() => _refreshingByButton = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final GroupRef? group = ref.watch(selectedGroupProvider);
     final AsyncValue<ScheduleState?> schedule = ref.watch(
       scheduleControllerProvider,
@@ -86,15 +105,49 @@ class ScheduleScreen extends ConsumerWidget {
       ];
     }
 
+    final bool hasSubtitle = group != null;
     return M3PullToRefresh(
       onRefresh: ref.read(scheduleControllerProvider.notifier).refresh,
-      child: CustomScrollView(
-        controller: scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          _ScheduleAppBar(now: now, group: group),
-          ...body,
-        ],
+      isRefreshing: _refreshingByButton,
+      // Индикатор выезжает из-под развёрнутого app bar: тянуть можно только
+      // от самого верха списка.
+      edgeOffset:
+          MediaQuery.paddingOf(context).top +
+          (hasSubtitle
+              ? SliverMediumFlexibleAppBar.expandedHeightWithSubtitle
+              : SliverMediumFlexibleAppBar.expandedHeight),
+      child: M3AppBarSettle(
+        child: CustomScrollView(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverMediumFlexibleAppBar(
+              title: 'Расписание',
+              subtitle: group == null
+                  ? null
+                  : '${group.groupName} · ${group.courseName}',
+              actions: [
+                // Альтернатива жесту pull-to-refresh — гайдлайн loading
+                // indicator, Accessibility.
+                if (group != null)
+                  M3IconButton(
+                    onPressed: _refreshingByButton ? null : _refreshByButton,
+                    icon: const Icon(Symbols.refresh),
+                    color: M3IconButtonColor.standard,
+                    tooltip: 'Обновить',
+                  ),
+                // Одна trailing-кнопка может быть tonal (app bars → Usage).
+                M3IconButton(
+                  onPressed: () => showGroupPicker(context),
+                  icon: const Icon(Symbols.groups, fill: 1),
+                  color: M3IconButtonColor.tonal,
+                  tooltip: group == null ? 'Выбрать группу' : 'Сменить группу',
+                ),
+              ],
+            ),
+            ...body,
+          ],
+        ),
       ),
     );
   }
@@ -272,132 +325,6 @@ class _DayContent extends ConsumerWidget {
               ),
             ),
       ],
-    );
-  }
-}
-
-/// Medium flexible app bar из M3 Expressive: заголовок, подзаголовок и кнопка
-/// выбора группы.
-///
-/// Medium и large app bar в MDC объявлены устаревшими (TopAppBar.md), им на
-/// смену пришли flexible-варианты. Токены `md.comp.app-bar.medium-flexible`:
-/// развёрнутая высота 112dp, заголовок `headlineMedium`, подзаголовок
-/// `labelLarge` цвета `onSurfaceVariant` под заголовком. Свёрнутое состояние —
-/// small app bar 64dp (`titleLarge` / `labelMedium`). Отступы —
-/// `m3_appbar_expanded_title_margin_horizontal` / `_bottom`: 16dp.
-class _ScheduleAppBar extends StatelessWidget {
-  const _ScheduleAppBar({required this.now, required this.group});
-
-  final DateTime now;
-  final GroupRef? group;
-
-  static const double _margin = 16;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-    final TextScaler scaler = MediaQuery.textScalerOf(context);
-
-    final String subtitle = group == null
-        ? 'Группа не выбрана'
-        : '${group!.groupName} · ${group!.courseName}';
-
-    final TextStyle expandedTitle = context.text.headlineMedium!.emphasized;
-    final TextStyle collapsedTitle = context.text.titleLarge!.emphasized;
-    final TextStyle expandedSubtitle = context.text.labelLarge!.copyWith(
-      color: colors.onSurfaceVariant,
-    );
-    final TextStyle collapsedSubtitle = context.text.labelMedium!.copyWith(
-      color: colors.onSurfaceVariant,
-    );
-
-    // Высота блока «заголовок + подзаголовок» при текущем масштабе шрифта.
-    double blockHeight(TextStyle title, TextStyle subtitle) =>
-        scaler.scale(title.fontSize!) * title.height! +
-        scaler.scale(subtitle.fontSize!) * subtitle.height!;
-
-    final double collapsedBlock = blockHeight(
-      collapsedTitle,
-      collapsedSubtitle,
-    );
-    final double expandedBlock = blockHeight(expandedTitle, expandedSubtitle);
-
-    // 64 / 112dp по токенам; при крупном системном шрифте растут с текстом.
-    final double collapsed = math.max(64, collapsedBlock + 2 * 8);
-    final double expanded = math.max(112, expandedBlock + 2 * _margin + 24);
-
-    return SliverAppBar(
-      pinned: true,
-      expandedHeight: expanded,
-      collapsedHeight: collapsed,
-      toolbarHeight: collapsed,
-      backgroundColor: colors.surface,
-      actions: [
-        IconButton.filledTonal(
-          onPressed: () => showGroupPicker(context),
-          icon: const Icon(Symbols.groups),
-          tooltip: group == null ? 'Выбрать группу' : 'Сменить группу',
-        ),
-        const SizedBox(width: _margin - 4),
-      ],
-      flexibleSpace: LayoutBuilder(
-        builder: (context, constraints) {
-          // 0 — свёрнута, 1 — развёрнута полностью.
-          final double t =
-              ((constraints.maxHeight - collapsed) / (expanded - collapsed))
-                  .clamp(0.0, 1.0);
-
-          final TextStyle title = TextStyle.lerp(
-            collapsedTitle,
-            expandedTitle,
-            t,
-          )!;
-          final TextStyle sub = TextStyle.lerp(
-            collapsedSubtitle,
-            expandedSubtitle,
-            t,
-          )!;
-
-          // Свёрнутая: блок по центру 64dp. Развёрнутая: прижат к низу с
-          // отступом 16dp.
-          final double collapsedBottom = (collapsed - collapsedBlock) / 2;
-          final double bottom =
-              collapsedBottom + (_margin - collapsedBottom) * t;
-
-          return Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: _margin,
-              // Место под кнопку группы справа.
-              end: 72,
-              bottom: bottom,
-            ),
-            child: Align(
-              alignment: AlignmentDirectional.bottomStart,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      'Расписание',
-                      style: title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }

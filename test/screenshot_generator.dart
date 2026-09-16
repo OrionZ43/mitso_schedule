@@ -204,6 +204,7 @@ void main() {
         );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
         await _capture(tester, '${_fileNames[i]}-$theme');
       }
     });

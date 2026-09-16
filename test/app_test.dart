@@ -69,7 +69,9 @@ Future<void> openTab(WidgetTester tester, String label) async {
     ),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 400));
+  // Переход fade through 450 мс, затем появление FAB раздела.
+  await tester.pump(const Duration(milliseconds: 500));
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
 Future<void> settle(WidgetTester tester) async {

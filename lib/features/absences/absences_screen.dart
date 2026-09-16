@@ -7,9 +7,9 @@ import '../../data/models/certificate.dart';
 import '../../state/absences_controller.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/status_badge.dart';
 import 'widgets/absence_donut.dart';
-import 'widgets/certificate_sheet.dart';
 
 class AbsencesScreen extends ConsumerWidget {
   const AbsencesScreen({super.key, this.scrollController});
@@ -23,71 +23,39 @@ class AbsencesScreen extends ConsumerWidget {
     final List<Certificate> certificates = ref.watch(
       absencesControllerProvider,
     );
-    final ColorScheme colors = context.colors;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
-      // Тоновый стиль Primary из M3 Expressive — как в макете; по умолчанию
-      // у FAB primaryContainer.
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: colors.primary,
-        foregroundColor: colors.onPrimary,
-        onPressed: () => showCertificateSheet(context),
-        icon: const Icon(Symbols.document_scanner, fill: 1),
-        label: const Text('Оправдать пропуск'),
-      ),
-      body: ListView(
-        controller: scrollController,
-        padding: const EdgeInsets.only(bottom: 120),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      body: M3AppBarSettle(
+        child: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            const SliverMediumFlexibleAppBar(
+              title: 'Пропуски',
+              subtitle: AbsencesDemoData.syncStatus,
+            ),
+            SliverList.list(
               children: [
-                Text(
-                  'Пропуски',
-                  style: context.text.headlineMedium!.emphasized,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Symbols.sync,
-                      size: 16,
-                      color: colors.onSurfaceVariant,
+                const SizedBox(height: 18),
+                const _SummaryCard(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
+                  child: Text(
+                    'Мои справки',
+                    style: context.text.bodyMedium!.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(
-                        AbsencesDemoData.syncStatus,
-                        style: context.text.labelMedium!.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                for (final Certificate certificate in certificates)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _CertificateCard(certificate: certificate),
+                  ),
               ],
             ),
-          ),
-          const SizedBox(height: 18),
-          const _SummaryCard(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
-            child: Text(
-              'Мои справки',
-              style: context.text.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          for (final Certificate certificate in certificates)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: _CertificateCard(certificate: certificate),
-            ),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          ],
+        ),
       ),
     );
   }

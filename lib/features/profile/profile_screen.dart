@@ -9,6 +9,7 @@ import '../../theme/app_color_schemes.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/connected_button_group.dart';
+import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
 
@@ -26,78 +27,77 @@ class ProfileScreen extends ConsumerWidget {
       settingsControllerProvider.notifier,
     );
 
-    return ListView(
-      controller: scrollController,
-      padding: const EdgeInsets.only(bottom: 120),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-          child: Text(
-            'Профиль',
-            style: context.text.headlineMedium!.emphasized,
+    return M3AppBarSettle(
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          const SliverMediumFlexibleAppBar(title: 'Профиль'),
+          SliverList.list(
+            children: [
+              _GroupHeader(group: ref.watch(selectedGroupProvider)),
+              _SectionTitle('Подгруппа'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ConnectedButtonGroup<int>(
+                  values: const [0, 1, 2],
+                  labelOf: (value) => switch (value) {
+                    1 => '1-я',
+                    2 => '2-я',
+                    _ => 'Обе',
+                  },
+                  selected: settings.subgroup ?? 0,
+                  onSelected: (value) =>
+                      controller.setSubgroup(value == 0 ? null : value),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
+                child: Text(
+                  settings.subgroup == null
+                      ? 'Лабораторные и языки показываются для обеих подгрупп.'
+                      : 'Занятия другой подгруппы скрыты из расписания.',
+                  style: context.text.bodyMedium!.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              _SectionTitle('Настройки'),
+              _SegmentedSection(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Symbols.dark_mode),
+                    title: const Text('Тёмная тема'),
+                    subtitle: Text(settings.themeSubtitle),
+                    value: Theme.of(context).brightness == Brightness.dark,
+                    onChanged: controller.setDark,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Symbols.palette),
+                    title: const Text('Динамические цвета'),
+                    subtitle: const Text('Material You · из обоев'),
+                    value: settings.dynamicColor,
+                    onChanged: controller.setDynamicColor,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Symbols.notifications),
+                    title: const Text('Напоминать о паре'),
+                    subtitle: const Text('За 15 минут до начала'),
+                    value: settings.lessonReminder,
+                    onChanged: controller.setLessonReminder,
+                  ),
+                ],
+              ),
+              _SectionTitle('Палитра'),
+              _PalettePicker(
+                selected: settings.palette,
+                enabled: !settings.dynamicColor,
+                onSelected: controller.setPalette,
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 18),
-        _GroupHeader(group: ref.watch(selectedGroupProvider)),
-        _SectionTitle('Подгруппа'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ConnectedButtonGroup<int>(
-            values: const [0, 1, 2],
-            labelOf: (value) => switch (value) {
-              1 => '1-я',
-              2 => '2-я',
-              _ => 'Обе',
-            },
-            selected: settings.subgroup ?? 0,
-            onSelected: (value) =>
-                controller.setSubgroup(value == 0 ? null : value),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
-          child: Text(
-            settings.subgroup == null
-                ? 'Лабораторные и языки показываются для обеих подгрупп.'
-                : 'Занятия другой подгруппы скрыты из расписания.',
-            style: context.text.bodyMedium!.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
-        ),
-        _SectionTitle('Настройки'),
-        _SegmentedSection(
-          children: [
-            SwitchListTile(
-              secondary: const Icon(Symbols.dark_mode),
-              title: const Text('Тёмная тема'),
-              subtitle: Text(settings.themeSubtitle),
-              value: Theme.of(context).brightness == Brightness.dark,
-              onChanged: controller.setDark,
-            ),
-            SwitchListTile(
-              secondary: const Icon(Symbols.palette),
-              title: const Text('Динамические цвета'),
-              subtitle: const Text('Material You · из обоев'),
-              value: settings.dynamicColor,
-              onChanged: controller.setDynamicColor,
-            ),
-            SwitchListTile(
-              secondary: const Icon(Symbols.notifications),
-              title: const Text('Напоминать о паре'),
-              subtitle: const Text('За 15 минут до начала'),
-              value: settings.lessonReminder,
-              onChanged: controller.setLessonReminder,
-            ),
-          ],
-        ),
-        _SectionTitle('Палитра'),
-        _PalettePicker(
-          selected: settings.palette,
-          enabled: !settings.dynamicColor,
-          onSelected: controller.setPalette,
-        ),
-      ],
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
+      ),
     );
   }
 }
