@@ -265,6 +265,27 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 17. **Пульсирующая точка «Сейчас идёт» — элемент макета, а не спеки.**
     Для бесконечной пульсации токена движения нет; анимируется только прозрачность, без перелёта.
 
+18. **Открытый поиск: поля 12dp, а не 8dp как в Compose; результаты озвучивает контент.**
+    Поля — по токену `md.comp.search-view.contained.leading-margin` (Compose:
+    `FullScreenExpandedHorizontalPadding` = 8dp). Доступное имя поля — подсказка, появление
+    результатов объявляет контент через `M3SearchScope.announce`. Подробности —
+    `docs/m3/components/search.md`, «Реализация во Flutter».
+
+19. **Нижний лист — свой маршрут вместо `showModalBottomSheet`; тень level1; ручка закрывает лист из
+    полного положения.** Flutter-лист анимируется кривой по времени маршрута, а `DraggableScrollableSheet`
+    доводит линейно, поэтому движение портировано с якорей Compose. Тень 1dp — по токену и MDC
+    (Compose-модальный лист тени не рисует). Нажатие на ручку — как `BottomSheetImpl`. Подробности —
+    `docs/m3/components/bottom-sheets.md`.
+
+20. **Пункт списка: эвристика многострочного supporting и цвета в sRGB.**
+    У `RenderBox` нет последней базовой линии, поэтому три строки определяются эвристикой Compose
+    (supporting выше 30sp); цвета интерполируются `Color.lerp`, а не в Oklab. Подробности —
+    `docs/m3/components/lists.md`.
+
+21. **Predictive back для поиска и листа написан, но на устройство не приходит**, пока в
+    `AndroidManifest.xml` нет `android:enableOnBackInvokedCallback="true"`: без флага Android шлёт
+    обычный «назад», и компоненты закрываются без жестовой анимации.
+
 ---
 
 ## Структура
