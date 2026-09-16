@@ -208,3 +208,65 @@
   4. В `HomeShell` убрать `SafeArea` сверху. Верхний inset учитывает сам заголовок.
   5. Перевести «Пропуски», «Заметки» и «Профиль» на `CustomScrollView` с этим app bar вместо
      `Text` в `ListView`.
+
+### Реализация во Flutter
+
+Виджеты готовы, на экраны пока не подключены (расхождения 1–11 закрываются подключением).
+Файл `lib/widgets/m3_flexible_app_bar.dart`, тесты `test/m3_flexible_app_bar_test.dart`.
+
+- **`SliverMediumFlexibleAppBar({required String title, String? subtitle, Widget? leading, List<Widget> actions = const []})`**
+  — pinned-сливер, порт `MediumFlexibleTopAppBar` → `TwoRowsTopAppBar` с `exitUntilCollapsed`.
+  - Свой `RenderSliver` вместо `SliverPersistentHeader`. Экстенты берутся из раскладки рядов, как в
+    `TopAppBarMeasurePolicy`: верхний ряд `max(64, маленький блок)`, нижний `max(48 | 72, крупный блок)`.
+    Без подзаголовка 112dp, с ним 136dp, свёрнутый 64dp, всё плюс верхний inset. При шрифте 2× ряды
+    растут, текст не обрезается. Прокрутка не перестраивает виджеты: цвет, прозрачность и семантика
+    меняются при раскладке и отрисовке.
+  - `fraction` = прокрутка / высота нижнего ряда (`collapsedFraction`). Фон
+    `lerp(surface, surfaceContainer, legacyAccelerate(fraction))` рисуется и под статус-баром. Маленькие
+    title/subtitle (`titleLarge`/`labelMedium`, по одной строке) — прозрачность `Cubic(0.8, 0, 0.8, 0.15)`.
+    Крупные (`headlineMedium` до двух строк / `labelLarge` `onSurfaceVariant`) — `1 − fraction`, ряд обрезается.
+    Веса обычные, по токенам.
+  - Верхний ряд: leading с отступом 4dp (цвет `onSurface`), заголовок с `max(12, ширина leading) + 4` —
+    56dp после кнопки 48dp, 16dp без неё; actions с отступом 4dp (`onSurfaceVariant`). Нижний ряд: заголовок
+    на 16dp, справа 8dp (пустые слоты по 4dp + 4dp отступа блока).
+  - Нижний отступ — точный `Arrangement.Bottom`: `24 − (высота блока − последняя базовая линия)`, уменьшается,
+    если блок не помещается. Последняя базовая линия = высота блока − descent последней строки (у `RenderBox`
+    Flutter только первая базовая линия, descent считается `TextPainter` тем же стилем). **Важно:** с
+    токенами 112/136dp это правило всегда срабатывает. Крупный блок стоит вплотную к верху нижнего ряда,
+    базовая линия ≈20dp от низа, а не 24dp. Так же в Compose.
+  - Роль заголовка (`Semantics(header: true)`) только у видимой копии: у нижней при `fraction < 0.5`, иначе
+    у верхней (`hideTitleSemantics`). Бар не пропускает нажатия к содержимому под ним.
+- **`M3AppBarSettle({required Widget child})`** — оборачивает `CustomScrollView` или `NestedScrollView`.
+  Бары внутри регистрируются сами через `InheritedWidget`. По `ScrollEndNotification` (вертикаль, палец
+  отпущен, бросок отыгран) порт `settleAppBar`: если `0.01 ≤ fraction < 1`, `ScrollPosition.animateTo`
+  разворачивает бар при `fraction < 0.5`, иначе сворачивает. Кривая —
+  `AppMotion.defaultEffects.curve` за `duration`: это пружина DefaultEffects из покоя, как
+  `AnimationState(...).animateTo(snapAnimationSpec)`. Новое касание прерывает доводку. При «Удалить
+  анимации» — `jumpTo`.
+- **`M3SmallAppBar({required String title, String? subtitle, Widget? leading, List<Widget> actions = const []})`**
+  (`PreferredSizeWidget`) — порт `TopAppBar` → `SingleRowTopAppBar` с `pinnedScrollBehavior`. 64dp плюс
+  статус-бар, та же раскладка ряда, title `titleLarge` и subtitle `labelMedium` в одну строку. Слушает
+  `ScrollNotificationObserver` (его даёт `Scaffold`). Когда `extentBefore > 0.64dp` (`overlappedFraction > 0.01`),
+  цвет `surface` → `surfaceContainer` меняется пружиной `AppMotion.defaultEffects` с сохранением скорости,
+  обратно так же.
+- Цвета интерполируются в Oklab, как `lerp(Color, Color)` и `animateColorAsState` в Compose, а не в sRGB, как
+  `Color.lerp`. Статические `containerColorFor` у обоих баров отдают эту функцию.
+- Отступления:
+  1. **Доводка — отдельный виджет.** В Compose её включает `scrollBehavior`, во Flutter нужен
+     `NotificationListener`, поэтому список оборачивают в `M3AppBarSettle`. Без него бар не доводится.
+  2. **Инерция не гасится отдельно.** Сворачивание — часть прокрутки, бросок отыгрывает физика списка, поэтому
+     `flingAnimationSpec` из `settleAppBar` не нужен.
+  3. **Бар тянется вместе со списком.** В Compose перетаскивание самого бара (`Modifier.draggable`) меняет
+     только его высоту. Во Flutter бар — часть `CustomScrollView`, жест прокручивает весь список. Если
+     содержимое короче экрана, бар не свернётся полностью, и цель доводки ограничена `maxScrollExtent`.
+  4. **Число строк.** В Compose `maxLines` задаёт вызывающий код. Здесь по Guidelines → Headline: в small
+     одна строка с многоточием («Don't wrap text in a small app bar»), крупный заголовок до двух строк.
+  5. **Стиль статус-бара.** Как `AppBar` Flutter, бары кладут `SystemUiOverlayStyle` по яркости фона
+     (прозрачный статус-бар, иконки контрастные). В Compose это делает `enableEdgeToEdge` активности.
+  6. **Высота small в `Scaffold.appBar`.** `Scaffold` ограничивает бар `preferredSize` = 64dp. При крупном
+     шрифте с подзаголовком (от ≈1.46×: 28 + 16dp на масштаб > 64dp) нужна обёртка `PreferredSize` с
+     `M3SmallAppBar.preferredHeightOf(context, withSubtitle: true)`.
+  7. **Заголовок с ролью header.** В Compose `TopAppBar` роль не ставит. Здесь она по Accessibility → Labeling
+     elements («Title»), как `AppBar` Flutter (без `namesRoute`).
+  8. Оставшиеся пункты «Что сделать» (1, 4, 5) и расхождения 1–11 закрываются при подключении виджетов к
+     экранам. `.emphasized` в заголовках не используется.
