@@ -106,6 +106,49 @@ Flutter (`switch.dart`), что есть сейчас:
   `SegmentedList` («Тёмная тема», «Динамические цвета», «Напоминать о паре»). `switchTheme` в
   `lib/app.dart` не задан, поэтому работают значения Flutter по умолчанию.
 
+### Реализация во Flutter
+Виджет `M3Switch` (`lib/widgets/m3_switch.dart`), тесты `test/m3_switch_test.dart`. В экраны
+пока не подключён, расхождения ниже относятся к текущим `SwitchListTile`.
+
+```dart
+M3Switch({required bool value, required ValueChanged<bool>? onChanged,
+  M3SwitchIcons icons = M3SwitchIcons.selectedOnly, FocusNode? focusNode, bool autofocus = false})
+```
+
+**Решение по иконке:** конфигурация «иконка только во включённом» (`M3SwitchIcons.selectedOnly`,
+`Symbols.check` 16dp). Так переключатель M3 показан в «Differences from M2», так же сделан
+`SwitchWithThumbIconSample` в Compose. `M3SwitchIcons.both` (галочка и крестик) и `none` оставлены
+в API, по умолчанию не используются.
+
+Совпадает с Compose / токенами:
+- раскладка 52×48 (трек 52×32, обводка 2dp; зона нажатия 48dp, как `minimumInteractiveComponentSize`);
+- ручка 16 / 24 / 28dp, с иконкой 24dp (`ThumbNode.measure`: `hasContent`), положение `minBound` /
+  `maxBound`, при нажатии сдвиг на толщину обводки — центр на месте;
+- размер и положение — две пружины `FastSpatial` с сохранением скорости; при нажатии мгновенный
+  переход к 28dp (`SnapSpec`). Цели пересчитываются в начале кадра, как в `measure`: касание,
+  нажатое и отпущенное в одном кадре, 28dp не показывает;
+- цвета по `SwitchDefaults.colors()` без интерполяции, disabled-цвета сведены на `surface`
+  (`compositeOver`); иконка `min(16dp, размер ручки)`;
+- state layer — круг радиусом 20dp с центром в ручке, поверх трека и ручки; цвет —
+  `primary` / `onSurface` (`*.state-layer.color`) с непрозрачностью `AppStateLayer`;
+- `Semantics(toggled)`, фокус, Space и Enter (`ActivateIntent`), RTL.
+
+Осознанные отличия:
+1. **Цвет ручки при нажатии, наведении и фокусе** — `primaryContainer` / `onSurfaceVariant` по
+   токенам `*.pressed/hover/focus.handle.color` (так же MDC и Flutter). `SwitchColors` в Compose
+   эти состояния не различает; m3.material.io — первоисточник выше Compose.
+2. **Перетаскивание ручки.** В Compose его нет (`TODO: Add Swipeable modifier b/223797571`), но
+   спека требует, чтобы ручка росла «when tapped or dragged». Поведение как у Flutter `Switch`:
+   ручка 28dp идёт за пальцем между крайними положениями нажатой ручки, по отпусканию решает
+   половина хода, дальше пружина `FastSpatial`.
+3. **Рисунок ripple.** Compose на Android использует платформенный `RippleDrawable`. Здесь ink
+   Flutter, как у всех `InkWell` приложения: splash из `Theme.splashFactory` (на Android
+   `InkSparkle`), обрезанный кругом 40dp, и `InkHighlight` с длительностями `InkResponse`
+   (нажатие 200 мс, наведение и фокус 50 мс). Общий код — `lib/widgets/m3_radial_ink.dart`.
+4. **Уменьшение движения** (`MediaQuery.disableAnimations`): ручка меняет размер и положение без
+   пружины.
+5. Округление размера и смещения до целых пикселей (`toInt()` в `ThumbNode`) не повторяется.
+
 ### Расхождения
 1. **Движение ручки.** Сейчас: 300 мс `easeOutBack`, растягивание ручки до 34×22, плавная смена
    цвета. Должно быть: пружина `FastSpatial` на размер и позицию, мгновенное увеличение до 28dp
@@ -135,8 +178,8 @@ Flutter (`switch.dart`), что есть сейчас:
    `thumbIcon: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? const Icon(Symbols.check, size: 16) : null)`
    в `SwitchThemeData` внутри `buildTheme`. С иконкой только у включённого ручка выключенного
    остаётся 16dp (`switch.dart`: `effectiveInactiveIcon == null && widget.inactiveThumbImage == null ? inactiveThumbRadius : thumbRadiusWithIcon`).
-3. Движение: во Flutter его не настроить, поэтому нужен свой виджет `M3Switch`
-   (`lib/widgets/`), портированный с Compose:
+3. Движение: во Flutter его не настроить, поэтому нужен свой виджет `M3Switch` — **сделан**
+   (см. «Реализация во Flutter»), осталось подключить. Исходный план:
    - `LeafRenderObjectWidget` или `CustomPainter`: трек 52×32 с обводкой 2dp, ручка — круг,
      внутри иконка;
    - два `AnimationController.unbounded`: `offset` и `size`, изменения через

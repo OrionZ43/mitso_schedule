@@ -64,6 +64,49 @@ Compose (`Checkbox.kt`, `CheckboxImpl`):
 - `lib/app.dart` → `checkboxTheme`: `shape: AppShapes.rounded(2)`,
   `side: BorderSide(color: scheme.onSurfaceVariant, width: 2)`.
 
+### Реализация во Flutter
+Виджет `M3Checkbox` (`lib/widgets/m3_checkbox.dart`), тесты `test/m3_checkbox_test.dart`. В экраны
+пока не подключён, расхождения ниже относятся к текущему `Checkbox` в заметках.
+
+```dart
+M3Checkbox({required bool? value, required ValueChanged<bool?>? onChanged,
+  bool tristate = false, bool isError = false, FocusNode? focusNode, bool autofocus = false})
+```
+
+Совпадает с Compose / токенами:
+- контейнер 18dp, углы 2dp, обводка и галочка `floor(2dp в пикселях)`, зона нажатия 48dp;
+- `drawBox` (заливка целиком, если цвета фона и обводки совпали; иначе внутренняя заливка и
+  обводка) и `drawCheck`: путь (0.25, 0.5) → (0.4, 0.65) → (0.75, 0.3), доля длины через
+  `PathMetric.extractPath`, `StrokeCap.square`, сдвиг к черте по `crossCenterGravitation`;
+- `checkDrawFraction`: из снятого — пружина `DefaultSpatial`; к снятому — мгновенно через 100 мс
+  (`SnapAnimationDelay`); между выбранным и неопределённым — `DefaultSpatial`.
+  `checkCenterGravitationShiftFraction`: из снятого — сразу, к снятому — через 100 мс, иначе
+  `DefaultSpatial`. Спецификация выбирается по `Transition.currentState`, который меняется, только
+  когда анимации перехода закончились;
+- цвета фона, обводки и галочки — пружины `DefaultEffects` (к выбранному) и `FastEffects`
+  (к снятому) в Oklab, отдельно по каналам и с сохранением скорости, как `animateColorAsState`
+  с `Color.VectorConverter`; у недоступного фон и обводка без анимации;
+- disabled: фон и обводка выбранного `onSurface` 38%, галочка `surface`; невыбранный — обводка
+  `onSurface` 38%;
+- `Semantics(checked, mixed)`, фокус, Space и Enter.
+
+Осознанные отличия:
+1. **Геометрия M3.** По умолчанию `Checkbox` в Compose ещё рисуется в M2-размерах (20dp с полями
+   2dp); 18dp и новая галочка включаются флагом `ComposeMaterial3Flags.isCheckboxStylingFixEnabled`
+   («Material Design 3 styling»). Берём ветку с флагом — она совпадает с токенами сайта.
+2. **Обводка невыбранного при нажатии, наведении и фокусе — `onSurface`**
+   (`unselected.{pressed|hover|focus}.outline.color`); в `CheckboxColors` Compose этих состояний нет.
+3. **Цвет state layer по токенам** `*.state-layer.color`: нажатие невыбранного — `primary`,
+   выбранного — `onSurface`; наведение и фокус наоборот; ошибка — `error`. В Compose с флагом
+   ripple берёт цвет фона (у невыбранного он прозрачный).
+4. **`isError`** — из токенов `*.error.*`; в Compose `Checkbox` такого параметра нет.
+5. **Цикл tristate** по Guidelines → Behavior («Checking an indeterminate checkbox checks all child
+   items»): `null` → `true`, `false` → `true`, `true` → `false`. У Flutter `Checkbox` цикл
+   `false` → `true` → `null` → `false`; в Compose `TriStateCheckbox` решает вызывающий код.
+6. Ripple — как у `M3Switch` (`m3_radial_ink.dart`): `Theme.splashFactory` в круге 40dp +
+   `InkHighlight`, а не платформенный `RippleDrawable`.
+7. Уменьшение движения: галочка и черта появляются без пружины; цвета анимируются.
+
 ### Расхождения
 1. **`checkboxTheme.side` задан обычным `BorderSide`.** По документации Flutter
    (`checkbox.dart`, `side`) такой `side` применяется во **всех** невыбранных состояниях. Из-за
@@ -88,7 +131,8 @@ Compose (`Checkbox.kt`, `CheckboxImpl`):
    `MergeSemantics`; у `Checkbox` оставить `onChanged` и убрать `semanticLabel`, так как имя
    берётся из объединённой семантики. Вместо `Transform.translate` — штатные отступы list item.
 3. Затухание и зачёркивание убрать или записать в «Сознательные отступления» README.
-4. Движение Compose: свой `M3Checkbox` на `CustomPainter`, путь галочки как в
+4. **Сделано** — `M3Checkbox` (см. «Реализация во Flutter»), осталось подключить в заметках.
+   Исходный план: свой `M3Checkbox` на `CustomPainter`, путь галочки как в
    `Checkbox.kt` (`drawCheck`, `CheckDrawingCache`); `checkDrawFraction` через
    `AnimationController.animateWith(AppMotion.defaultSpatial.simulate(...))`; цвета через
    `ColorTween` на контроллере с `AppMotion.defaultEffects` (вкл) / `fastEffects` (выкл);
