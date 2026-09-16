@@ -177,3 +177,42 @@
      `ScrollController` и при повторном выборе прокручивать к 0. Длительность и кривую прокрутки
      источники не задают: решение зафиксировать в README «Сознательные отступления».
   8. После перехода на свой виджет удалить `navigationBarTheme` и `NavigationIndicatorBorder`.
+
+### Реализация во Flutter
+
+Виджет готов, в `HomeShell` пока не подключён (пункты 1–3 и 7–8 выше закрываются подключением).
+
+- Файл `lib/widgets/m3_navigation_bar.dart`, тесты `test/m3_navigation_bar_test.dart`.
+- API: `M3NavigationBar({required int selectedIndex, required List<M3NavigationDestination> destinations, required ValueChanged<int> onSelected, ValueChanged<int>? onReselected})`,
+  `M3NavigationDestination({required IconData icon, required String label})`. `onSelected` вызывается
+  для неактивного пункта, `onReselected` — для уже активного.
+- Как в Compose (`ShortNavigationBar` + `EqualWeight`, `ShortNavigationBarItem` + `Top`):
+  - контейнер `Material(surfaceContainer)` без тени; снизу и по бокам системные отступы (`SafeArea(top: false)`);
+  - минимальная высота 64dp. `IntrinsicHeight` + `Row` из `Expanded` повторяет `EqualWeightContentMeasurePolicy`:
+    у пунктов одинаковая ширина, высота берётся по самому высокому пункту. При шрифте 2× подпись переносится,
+    панель растёт, переполнения нет;
+  - пункт: 6dp, индикатор 32dp с иконкой 24dp по центру, 4dp, подпись `labelMedium`, 6dp. Содержимое прижато
+    к верху, как в `placeLabelAndTopIcon`;
+  - индикатор управляется одним `AnimationController.unbounded` на пункт и пружиной
+    `AppMotion.defaultSpatial` с текущей скоростью (`springTo`). Ширина — `56 * progress` от центра иконки, с
+    перелётом (до ~56.9dp) и не шире пункта. Прозрачность — `progress` в пределах 0…1. В конце значение
+    ставится ровно в цель, как у `Animatable`. При «Удалить анимации» значение меняется сразу;
+  - иконка `fill: 1` / `0`, цвета `onSecondaryContainer` / `onSurfaceVariant`. Подпись `secondary` /
+    `onSurfaceVariant`, вес не меняется. Всё без анимации (`animateColor = false`);
+  - нажимается весь пункт. Ripple и state layer (`AppStateLayer.overlay(onSecondaryContainer)`, 8/10/10%)
+    рисуются только в полной рамке 56×32 со `StadiumBorder`: `InkResponse.getRectCallback`, аналог
+    `IndicatorRipple` + `MappedInteractionSource`;
+  - семантика: `SemanticsRole.tabBar` на панели, `SemanticsRole.tab` + `selected` + действие tap на каждом
+    пункте (`MergeSemantics`). Фокус с клавиатуры: Tab, Enter/Space выбирают.
+- Отступления:
+  1. **Позиция вкладки в метке.** К подписи добавлено «Вкладка N из M» (`MaterialLocalizations.tabLabel`).
+     Причина: Flutter на Android не озвучивает `SemanticsRole`, а TalkBack для `selectableGroup` в Compose
+     называет позицию. Так же сделано в `NavigationBar` Flutter.
+  2. **Выравнивание перенесённой подписи — по центру.** В Compose `Text` без `textAlign`: при переносе строки
+     выровнены по началу внутри ширины пункта. Однострочная подпись в обоих случаях по центру. На картинках
+     Accessibility → Text scaling перенесённые подписи центрированы.
+  3. **Фокус без кольца.** Compose `ripple(focusRingShape)` рисует ещё и кольцо фокуса. Во Flutter у
+     `InkResponse` его нет, остаётся слой 10%.
+  4. **Рисунок ripple** берётся из темы (`InkSparkle` на Android), как у остальных виджетов приложения
+     (`styles/interaction-states.md`, расхождение 4).
+  5. **Нет horizontal items и disabled-состояния.** Приложению они не нужны (см. расхождение 4 выше).
