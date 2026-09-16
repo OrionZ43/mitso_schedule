@@ -1,4 +1,5 @@
 import 'package:flutter/animation.dart';
+import 'package:flutter/widgets.dart' show BuildContext, MediaQuery;
 import 'package:flutter/physics.dart';
 
 /// Токены движения Material 3 Expressive.
@@ -122,3 +123,18 @@ class SpringCurve extends Curve {
   @override
   String toString() => 'SpringCurve(stiffness: ${spring.stiffness})';
 }
+
+/// Пружинная анимация к цели с сохранением текущей скорости — как
+/// `Animatable.animateTo` в Compose. Для spatial-свойств (позиция, размер,
+/// форма), где цель может смениться посреди движения.
+extension SpringAnimationController on AnimationController {
+  TickerFuture springTo(M3Spring spring, double target) =>
+      animateWith(spring.simulate(from: value, to: target, velocity: velocity));
+}
+
+/// Системная настройка «Удалить анимации».
+///
+/// https://m3.material.io/styles/motion/transitions — «Follows accessibility
+/// settings»: вместо сдвигов, масштаба и морфинга — простая смена состояния.
+bool reduceMotionOf(BuildContext context) =>
+    MediaQuery.maybeDisableAnimationsOf(context) ?? false;
