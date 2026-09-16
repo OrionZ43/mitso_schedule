@@ -68,7 +68,7 @@ Future<void> _pumpApp(WidgetTester tester, {required bool dark}) async {
   );
 
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 600));
+  await _frames(tester, 600);
 }
 
 Future<void> _capture(WidgetTester tester, String name) async {
@@ -183,6 +183,13 @@ void _shot(String description, Future<void> Function(WidgetTester) body) {
   });
 }
 
+/// Кадры шагами по 50 мс: пружинные анимации стартуют после раскладки.
+Future<void> _frames(WidgetTester tester, int milliseconds) async {
+  for (int t = 0; t < milliseconds; t += 50) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ru');
@@ -203,8 +210,8 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
+        await _frames(tester, 500);
+        await _frames(tester, 500);
         await _capture(tester, '${_fileNames[i]}-$theme');
       }
     });
@@ -214,7 +221,7 @@ void main() {
     await _pumpApp(tester, dark: false);
     await tester.tap(find.text('Сб').first);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
+    await _frames(tester, 600);
     await _capture(tester, '5-empty-saturday-light');
   });
 
@@ -227,26 +234,27 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await _frames(tester, 500);
     await tester.tap(find.text('Оправдать пропуск'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
+    await _frames(tester, 600);
     await _capture(tester, '6-certificate-sheet-light');
   });
 
   _shot('скриншот объединённых подгрупп', (tester) async {
     await _pumpApp(tester, dark: false);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
+    // Прокрутка до пар: app bar свёрнут в small.
+    final ScrollableState list = tester.state(find.byType(Scrollable).first);
+    list.position.jumpTo(360);
+    await _frames(tester, 300);
     await _capture(tester, '7-subgroups-light');
   });
 
   _shot('скриншот подробностей пары', (tester) async {
     await _pumpApp(tester, dark: false);
-    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
+    await tester.tap(find.text('Идёт сейчас · осталось 35 мин'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
+    await _frames(tester, 700);
     await _capture(tester, '8-lesson-details-light');
   });
 }

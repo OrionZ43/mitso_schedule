@@ -9,19 +9,22 @@ import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
 import '../../state/settings_controller.dart';
-import '../../theme/app_shapes.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/day_selector.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/lesson_card.dart';
 import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/m3_pager.dart';
 import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
+import '../home/home_shell.dart';
 import 'lesson_details_page.dart';
+import 'lesson_slot_item.dart';
+import 'lesson_timing.dart';
+import 'schedule_search.dart';
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key, this.scrollController});
@@ -49,8 +52,30 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
   }
 
+  /// Обновление не удалось, но сохранённое расписание есть — сообщение со
+  /// действием «Повторить» (snackbar → Usage: короткое сообщение о процессе,
+  /// одно действие; в M3 нет баннеров).
+  void _showRefreshError(ScheduleState state) {
+    final String saved = DateFormat(
+      'd MMMM, HH:mm',
+      'ru',
+    ).format(state.fetchedAt);
+    appSnackbarHost.currentState?.show(
+      '${state.refreshError!.message} Показано сохранённое от $saved.',
+      actionLabel: 'Повторить',
+      onAction: _refreshByButton,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(scheduleControllerProvider, (previous, next) {
+      final ScheduleState? state = next.value;
+      if (state?.refreshError != null &&
+          previous?.value?.refreshError != state!.refreshError) {
+        _showRefreshError(state);
+      }
+    });
     final GroupRef? group = ref.watch(selectedGroupProvider);
     final AsyncValue<ScheduleState?> schedule = ref.watch(
       scheduleControllerProvider,
@@ -67,7 +92,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             title: 'Выберите группу',
             description:
                 'Расписание загружается с сайта МИТСО — apps.mitso.by.',
-            action: FilledButton(
+            action: M3Button(
               onPressed: () => showGroupPicker(context),
               child: const Text('Выбрать группу'),
             ),
@@ -86,8 +111,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             description: error is MitsoException
                 ? error.message
                 : 'Проверьте подключение к интернету.',
-            action: FilledButton.tonal(
+            action: M3Button(
               onPressed: () => ref.invalidate(scheduleControllerProvider),
+              color: M3ButtonColor.tonal,
               child: const Text('Повторить'),
             ),
           ),
@@ -166,15 +192,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
 
     return [
-      if (data.refreshError != null)
-        SliverToBoxAdapter(
-          child: _RefreshErrorBanner(
-            error: data.refreshError!,
-            fetchedAt: data.fetchedAt,
-            onRetry: ref.read(scheduleControllerProvider.notifier).refresh,
-          ),
-        ),
-      SliverToBoxAdapter(child: _ScheduleSearchBar(days: days)),
+      SliverToBoxAdapter(child: ScheduleSearchBar(days: days)),
       if (day == null)
         const SliverFillRemaining(
           hasScrollBody: false,
@@ -183,7 +201,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       else ...[
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpacing.space100),
             child: DaySelector(
               days: days,
               selectedIndex: days.indexOf(day),
@@ -194,7 +212,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.only(bottom: AppSpacing.space800),
           sliver: SliverToBoxAdapter(
             child: _DayPager(
               days: days,
@@ -299,195 +317,35 @@ class _DayContent extends ConsumerWidget {
         if (slots.isEmpty)
           const EmptyState(title: 'Занятий нет.\nОтдыхай!')
         else
-          for (int i = 0; i < slots.length; i++)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-              child: LessonCard<DateTime>(
-                slot: slots[i],
-                timing: statuses[i].timing,
-                progress: statuses[i].progress,
-                startsInMinutes: statuses[i].startsIn,
-                details: (context, close) => LessonDetailsPage(
-                  slot: slots[i],
-                  day: day,
-                  days: days,
-                  status: statuses[i],
-                  subgroup: subgroup,
-                  close: close,
-                ),
-                // Переход к другому дню — после обратной анимации, чтобы
-                // карточка успела свернуться на своё место.
-                onClosed: (date) {
-                  if (date != null) {
-                    ref.read(selectedDateProvider.notifier).select(date);
-                  }
-                },
-              ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenMargin(context),
             ),
+            child: LessonSlotList(
+              slots: slots,
+              statuses: statuses,
+              // Подробности — следующий уровень иерархии: платформенный
+              // переход forward/backward (styles/motion/transitions).
+              onOpen: (slot, status) async {
+                final DateTime? date = await Navigator.of(context)
+                    .push<DateTime>(
+                      MaterialPageRoute(
+                        builder: (context) => LessonDetailsPage(
+                          slot: slot,
+                          day: day,
+                          days: days,
+                          status: status,
+                          subgroup: subgroup,
+                        ),
+                      ),
+                    );
+                if (date != null) {
+                  ref.read(selectedDateProvider.notifier).select(date);
+                }
+              },
+            ),
+          ),
       ],
-    );
-  }
-}
-
-/// Обновление не удалось, но есть сохранённое расписание.
-class _RefreshErrorBanner extends StatelessWidget {
-  const _RefreshErrorBanner({
-    required this.error,
-    required this.fetchedAt,
-    required this.onRetry,
-  });
-
-  final MitsoException error;
-  final DateTime fetchedAt;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-    final String saved = DateFormat('d MMMM, HH:mm', 'ru').format(fetchedAt);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: Material(
-        color: colors.errorContainer,
-        borderRadius: AppShapes.all(AppShapes.large),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Icon(Symbols.cloud_off, color: colors.onErrorContainer),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '${error.message} Показано сохранённое от $saved.',
-                  style: context.text.bodyMedium!.copyWith(
-                    color: colors.onErrorContainer,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: onRetry,
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.onErrorContainer,
-                ),
-                child: const Text('Повторить'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Поиск по загруженному расписанию: предметы, преподаватели, аудитории.
-class _ScheduleSearchBar extends ConsumerWidget {
-  const _ScheduleSearchBar({required this.days});
-
-  final List<ScheduleDay> days;
-
-  static const String _hint = 'Поиск предмета, препода, аудитории';
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 6, 22, 10),
-      child: SearchAnchor.bar(
-        barHintText: _hint,
-        barLeading: const Icon(Symbols.search),
-        viewHintText: _hint,
-        suggestionsBuilder: (context, controller) =>
-            _suggestions(context, ref, controller),
-      ),
-    );
-  }
-
-  List<Widget> _suggestions(
-    BuildContext context,
-    WidgetRef ref,
-    SearchController controller,
-  ) {
-    final ScheduleSearchField field = ref.watch(searchFieldProvider);
-    final String query = controller.text.trim().toLowerCase();
-
-    String? valueOf(Lesson lesson) => switch (field) {
-      ScheduleSearchField.subject => lesson.title,
-      ScheduleSearchField.teacher => lesson.teacher,
-      ScheduleSearchField.room => lesson.room,
-    };
-
-    // Подгруппы одной пары с тем же предметом — одна строка результата.
-    final Set<String> seen = {};
-    final List<(ScheduleDay, Lesson)> matches = [
-      if (query.isNotEmpty)
-        for (final ScheduleDay day in days)
-          for (final Lesson lesson in day.lessons)
-            if ((valueOf(lesson)?.toLowerCase().contains(query) ?? false) &&
-                seen.add(
-                  '${day.date}|${lesson.start}|${lesson.title}|${valueOf(lesson)}',
-                ))
-              (day, lesson),
-    ];
-
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final ScheduleSearchField value in ScheduleSearchField.values)
-              FilterChip(
-                label: Text(value.label),
-                selected: field == value,
-                onSelected: (_) =>
-                    ref.read(searchFieldProvider.notifier).select(value),
-              ),
-          ],
-        ),
-      ),
-      const Divider(indent: 18, endIndent: 18, height: 22),
-      if (query.isEmpty)
-        const _SearchHint(text: 'Ищет по неделям, загруженным с сайта.')
-      else if (matches.isEmpty)
-        const _SearchHint(text: 'Ничего не найдено.')
-      else
-        for (final (ScheduleDay day, Lesson lesson) in matches)
-          ListTile(
-            leading: const Icon(Symbols.event),
-            title: Text(lesson.title, style: context.text.bodyLarge),
-            subtitle: Text(
-              [
-                '${day.shortName}, ${DateFormat('d MMMM', 'ru').format(day.date)} · ${lesson.start}',
-                ?lesson.teacher,
-                if (lesson.room != null) roomLabel(lesson.room!),
-              ].join(' · '),
-            ),
-            shape: AppShapes.rounded(AppShapes.largeIncreased),
-            onTap: () {
-              ref.read(selectedDateProvider.notifier).select(day.date);
-              controller.closeView(null);
-            },
-          ),
-    ];
-  }
-}
-
-class _SearchHint extends StatelessWidget {
-  const _SearchHint({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-      child: Text(
-        text,
-        style: context.text.bodyMedium!.copyWith(
-          color: context.colors.onSurfaceVariant,
-        ),
-      ),
     );
   }
 }

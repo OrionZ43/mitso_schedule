@@ -6,20 +6,26 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/group_ref.dart';
 import '../../state/mitso_providers.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_transitions.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/m3_bottom_sheet.dart';
+import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/segmented_list.dart';
 
 /// Выбор группы: факультет → форма обучения → курс → группа.
 ///
 /// Списки — те же, что в форме на apps.mitso.by, и загружаются по мере выбора.
+///
+/// Модальный нижний лист открывается на половину экрана и тянется до полного
+/// (bottom sheets → Guidelines → Visibility): списки групп длинные.
 Future<void> showGroupPicker(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showM3ModalBottomSheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    builder: (_) => const _GroupPickerSheet(),
+    halfExpandedFirst: true,
+    builder: (context, scrollController) =>
+        _GroupPickerSheet(scrollController: scrollController),
   );
 }
 
@@ -35,7 +41,10 @@ enum _Step {
 }
 
 class _GroupPickerSheet extends ConsumerStatefulWidget {
-  const _GroupPickerSheet();
+  const _GroupPickerSheet({required this.scrollController});
+
+  /// Прокрутка содержимого, общая с перетаскиванием листа.
+  final ScrollController scrollController;
 
   @override
   ConsumerState<_GroupPickerSheet> createState() => _GroupPickerSheetState();
@@ -138,42 +147,43 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
   Widget build(BuildContext context) {
     final GroupRef? current = ref.watch(selectedGroupProvider);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      ),
-      // Шаги идут друг за другом — shared axis X: вперёд справа налево,
-      // назад наоборот (MDC Motion.md: «An onboarding flow transitions along
-      // the x-axis»).
-      child: PageTransitionSwitcher(
-        duration: AppTransitions.sharedAxisDuration,
-        reverse: _backward,
-        layoutBuilder: (entries) =>
-            Stack(alignment: Alignment.topCenter, children: entries),
-        transitionBuilder: (child, animation, secondaryAnimation) =>
-            M3SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              child: child,
+    // Одна прокрутка на весь лист: шаги сменяются внутри неё, поэтому
+    // контроллер листа всегда привязан к одному списку.
+    return CustomScrollView(
+      controller: widget.scrollController,
+      slivers: [
+        SliverToBoxAdapter(
+          child: PageTransitionSwitcher(
+            duration: AppTransitions.sharedAxisDuration,
+            reverse: _backward,
+            layoutBuilder: (entries) =>
+                Stack(alignment: Alignment.topCenter, children: entries),
+            transitionBuilder: (child, animation, secondaryAnimation) =>
+                M3SharedAxisTransition(
+                  animation: animation,
+                  secondaryAnimation: secondaryAnimation,
+                  child: child,
+                ),
+            child: _StepPage(
+              key: ValueKey(_pageKey),
+              step: _step,
+              breadcrumb: [
+                _faculty?.name,
+                _form?.name,
+                _course?.name,
+              ].whereType<String>().join(' · '),
+              options: _options,
+              isCurrent: (option) =>
+                  _step == _Step.group &&
+                  current?.groupId == option.id &&
+                  current?.courseId == _course?.id,
+              onBack: _step == _Step.faculty ? null : _back,
+              onChoose: _choose,
+              onRetry: _retry,
             ),
-        child: _StepPage(
-          key: ValueKey(_pageKey),
-          step: _step,
-          breadcrumb: [
-            _faculty?.name,
-            _form?.name,
-            _course?.name,
-          ].whereType<String>().join(' · '),
-          options: _options,
-          isCurrent: (option) =>
-              _step == _Step.group &&
-              current?.groupId == option.id &&
-              current?.courseId == _course?.id,
-          onBack: _step == _Step.faculty ? null : _back,
-          onChoose: _choose,
-          onRetry: _retry,
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -212,9 +222,10 @@ class _StepPage extends StatelessWidget {
           child: Row(
             children: [
               if (onBack != null)
-                IconButton(
+                M3IconButton(
                   onPressed: onBack,
                   icon: const Icon(Symbols.arrow_back),
+                  color: M3IconButtonColor.standard,
                   tooltip: 'Назад',
                 )
               else
@@ -228,7 +239,7 @@ class _StepPage extends StatelessWidget {
                       header: true,
                       child: Text(
                         step.title,
-                        style: context.text.headlineSmall!.emphasized,
+                        style: context.text.headlineSmall,
                       ),
                     ),
                     if (breadcrumb.isNotEmpty)
@@ -244,8 +255,8 @@ class _StepPage extends StatelessWidget {
             ],
           ),
         ),
-        Flexible(
-          child: FutureBuilder<List<MitsoOption>>(
+        Builder(
+          builder: (context) => FutureBuilder<List<MitsoOption>>(
             future: options,
             builder: (context, snapshot) {
               final Widget body;
@@ -274,26 +285,31 @@ class _StepPage extends StatelessWidget {
                   onRetry: onRetry,
                 );
               } else {
-                body = ListView(
+                body = Padding(
                   key: const ValueKey('list'),
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  children: [
-                    SegmentedList(
-                      children: [
-                        for (final MitsoOption option in snapshot.data!)
-                          ListTile(
-                            title: Text(option.name),
-                            trailing: Icon(
-                              isCurrent(option)
-                                  ? Symbols.check
-                                  : Symbols.chevron_right,
-                            ),
-                            onTap: () => onChoose(option),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.space200,
+                    AppSpacing.space50,
+                    AppSpacing.space200,
+                    AppSpacing.space300,
+                  ),
+                  child: SegmentedList(
+                    children: [
+                      // Текущая группа — выбранный пункт: цвет и галочка
+                      // (lists → Accessibility, выбор не только цветом).
+                      for (final MitsoOption option in snapshot.data!)
+                        M3ListItem(
+                          headline: Text(option.name),
+                          trailing: Icon(
+                            isCurrent(option)
+                                ? Symbols.check
+                                : Symbols.chevron_right,
                           ),
-                      ],
-                    ),
-                  ],
+                          selected: isCurrent(option),
+                          onTap: () => onChoose(option),
+                        ),
+                    ],
+                  ),
                 );
               }
 
@@ -334,7 +350,8 @@ class _LoadError extends StatelessWidget {
         children: [
           Icon(
             Symbols.cloud_off,
-            size: 32,
+            size: 40,
+            opticalSize: 40,
             color: context.colors.onSurfaceVariant,
           ),
           const SizedBox(height: 12),
@@ -344,8 +361,9 @@ class _LoadError extends StatelessWidget {
             style: context.text.bodyLarge,
           ),
           const SizedBox(height: 16),
-          FilledButton.tonal(
+          M3Button(
             onPressed: onRetry,
+            color: M3ButtonColor.tonal,
             child: const Text('Повторить'),
           ),
         ],

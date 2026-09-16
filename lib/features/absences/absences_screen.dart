@@ -5,10 +5,12 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/absences_demo_data.dart';
 import '../../data/models/certificate.dart';
 import '../../state/absences_controller.dart';
-import '../../theme/app_shapes.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../theme/status_colors.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
-import '../../widgets/status_badge.dart';
+import '../../widgets/section_header.dart';
+import '../../widgets/segmented_list.dart';
 import 'widgets/absence_donut.dart';
 
 class AbsencesScreen extends ConsumerWidget {
@@ -23,45 +25,87 @@ class AbsencesScreen extends ConsumerWidget {
     final List<Certificate> certificates = ref.watch(
       absencesControllerProvider,
     );
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: M3AppBarSettle(
-        child: CustomScrollView(
-          controller: scrollController,
-          slivers: [
-            const SliverMediumFlexibleAppBar(
-              title: 'Пропуски',
-              subtitle: AbsencesDemoData.syncStatus,
-            ),
-            SliverList.list(
+    final double margin = AppSpacing.screenMargin(context);
+
+    return M3AppBarSettle(
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          const SliverMediumFlexibleAppBar(
+            title: 'Пропуски',
+            subtitle: AbsencesDemoData.syncStatus,
+          ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: margin),
+            sliver: SliverList.list(
               children: [
-                const SizedBox(height: 18),
                 const _SummaryCard(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
-                  child: Text(
-                    'Мои справки',
-                    style: context.text.bodyMedium!.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                const SectionHeader('Мои справки'),
+                SegmentedList(
+                  children: [
+                    for (final Certificate certificate in certificates)
+                      _certificateItem(context, certificate),
+                  ],
                 ),
-                for (final Certificate certificate in certificates)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: _CertificateCard(certificate: certificate),
-                  ),
+                // Место под extended FAB, чтобы он не закрывал последний пункт.
+                const SizedBox(
+                  height: AppSpacing.space900 + AppSpacing.space300,
+                ),
               ],
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  /// Справка — пункт списка. Статус передаётся и цветом аватара, и текстом
+  /// (lists → Accessibility: «Indicate selection with more than color»).
+  M3ListItem _certificateItem(BuildContext context, Certificate certificate) {
+    final StatusColors status = StatusColors.of(context);
+    final (
+      Color container,
+      Color content,
+      IconData icon,
+    ) = switch (certificate.status) {
+      CertificateStatus.pending => (
+        status.pending,
+        status.onPending,
+        Symbols.schedule,
+      ),
+      CertificateStatus.approved => (
+        status.approved,
+        status.onApproved,
+        Symbols.check,
+      ),
+      CertificateStatus.rejected => (
+        status.rejected,
+        status.onRejected,
+        Symbols.close,
+      ),
+    };
+
+    return M3ListItem(
+      // Аватар пункта: 40dp, пара «контейнер / on-контейнер»
+      // (`ListTokens.ItemLeadingAvatar*`).
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(color: container, shape: BoxShape.circle),
+        child: Icon(icon, color: content),
+      ),
+      overline: Text(certificate.status.label),
+      headline: Text(certificate.title),
+      supporting: Text('${certificate.period}\n${certificate.note}'),
+      semanticsLabel:
+          '${certificate.title}. ${certificate.status.label}. '
+          '${certificate.period}. ${certificate.note}',
     );
   }
 }
 
-/// Карточка со статистикой: кольцевая диаграмма и легенда.
+/// Сводка: кольцевая диаграмма и легенда в filled card
+/// (`FilledCardTokens`: surfaceContainerHighest, 12dp, без тени).
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard();
 
@@ -69,49 +113,46 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: AppShapes.all(AppShapes.extraLargeIncreased),
-      ),
-      child: Column(
-        children: [
-          const AbsenceDonut(
-            missedHours: AbsencesDemoData.missedHours,
-            justifiedHours: AbsencesDemoData.justifiedHours,
-            unjustifiedHours: AbsencesDemoData.unjustifiedHours,
-            limitHours: AbsencesDemoData.missedLimitHours,
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _LegendTile(
-                  color: colors.primaryContainer,
-                  value: '${AbsencesDemoData.justifiedHours} ч',
-                  label: 'оправдано',
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space200),
+        child: Column(
+          children: [
+            const AbsenceDonut(
+              missedHours: AbsencesDemoData.missedHours,
+              justifiedHours: AbsencesDemoData.justifiedHours,
+              unjustifiedHours: AbsencesDemoData.unjustifiedHours,
+              limitHours: AbsencesDemoData.missedLimitHours,
+            ),
+            const SizedBox(height: AppSpacing.space200),
+            Row(
+              children: [
+                Expanded(
+                  child: _Legend(
+                    color: colors.tertiary,
+                    value: '${AbsencesDemoData.justifiedHours} ч',
+                    label: 'оправдано',
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _LegendTile(
-                  color: colors.primary,
-                  value: '${AbsencesDemoData.unjustifiedHours} ч',
-                  label: 'без справки',
+                const SizedBox(width: AppSpacing.space150),
+                Expanded(
+                  child: _Legend(
+                    color: colors.primary,
+                    value: '${AbsencesDemoData.unjustifiedHours} ч',
+                    label: 'без справки',
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _LegendTile extends StatelessWidget {
-  const _LegendTile({
+class _Legend extends StatelessWidget {
+  const _Legend({
     required this.color,
     required this.value,
     required this.label,
@@ -123,115 +164,33 @@ class _LegendTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: AppShapes.all(AppShapes.largeIncreased),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.space75),
+          child: Container(
+            width: 12,
+            height: 12,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: context.text.titleMedium!.emphasized.copyWith(
-                    fontSize: 15,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: context.text.bodySmall!.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CertificateCard extends StatelessWidget {
-  const _CertificateCard({required this.certificate});
-
-  final Certificate certificate;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-
-    final IconData icon = switch (certificate.status) {
-      CertificateStatus.pending => Symbols.schedule,
-      CertificateStatus.approved => Symbols.check_circle,
-      CertificateStatus.rejected => Symbols.error,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        // Outlined card: фон surface, обводка outlineVariant.
-        color: colors.surface,
-        border: Border.all(color: colors.outlineVariant),
-        borderRadius: AppShapes.all(AppShapes.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        ),
+        const SizedBox(width: AppSpacing.space100),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      certificate.title,
-                      style: context.text.titleMedium!.emphasized.copyWith(
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      certificate.period,
-                      style: context.text.bodyMedium!.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              CertificateStatusBadge(status: certificate.status),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Icon(icon, size: 16, color: colors.onSurfaceVariant),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  certificate.note,
-                  style: context.text.bodySmall!.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+              Text(value, style: context.text.titleMedium),
+              Text(
+                label,
+                style: context.text.bodySmall!.copyWith(
+                  color: context.colors.onSurfaceVariant,
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

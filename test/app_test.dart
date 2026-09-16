@@ -8,7 +8,10 @@ import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
-import 'package:mitso_schedule/widgets/lesson_card.dart';
+import 'package:mitso_schedule/widgets/m3_buttons.dart';
+import 'package:mitso_schedule/widgets/m3_checkbox.dart';
+import 'package:mitso_schedule/widgets/m3_fab.dart';
+import 'package:mitso_schedule/widgets/segmented_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_mitso_api.dart';
@@ -76,7 +79,10 @@ Future<void> openTab(WidgetTester tester, String label) async {
 
 Future<void> settle(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 500));
+  // Шагами: пружинные анимации листов стартуют после первой раскладки.
+  for (int i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 void main() {
@@ -111,32 +117,37 @@ void main() {
     // Лаба подгрупп в 11:15 — одна пара, а не две.
     expect(find.text('4 пары'), findsOneWidget);
     // 10:30 — идёт вторая пара, 09:45–11:05.
-    expect(find.text('СЕЙЧАС ИДЁТ'), findsOneWidget);
-    expect(find.text('осталось 35 мин'), findsOneWidget);
+    expect(find.text('Идёт сейчас · осталось 35 мин'), findsOneWidget);
     // Следующая — в 11:15.
     expect(find.text('Начнётся через 45 мин'), findsOneWidget);
   });
 
-  testWidgets('подгруппы в одно время — одна карточка', (tester) async {
+  testWidgets('подгруппы в одно время — одна пара', (tester) async {
     await pumpApp(tester);
 
     // Вертикальный список дня; внутри есть и горизонтальная лента дней.
     await tester.scrollUntilVisible(
-      find.text('Пархимович А. В.'),
+      find.textContaining('Пархимович А. В.'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    final Finder card = find.ancestor(
-      of: find.text('Пархимович А. В.'),
-      matching: find.byType(LessonCard<DateTime>),
+    final Finder item = find.ancestor(
+      of: find.textContaining('Пархимович А. В.'),
+      matching: find.byType(M3ListItem),
     );
-    expect(card, findsOneWidget);
+    expect(item, findsOneWidget);
     expect(
-      find.descendant(of: card, matching: find.text('Калинин М. А.')),
+      find.descendant(
+        of: item,
+        matching: find.text('1 подгруппа · Калинин М. А. · ауд. 62 (к)'),
+      ),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: card, matching: find.text('ауд. 63 (к)')),
+      find.descendant(
+        of: item,
+        matching: find.text('2 подгруппа · Пархимович А. В. · ауд. 63 (к)'),
+      ),
       findsOneWidget,
     );
   });
@@ -145,11 +156,11 @@ void main() {
     await pumpApp(tester, preferences: {'settings.subgroup': 1});
 
     await tester.scrollUntilVisible(
-      find.text('1 подгруппа'),
+      find.text('Лаб · 1 подгруппа'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Пархимович А. В.'), findsNothing);
+    expect(find.textContaining('Пархимович А. В.'), findsNothing);
     expect(find.text('4 пары'), findsOneWidget);
   });
 
@@ -166,10 +177,10 @@ void main() {
     expect(find.text('Сегодня'), findsOneWidget);
   });
 
-  testWidgets('карточка разворачивается в подробности пары', (tester) async {
+  testWidgets('пара открывает страницу подробностей', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
+    await tester.tap(find.text('Идёт сейчас · осталось 35 мин'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
@@ -192,7 +203,8 @@ void main() {
     expect(find.text('Выберите группу'), findsOneWidget);
     expect(api.scheduleRequests, 0);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Выбрать группу'));
+    await tester.tap(find.widgetWithText(M3Button, 'Выбрать группу'));
+    await settle(tester);
     await settle(tester);
     expect(find.text('Факультет'), findsOneWidget);
 
@@ -201,11 +213,17 @@ void main() {
       ('Дневная', 'Курс'),
       ('3 курс', 'Группа'),
     ]) {
+      // Лист открыт на половину экрана — пункт может быть ниже, его
+      // прокручивают в видимую часть.
+      await tester.ensureVisible(find.text(option));
+      await settle(tester);
       await tester.tap(find.text(option));
       await settle(tester);
       expect(find.text(nextStep), findsOneWidget);
     }
 
+    await tester.ensureVisible(find.text('2423 УИР'));
+    await settle(tester);
     await tester.tap(find.text('2423 УИР'));
     await settle(tester);
     await settle(tester);
@@ -222,7 +240,7 @@ void main() {
 
     expect(find.text('Не удалось загрузить расписание'), findsOneWidget);
     expect(find.text('Нет соединения с сайтом расписания.'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Повторить'), findsOneWidget);
+    expect(find.widgetWithText(M3Button, 'Повторить'), findsOneWidget);
   });
 
   testWidgets('добавленная задача уходит в «Выполненные» после отметки', (
@@ -231,11 +249,11 @@ void main() {
     await pumpApp(tester);
     await openTab(tester, 'Заметки');
 
-    await tester.tap(find.byTooltip('Добавить задачу'));
+    await tester.tap(find.byType(M3Fab));
     await settle(tester);
     expect(find.text('Новая задача'), findsOneWidget);
 
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(M3Checkbox).first);
     await settle(tester);
     expect(find.text('Новая задача'), findsNothing);
 
@@ -252,17 +270,22 @@ void main() {
 
     await tester.tap(find.text('Оправдать пропуск'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.widgetWithText(FilledButton, 'Отправить'), findsOneWidget);
+    // Анимация листа стартует после первой раскладки — кадры по 100 мс.
+    for (int i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.widgetWithText(M3Button, 'Отправить'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Отправить'));
+    await tester.tap(find.widgetWithText(M3Button, 'Отправить'));
     await tester.pump();
     // Отправка занимает 900 мс, всё это время в кнопке крутится индикатор.
     await tester.pump(const Duration(milliseconds: 1000));
-    await tester.pump(const Duration(milliseconds: 500));
+    for (int i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text('Новая справка'), findsOneWidget);
-    expect(find.text('Отправлено только что'), findsOneWidget);
+    expect(find.textContaining('Отправлено только что'), findsOneWidget);
   });
 
   testWidgets('интерфейс переживает масштаб шрифта 200%', (tester) async {

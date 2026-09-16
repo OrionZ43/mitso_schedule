@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models/task_item.dart';
 import '../../state/tasks_controller.dart';
-import '../../theme/app_motion.dart';
-import '../../theme/app_shapes.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/connected_button_group.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/m3_checkbox.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
+import '../../widgets/segmented_list.dart';
 
 class NotesScreen extends ConsumerWidget {
   const NotesScreen({super.key, this.scrollController});
@@ -22,168 +24,88 @@ class NotesScreen extends ConsumerWidget {
     final List<TaskItem> tasks = ref.watch(visibleTasksProvider);
     final TaskFilter filter = ref.watch(taskFilterProvider);
     final String summary = ref.watch(tasksSummaryProvider);
+    final double margin = AppSpacing.screenMargin(context);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: M3AppBarSettle(
-        child: CustomScrollView(
-          controller: scrollController,
-          slivers: [
-            SliverMediumFlexibleAppBar(title: 'Заметки', subtitle: summary),
-            SliverList.list(
+    return M3AppBarSettle(
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          SliverMediumFlexibleAppBar(title: 'Заметки', subtitle: summary),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: margin),
+            sliver: SliverList.list(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
-                  // Connected button group: segmented button в M3 Expressive устарел.
-                  child: ConnectedButtonGroup<TaskFilter>(
-                    values: TaskFilter.values,
-                    labelOf: (filter) => filter.label,
-                    selected: filter,
-                    onSelected: ref.read(taskFilterProvider.notifier).select,
-                  ),
+                // Переключение вида списка — connected button group
+                // (segmented button в M3 Expressive устарел).
+                ConnectedButtonGroup<TaskFilter>(
+                  values: TaskFilter.values,
+                  labelOf: (filter) => filter.label,
+                  selected: filter,
+                  onSelected: ref.read(taskFilterProvider.notifier).select,
                 ),
+                const SizedBox(height: AppSpacing.space200),
                 if (tasks.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: EmptyState(
-                      title: 'Дедлайнов пока нет,\nможно отдыхать!',
-                      description:
-                          'Новая задача добавится сюда — или прилетит из бота вместе с расписанием.',
-                      withAccentDot: true,
-                      illustrationSize: Size(148, 132),
-                    ),
+                  const EmptyState(
+                    title: 'Дедлайнов пока нет,\nможно отдыхать!',
+                    description:
+                        'Новая задача добавится сюда — или прилетит из бота '
+                        'вместе с расписанием.',
+                    withAccentDot: true,
+                    illustrationSize: Size(148, 132),
                   )
                 else
-                  for (final TaskItem task in tasks)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _TaskCard(
-                        task: task,
-                        onToggle: () => ref
-                            .read(tasksControllerProvider.notifier)
-                            .toggle(task.id),
-                      ),
-                    ),
-              ],
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task, required this.onToggle});
-
-  final TaskItem task;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-
-    // Отметка выполнения — затухание и зачёркивание, то есть effects.
-    return AnimatedOpacity(
-      opacity: task.isDone ? 0.6 : 1.0,
-      duration: AppMotion.defaultEffects.duration,
-      curve: AppMotion.defaultEffects.curve,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          // Outlined card: фон surface, обводка outlineVariant.
-          color: colors.surface,
-          border: Border.all(color: colors.outlineVariant),
-          borderRadius: AppShapes.all(AppShapes.card),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Checkbox сам держит зону нажатия 48x48 при стандартном
-            // materialTapTargetSize, отрицательные отступы возвращают
-            // визуальную рамку на место.
-            Transform.translate(
-              offset: const Offset(-12, -11),
-              child: Checkbox(
-                value: task.isDone,
-                onChanged: (_) => onToggle(),
-                semanticLabel: task.text,
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedDefaultTextStyle(
-                    duration: AppMotion.defaultEffects.duration,
-                    curve: AppMotion.defaultEffects.curve,
-                    style: context.text.titleMedium!.copyWith(
-                      height: 1.5,
-                      decoration: task.isDone
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                    child: Text(task.text),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  SegmentedList(
                     children: [
-                      _TaskChip(
-                        label: task.subject,
-                        background: colors.primaryContainer,
-                        foreground: colors.onPrimaryContainer,
-                      ),
-                      _TaskChip(
-                        label: task.due,
-                        background: task.isUrgent && !task.isDone
-                            ? colors.errorContainer
-                            : colors.surfaceContainerHigh,
-                        foreground: task.isUrgent && !task.isDone
-                            ? colors.onErrorContainer
-                            : colors.onSurfaceVariant,
-                      ),
+                      for (final TaskItem task in tasks)
+                        _taskItem(
+                          context,
+                          task,
+                          () => ref
+                              .read(tasksControllerProvider.notifier)
+                              .toggle(task.id),
+                        ),
                     ],
                   ),
-                ],
-              ),
+                // Место под medium FAB.
+                const SizedBox(
+                  height: AppSpacing.space800 + AppSpacing.space800,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _TaskChip extends StatelessWidget {
-  const _TaskChip({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 26),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: AppShapes.all(AppShapes.chip),
+  /// Задача — пункт списка с ведущим чекбоксом (lists → Anatomy, «Leading
+  /// checkbox»). Отметить можно нажатием по всей строке, не только по
+  /// чекбоксу (checkbox → Accessibility). Цвет подписи от отметки не меняется
+  /// (checkbox → Specs, Adjacent text label color): выполненная задача просто
+  /// переходит в фильтр «Выполненные».
+  M3ListItem _taskItem(
+    BuildContext context,
+    TaskItem task,
+    VoidCallback onToggle,
+  ) {
+    final bool urgent = task.isUrgent && !task.isDone;
+    return M3ListItem(
+      leading: ExcludeSemantics(
+        child: M3Checkbox(value: task.isDone, onChanged: (_) => onToggle()),
       ),
-      child: Center(
-        widthFactor: 1,
-        child: Text(
-          label,
-          style: context.text.labelMedium!.copyWith(color: foreground),
-        ),
-      ),
+      headline: Text(task.text),
+      supporting: Text('${task.subject} · ${task.due}'),
+      trailing: urgent
+          ? Icon(Symbols.alarm, color: context.colors.error)
+          : null,
+      onTap: onToggle,
+      semanticsLabel: [
+        task.text,
+        task.subject,
+        task.due,
+        if (urgent) 'срочно',
+        task.isDone ? 'выполнено' : 'не выполнено',
+      ].join(', '),
     );
   }
 }

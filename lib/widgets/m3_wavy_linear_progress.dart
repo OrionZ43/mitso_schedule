@@ -48,9 +48,9 @@ class M3WavyLinearProgress extends StatefulWidget {
   /// (`ProgressIndicatorTokens.TrackColor`).
   final Color? trackColor;
 
-  /// `false` убирает трек. Гайдлайн (Accessibility → Interaction & style):
-  /// внутри компонента, например кнопки, активная часть берёт цвет подписи,
-  /// а трек убирается.
+  /// `false` убирает трек вместе со stop indicator. Гайдлайн (Accessibility →
+  /// Interaction & style): внутри компонента, например кнопки, активная часть
+  /// берёт цвет подписи, а трек убирается.
   final bool showTrack;
 
   /// Скорость бега волны, dp/с. По умолчанию — [wavelength], то есть одна
@@ -524,8 +524,10 @@ class WavyLinearProgressPainter extends CustomPainter {
       }
     }
 
-    // Stop indicator: круг у правого края трека.
-    if (geometry.stopIndicatorSize > 0) {
+    // Stop indicator: круг у правого края трека. Он часть трека — без трека
+    // (индикатор внутри компонента) не рисуется: иначе остаётся одинокая
+    // точка, которая ничего не обозначает.
+    if (geometry.stopIndicatorSize > 0 && trackColor != null) {
       canvas.drawCircle(
         Offset(
           geometry.stopIndicatorX + geometry.stopIndicatorSize / 2,

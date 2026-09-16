@@ -8,7 +8,6 @@ import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
 import 'state/mitso_providers.dart';
 import 'state/settings_controller.dart';
-import 'theme/app_button_styles.dart';
 import 'theme/app_color_schemes.dart';
 import 'theme/app_shapes.dart';
 import 'theme/app_state_layer.dart';
@@ -192,92 +191,10 @@ ThemeData buildTheme(ColorScheme scheme) {
       actionsPadding: const EdgeInsetsDirectional.only(end: 4),
     ),
 
-    // Navigation bar по токенам MDC Expressive (bottomnavigation/tokens.xml):
-    // высота 64dp, индикатор 56×32 secondaryContainer, подпись активного
-    // пункта — secondary.
-    navigationBarTheme: NavigationBarThemeData(
-      height: 64,
-      backgroundColor: scheme.surfaceContainer,
-      indicatorShape: const NavigationIndicatorBorder(),
-      indicatorColor: scheme.secondaryContainer,
-      iconTheme: WidgetStateProperty.resolveWith(
-        (states) => IconThemeData(
-          size: 24,
-          color: states.contains(WidgetState.selected)
-              ? scheme.onSecondaryContainer
-              : scheme.onSurfaceVariant,
-        ),
-      ),
-      labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => textTheme.labelMedium!.copyWith(
-          color: states.contains(WidgetState.selected)
-              ? scheme.secondary
-              : scheme.onSurfaceVariant,
-        ),
-      ),
-    ),
-
-    searchBarTheme: SearchBarThemeData(
-      constraints: const BoxConstraints(minHeight: 56),
-      elevation: const WidgetStatePropertyAll(0),
-      backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
-      shape: const WidgetStatePropertyAll(AppShapes.stadium),
-      textStyle: WidgetStatePropertyAll(textTheme.bodyLarge),
-      hintStyle: WidgetStatePropertyAll(
-        textTheme.bodyLarge!.copyWith(color: scheme.onSurfaceVariant),
-      ),
-    ),
-
-    searchViewTheme: SearchViewThemeData(
-      backgroundColor: scheme.surfaceContainerHigh,
-      elevation: 0,
-      headerHintStyle: textTheme.bodyLarge!.copyWith(
-        color: scheme.onSurfaceVariant,
-      ),
-      headerTextStyle: textTheme.bodyLarge,
-    ),
-
     // Чипы и карточки: умолчания Flutter M3 совпадают с токенами
     // (`FilterChipTokens`: обводка outlineVariant; карточки 12dp, filled
     // surfaceContainerHighest, outlined surface + outlineVariant).
     cardTheme: const CardThemeData(margin: EdgeInsets.zero),
-
-    // Small extended FAB (`ExtendedFabSmallTokens`): titleMedium, 56dp,
-    // отступы 16 / 8 / 16dp. Цвета и тень FAB — умолчания M3.
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      extendedTextStyle: textTheme.titleMedium,
-      extendedSizeConstraints: const BoxConstraints.tightFor(height: 56),
-      extendedPadding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-      extendedIconLabelSpacing: 8,
-    ),
-
-    // Bottom sheet по bottomsheet/tokens.xml: фон surfaceContainerLow, верхние
-    // углы extraLarge (28dp), ручка 32×4 onSurfaceVariant.
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: scheme.surfaceContainerLow,
-      surfaceTintColor: Colors.transparent,
-      shape: AppShapes.bottomSheetShape,
-      dragHandleColor: scheme.onSurfaceVariant,
-      dragHandleSize: const Size(32, 4),
-      showDragHandle: true,
-      // Scrim: роль scrim с непрозрачностью 32% (`ScrimTokens`).
-      modalBarrierColor: scheme.scrim.withValues(alpha: 0.32),
-    ),
-
-    // Кнопки размера Small по button/tokens.xml; обводка outlined —
-    // outlineVariant. Medium задаётся там, где нужна (шит справки).
-    filledButtonTheme: FilledButtonThemeData(
-      style: AppButtonStyles.small(textTheme),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: AppButtonStyles.small(textTheme).copyWith(
-        side: WidgetStatePropertyAll(BorderSide(color: scheme.outlineVariant)),
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: AppButtonStyles.small(textTheme),
-    ),
-    iconButtonTheme: IconButtonThemeData(style: AppButtonStyles.iconSmall()),
 
     // Plain tooltip: `PlainTooltipTokens` — inverseSurface / inverseOnSurface,
     // bodySmall, углы 4dp; Compose `Tooltip.kt` — поля 8×4, минимум 40×24,

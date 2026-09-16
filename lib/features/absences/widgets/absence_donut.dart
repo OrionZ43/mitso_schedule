@@ -55,7 +55,9 @@ class AbsenceDonut extends StatelessWidget {
               unjustifiedFraction: unjustifiedHours / limitHours,
               // Трек дуги — роль трека индикаторов прогресса.
               trackColor: colors.secondaryContainer,
-              totalColor: colors.primaryContainer,
+              // Дуги различимы с треком и друг с другом: tertiary и primary
+              // (контейнерная роль сливалась бы с треком secondaryContainer).
+              totalColor: colors.tertiary,
               unjustifiedColor: colors.primary,
             ),
             child: Center(
