@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../state/absences_controller.dart';
+import '../../../theme/app_button_styles.dart';
 import '../../../theme/app_shapes.dart';
 import '../../../theme/app_typography.dart';
 import '../../../widgets/m3_loading_indicator.dart';
@@ -72,7 +73,9 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                 flex: 10,
                 child: SizedBox(
                   height: 56,
+                  // Кнопки размера Medium (56dp) из CommonButton.md.
                   child: OutlinedButton(
+                    style: AppButtonStyles.medium(context.text),
                     onPressed: _submitting
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -86,6 +89,7 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                 child: SizedBox(
                   height: 56,
                   child: FilledButton(
+                    style: AppButtonStyles.medium(context.text),
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
                         ? M3LoadingIndicator(

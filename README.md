@@ -66,20 +66,28 @@ Flutter и сам подгружает Roboto и Material Symbols через `Fo
 
 ## Что сделано по гайдлайнам
 
-| Область | Реализация |
+Компоненты сверены с документацией и токенами
+[material-components-android](https://github.com/material-components/material-components-android/tree/master/docs/components)
+(`docs/components/*.md` и `lib/.../res/values/*tokens.xml`).
+
+| Компонент | Реализация |
 |---|---|
-| [Цвет](https://m3.material.io/styles/color/system/overview) | `ColorScheme.fromSeed` с `DynamicSchemeVariant.expressive`, 4 сид-палитры (violet / blue / green / coral), baseline `#6750A4` при выключенных динамических цветах |
-| [Динамический цвет](https://m3.material.io/styles/color/dynamic/choosing-a-source) | `DynamicColorBuilder`, схема с устройства на Android 12+, фолбэк на сид-палитру |
-| [Типографика](https://m3.material.io/styles/typography/type-scale-tokens) | Полная `TextTheme` по токенам типошкалы на Roboto, emphasized-начертание через `TextStyle.emphasized` |
-| [Форма](https://m3.material.io/styles/shape/corner-radius-scale) | `AppShapes` — вся шкала радиусов M3, никаких «магических» чисел в виджетах |
-| [Движение](https://m3.material.io/styles/motion/overview/specs) | `AppMotion` — шесть пружинных токенов M3 Expressive; позиция/форма идут по *spatial*, цвет/прозрачность — по *effects* |
-| [Loading indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md) | `M3LoadingIndicator` — порт `LoadingIndicator` из material-components-android: формы `MaterialShapes` и `Morph` из `material_new_shapes` (Dart-порт `androidx.graphics.shapes`), пружина 200 / 0.6 на морфе, поворот 50° + 90° за шаг 650 мс |
-| [Progress indicators](https://m3.material.io/components/progress-indicators/overview) | `M3WavyLinearProgress`: синусоида 40dp × 3dp, толщина 4dp, зазор 4dp, stop indicator 4dp, амплитуда гаснет к 100% |
-| [Navigation bar](https://m3.material.io/components/navigation-bar/specs) | `NavigationBar` 80dp, индикатор-таблетка, filled-иконки у активного пункта |
-| [Search](https://m3.material.io/components/search/overview) | `SearchAnchor.bar` с фильтр-чипами и недавними запросами |
-| [Bottom sheets](https://m3.material.io/components/bottom-sheets/specs) | `showModalBottomSheet` с drag handle и скруглением 28dp сверху |
-| [Переходы](https://m3.material.io/styles/motion/transitions/transition-patterns) | fade through между вкладками и с экрана загрузки |
-| [Доступность](https://m3.material.io/foundations/accessible-design/patterns) | `Semantics` на иконках-кнопках и диаграмме, зона нажатия ≥ 48dp, контраст статусов проверяется тестом |
+| Цвет | `ColorScheme.fromSeed` с `DynamicSchemeVariant.expressive`, 4 сид-палитры, baseline `#6750A4` при выключенных динамических цветах, `DynamicColorBuilder` на Android 12+ |
+| Типографика, форма, движение | Полная `TextTheme` по токенам, шкала радиусов M3, шесть пружинных токенов Expressive (*spatial* для формы, *effects* для цвета) |
+| [Loading indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md) | Порт MDC: `MaterialShapes` и `Morph` из `material_new_shapes`, пружина 200 / 0.6, поворот 50° + 90° за шаг 650 мс, contained — `onPrimaryContainer` на `primaryContainer` |
+| [Progress indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/ProgressIndicator.md) | Волнистый determinate: 4dp, амплитуда 3dp, волна 40dp, зазор 4dp, stop indicator 4dp; волна неподвижна, полная амплитуда только при 0.1–0.9 |
+| [Navigation bar](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomNavigation.md) | Expressive: высота 64dp, индикатор 56×32 `secondaryContainer`, активная подпись `secondary` |
+| [App bar](https://github.com/material-components/material-components-android/blob/master/docs/components/TopAppBar.md) | Medium flexible: 112 / 64dp, заголовок `headlineMedium` → `titleLarge`, подзаголовок-дата под заголовком |
+| [Search](https://github.com/material-components/material-components-android/blob/master/docs/components/Search.md) | `SearchAnchor.bar` 56dp, форма full, `surfaceContainerHigh` |
+| [Button group](https://github.com/material-components/material-components-android/blob/master/docs/components/ButtonGroup.md) | Connected button group вместо устаревшего segmented button: зазор 2dp, внутренние углы 8 / 4 / 50% |
+| [Buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/CommonButton.md), [icon buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/IconButton.md) | Размеры Small (40dp, `labelLarge`, отступы 16) и Medium (56dp, `titleMedium`, 24); форма full морфится в скруглённый прямоугольник при нажатии |
+| [FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/FloatingActionButton.md), [extended FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/ExtendedFloatingActionButton.md) | `primaryContainer` по умолчанию, тень 6dp, small extended — `titleMedium`, отступы 16 / 8 / 16 |
+| [Lists](https://github.com/material-components/material-components-android/blob/master/docs/components/List.md) | Segmented-список в профиле: углы 16 / 4dp, зазор 2dp, без разделителей |
+| [Chips](https://github.com/material-components/material-components-android/blob/master/docs/components/Chip.md) | Filter chip 32dp, выбранный — `secondaryContainer` без обводки, невыбранный — обводка `outline` |
+| [Cards](https://github.com/material-components/material-components-android/blob/master/docs/components/Card.md), [bottom sheet](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomSheet.md) | Outlined card на `surface`; шит `surfaceContainerLow`, ручка `onSurfaceVariant` 32×4 |
+| [Switch](https://github.com/material-components/material-components-android/blob/master/docs/components/Switch.md), [checkbox](https://github.com/material-components/material-components-android/blob/master/docs/components/Checkbox.md), [snackbar](https://github.com/material-components/material-components-android/blob/master/docs/components/Snackbar.md), [divider](https://github.com/material-components/material-components-android/blob/master/docs/components/Divider.md) | Совпадают с токенами MDC |
+| [Tooltip](https://github.com/material-components/material-components-android/blob/master/docs/components/Tooltip.md) | По `Widget.Material3.Tooltip`: `primary` / `onPrimary`, `bodySmall`, минимум 28dp |
+| Доступность | `Semantics`, зона нажатия ≥ 48dp, шрифт до 200% без переполнений, контраст статусов проверяется тестом |
 
 Состояние — Riverpod (`Notifier`), настройки переживают перезапуск через `shared_preferences`.
 
@@ -134,6 +142,21 @@ Flutter и сам подгружает Roboto и Material Symbols через `Fo
 11. **`dynamic_color` закреплён на 1.8.x.**
     Версия 2.1.0 собрана против пакета `material_ui`, её `ColorScheme` и `Widget` — другие типы,
     несовместимые с `package:flutter/material.dart`.
+
+12. **Navigation bar и фильтр задач отличаются от §7.3 / §7.5 промта.**
+    Промт описывал baseline M3 (навбар 80dp с индикатором 64×32, segmented button). По
+    документации MDC Expressive навбар стал 64dp с индикатором 56×32, а segmented button
+    устарел и заменён connected button group.
+
+13. **Индикатор navigation bar сужен формой, а не шириной.**
+    Flutter рисует индикатор в фиксированной рамке 64×32 (`_kIndicatorWidth`) и ширину не
+    настраивает. `NavigationIndicatorBorder` сужает таблетку до 56dp внутри рамки — фон и
+    ripple рисуются по этой форме, стандартная доступность `NavigationBar` сохраняется.
+
+14. **Контейнер segmented-списка — `surfaceContainer`, а не `surface`.**
+    По токену пункт `surface`, а в каталоге MDC список лежит на подложке
+    `surfaceContainerHigh`. Фон вкладок здесь сам `surface`, поэтому пункт на тон темнее —
+    иначе сегменты сливались бы с фоном.
 
 ---
 

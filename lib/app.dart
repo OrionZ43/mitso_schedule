@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
 import 'state/settings_controller.dart';
+import 'theme/app_button_styles.dart';
 import 'theme/app_color_schemes.dart';
 import 'theme/app_motion.dart';
 import 'theme/app_shapes.dart';
@@ -201,14 +202,31 @@ ThemeData buildTheme(ColorScheme scheme) {
       showDragHandle: true,
     ),
 
+    // Кнопки размера Small по button/tokens.xml; обводка outlined —
+    // outlineVariant. Medium задаётся там, где нужна (шит справки).
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(textStyle: textTheme.titleMedium),
+      style: AppButtonStyles.small(textTheme),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        textStyle: textTheme.titleMedium,
-        side: BorderSide(color: scheme.outlineVariant),
+      style: AppButtonStyles.small(textTheme).copyWith(
+        side: WidgetStatePropertyAll(BorderSide(color: scheme.outlineVariant)),
       ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: AppButtonStyles.small(textTheme),
+    ),
+    iconButtonTheme: IconButtonThemeData(style: AppButtonStyles.iconSmall()),
+
+    // Plain tooltip по стилю Widget.Material3.Tooltip: primary / onPrimary,
+    // bodySmall, отступ 4dp, минимум 28dp, углы extraSmall.
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        borderRadius: AppShapes.all(AppShapes.extraSmall),
+      ),
+      textStyle: textTheme.bodySmall!.copyWith(color: scheme.onPrimary),
+      padding: const EdgeInsets.all(4),
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
     ),
 
     checkboxTheme: CheckboxThemeData(
