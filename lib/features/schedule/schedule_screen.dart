@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -69,11 +71,19 @@ class _ScheduleAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Высоты large top app bar — 152dp / 64dp; при увеличенном системном
+    // шрифте они растут вместе с заголовком, иначе он обрезался бы.
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    final double headline = scaler.scale(36);
+    final double dateLine = scaler.scale(20);
+    final double collapsed = math.max(64, headline + 24);
+    final double expanded = math.max(152, collapsed + dateLine + 40);
+
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 152,
-      collapsedHeight: 64,
-      toolbarHeight: 64,
+      expandedHeight: expanded,
+      collapsedHeight: collapsed,
+      toolbarHeight: collapsed,
       backgroundColor: context.colors.surface,
       actions: const [_ProfileAvatar(), SizedBox(width: 16)],
       flexibleSpace: FlexibleSpaceBar(
@@ -81,19 +91,28 @@ class _ScheduleAppBar extends StatelessWidget {
         // состояниях, меняется только положение.
         expandedTitleScale: 1.0,
         titlePadding: const EdgeInsets.only(left: 22, right: 72, bottom: 14),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+        title: Text(
+          'Расписание',
+          style: context.text.headlineMedium!.emphasized,
+        ),
+        // Дата живёт только в развёрнутом состоянии: FlexibleSpaceBar гасит
+        // background при сворачивании, и в свёрнутые 64dp остаётся заголовок,
+        // как и предписывает спека large top app bar.
+        background: Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 22,
+              right: 72,
+              bottom: 14 + headline + 4,
+            ),
+            child: Text(
               MockData.headerDate,
               style: context.text.labelLarge!.copyWith(
                 color: context.colors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 4),
-            Text('Расписание', style: context.text.headlineMedium!.emphasized),
-          ],
+          ),
         ),
       ),
     );
@@ -197,8 +216,11 @@ class _DayHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 16, 26, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 4,
         children: [
           Text(
             day.title,

@@ -12,6 +12,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// и пульсирующая точка анимируются бесконечно, поэтому дерево никогда не
 /// «успокаивается». Кадры прокручиваются явными [WidgetTester.pump].
 Future<void> pumpApp(WidgetTester tester) async {
+  // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
+  // Medium Phone API 36: 1080x2400 при плотности 2.625.
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 2.625;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+
   SharedPreferences.setMockInitialValues({});
   final SharedPreferences preferences = await SharedPreferences.getInstance();
 
@@ -99,6 +108,19 @@ void main() {
 
     expect(find.text('Новая справка'), findsOneWidget);
     expect(find.text('Отправлено только что'), findsOneWidget);
+  });
+
+  testWidgets('интерфейс переживает масштаб шрифта 200%', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await pumpApp(tester);
+
+    // Любое переполнение раскладки в тестах прилетает исключением.
+    for (final String tab in ['Пропуски', 'Заметки', 'Профиль', 'Расписание']) {
+      await openTab(tester, tab);
+      expect(tester.takeException(), isNull, reason: 'вкладка «$tab»');
+    }
   });
 
   testWidgets('тумблер темы переключает ThemeMode и сохраняется', (

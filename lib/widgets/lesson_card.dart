@@ -54,8 +54,10 @@ class LessonCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 54,
+                // minWidth, а не фиксированная ширина: при крупном шрифте
+                // время не должно обрезаться.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 54),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -159,10 +161,16 @@ class _NowSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Wrap, а не Row: при крупном системном шрифте метка и остаток
+        // переносятся на вторую строку вместо переполнения.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 4,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const _PulsingDot(),
                 const SizedBox(width: 7),

@@ -26,8 +26,13 @@ class DaySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Горизонтальному списку нужна явная высота, поэтому она считается из
+    // текущего масштаба шрифта: 12 сверху + строка дня + 6 + число + 14 снизу.
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    final double height = 12 + scaler.scale(16) + 6 + scaler.scale(27) + 14;
+
     return SizedBox(
-      height: 76,
+      height: height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -97,8 +102,8 @@ class _DayChip extends StatelessWidget {
         // Текст внутри озвучивать не нужно — метка задана выше целиком,
         // при этом действие нажатия у InkWell сохраняется.
         child: ExcludeSemantics(
-          child: SizedBox(
-            width: 56,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 56),
             child: Padding(
               padding: const EdgeInsets.only(top: 12, bottom: 14),
               child: Column(

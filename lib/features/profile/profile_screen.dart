@@ -179,9 +179,9 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 32,
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      constraints: const BoxConstraints(minHeight: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),
@@ -245,50 +245,65 @@ class _CredentialRowState extends State<_CredentialRow> {
     final bool hidden = widget.secret && !_revealed;
     final String display = hidden ? '••••••••••' : widget.value;
 
+    // Wrap, а не Row: при системном шрифте 200% «глаз» и «Копировать»
+    // переезжают на вторую строку вместо горизонтального переполнения.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        alignment: WrapAlignment.spaceBetween,
+        runSpacing: 4,
         children: [
-          Icon(widget.icon, color: colors.onSurfaceVariant),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.label,
-                  style: context.text.bodySmall!.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, color: colors.onSurfaceVariant),
+              const SizedBox(width: 14),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: context.text.bodySmall!.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      display,
+                      style: context.text.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: hidden ? 0.8 : 0.4,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  display,
-                  style: context.text.bodyLarge!.copyWith(
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: hidden ? 0.8 : 0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (widget.secret)
-            IconButton(
-              onPressed: () => setState(() => _revealed = !_revealed),
-              icon: Icon(
-                _revealed ? Symbols.visibility_off : Symbols.visibility,
               ),
-              tooltip: _revealed ? 'Скрыть пароль' : 'Показать пароль',
-            ),
-          TextButton(
-            onPressed: _copy,
-            style: _copied
-                ? TextButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: colors.onPrimary,
-                  )
-                : null,
-            child: Text(_copied ? 'Скопировано' : 'Копировать'),
+            ],
+          ),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (widget.secret)
+                IconButton(
+                  onPressed: () => setState(() => _revealed = !_revealed),
+                  icon: Icon(
+                    _revealed ? Symbols.visibility_off : Symbols.visibility,
+                  ),
+                  tooltip: _revealed ? 'Скрыть пароль' : 'Показать пароль',
+                ),
+              TextButton(
+                onPressed: _copy,
+                style: _copied
+                    ? TextButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
+                      )
+                    : null,
+                child: Text(_copied ? 'Скопировано' : 'Копировать'),
+              ),
+            ],
           ),
         ],
       ),

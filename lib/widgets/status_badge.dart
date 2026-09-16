@@ -93,13 +93,12 @@ class _Badge extends StatelessWidget {
         (height == null ? context.text.labelSmall : context.text.labelMedium)!
             .copyWith(color: foreground);
 
+    // Высота задаётся минимумом, а не фиксируется: при масштабе шрифта
+    // до 200% бейдж растёт вместе с текстом и ничего не обрезается.
     return Container(
-      height: height,
-      alignment: height == null ? null : Alignment.center,
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: height == null ? 4 : 0,
-      ),
+      alignment: Alignment.center,
+      constraints: BoxConstraints(minHeight: height ?? 0),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),

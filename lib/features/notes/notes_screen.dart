@@ -185,9 +185,9 @@ class _TaskChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 26,
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      constraints: const BoxConstraints(minHeight: 26),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),

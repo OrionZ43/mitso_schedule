@@ -32,13 +32,21 @@ class AbsenceDonut extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
 
+    // Диаметр растёт вместе с подписями в центре: при системном шрифте 200%
+    // три строки иначе не помещаются внутрь кольца.
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    final double effectiveSize = math.max(
+      size,
+      scaler.scale(150) + 2 * strokeWidth,
+    );
+
     return Semantics(
       label:
           'Пропущено $missedHours часов из $limitHours. '
           'Оправдано $justifiedHours часов, без справки $unjustifiedHours часов.',
       child: ExcludeSemantics(
         child: SizedBox.square(
-          dimension: size,
+          dimension: effectiveSize,
           child: CustomPaint(
             painter: _DonutPainter(
               // Внешняя дуга — весь пропуск, поверх неё дуга без справки.
@@ -49,32 +57,39 @@ class AbsenceDonut extends StatelessWidget {
               unjustifiedColor: colors.primary,
             ),
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$missedHours',
-                    style: context.text.displaySmall!.emphasized.copyWith(
-                      fontSize: 48,
-                      height: 1,
-                      letterSpacing: -1,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: strokeWidth + effectiveSize * 0.06,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$missedHours',
+                      style: context.text.displaySmall!.emphasized.copyWith(
+                        fontSize: 48,
+                        height: 1,
+                        letterSpacing: -1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'часов пропущено',
-                    style: context.text.bodyMedium!.copyWith(
-                      color: colors.onSurfaceVariant,
+                    const SizedBox(height: 6),
+                    Text(
+                      'часов пропущено',
+                      textAlign: TextAlign.center,
+                      style: context.text.bodyMedium!.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'лимит $limitHours ч',
-                    style: context.text.labelMedium!.copyWith(
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                    const SizedBox(height: 2),
+                    Text(
+                      'лимит $limitHours ч',
+                      textAlign: TextAlign.center,
+                      style: context.text.labelMedium!.copyWith(
+                        color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
