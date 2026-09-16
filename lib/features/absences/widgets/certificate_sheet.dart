@@ -9,6 +9,7 @@ import '../../../theme/app_button_styles.dart';
 import '../../../theme/app_shapes.dart';
 import '../../../theme/app_typography.dart';
 import '../../../widgets/m3_loading_indicator.dart';
+import '../../home/home_shell.dart';
 
 /// Боттом-шит отправки справки.
 ///
@@ -38,9 +39,7 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
     await ref.read(absencesControllerProvider.notifier).submit();
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Справка отправлена куратору')),
-    );
+    appSnackbarHost.currentState?.show('Справка отправлена куратору');
   }
 
   @override

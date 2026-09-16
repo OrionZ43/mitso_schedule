@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../theme/app_transitions.dart';
+import '../../widgets/m3_snackbar.dart';
 import '../absences/absences_screen.dart';
 import '../notes/notes_screen.dart';
 import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
+
+/// Хост снекбаров над navigation bar. Глобальный, потому что сообщения
+/// приходят и из шитов, которые живут в отдельных маршрутах.
+final GlobalKey<M3SnackbarHostState> appSnackbarHost = GlobalKey();
 
 /// Каркас приложения: четыре вкладки и navigation bar.
 ///
@@ -30,16 +35,19 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: FadeThroughStack(
-          index: _index,
-          children: const [
-            ScheduleScreen(),
-            AbsencesScreen(),
-            NotesScreen(),
-            ProfileScreen(),
-          ],
+      body: M3SnackbarHost(
+        key: appSnackbarHost,
+        child: SafeArea(
+          bottom: false,
+          child: FadeThroughStack(
+            index: _index,
+            children: const [
+              ScheduleScreen(),
+              AbsencesScreen(),
+              NotesScreen(),
+              ProfileScreen(),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: NavigationBar(
