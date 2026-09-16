@@ -24,16 +24,25 @@ flutter run -d emulator-5554
 
 Заявленный минимум — `minSdk 24`, сборка — `compileSdk 36`.
 
-> **Сборка под Android требует сети при первом запуске.** Gradle качает свой дистрибутив
-> (`gradle-9.1.0-all.zip`) и артефакты AGP; без доступа к `services.gradle.org` `flutter run`
-> падает с `UnknownHostException`. Экранные проверки в этом репозитории сделаны рендером
-> настоящим движком Flutter (см. «Скриншоты»), а не снимком с эмулятора.
+Приложение проверено на Pixel 7 (Android 17): запускается, в logcat нет ошибок.
+
+> **Если Google Maven недоступен.** Из некоторых сетей `dl.google.com` отдаёт 404 на любой
+> артефакт, и первая сборка падает на `Plugin 'com.android.application' ... was not found`.
+> Обход — зеркала Google Maven в глобальном init-скрипте Gradle
+> (`~/.gradle/init.d/google-maven-mirror.gradle`), проект при этом не меняется.
+> Скрипт должен добавлять зеркала и в `pluginManagement`, и в `dependencyResolutionManagement`,
+> явно возвращать `gradlePluginPortal()` и не добавлять репозитории на уровне проектов в сборки
+> с `FAIL_ON_PROJECT_REPOS` — так настроена включённая сборка `flutter_tools/gradle`.
+>
+> В `gradle-wrapper.properties` задан `distributionSha256Sum`: если дистрибутив Gradle
+> скачается не полностью, сборка сразу упадёт на проверке суммы, а не на битом архиве
+> (`zip END header not found`).
 
 ### Проверки
 
 ```bash
 flutter analyze   # без предупреждений
-flutter test      # 19 тестов
+flutter test      # 22 теста
 dart format lib test
 ```
 
@@ -149,6 +158,7 @@ test/
   app_test.dart              вкладки, отметка задачи, отправка справки, тема
   indicators_geometry_test.dart  геометрия форм и волнистой шкалы
   status_contrast_test.dart  контраст статусных цветов
+  pull_to_refresh_test.dart  протяжка, обновление и откат индикатора покадрово
   screenshot_generator.dart  генератор PNG в docs/screenshots (не тест)
 ```
 
