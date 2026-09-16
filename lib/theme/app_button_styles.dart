@@ -9,6 +9,11 @@ import 'app_shapes.dart';
 ///
 /// Значения — из `button/res/values/tokens.xml`. Форма по умолчанию круглая
 /// (full) и морфится в скруглённый прямоугольник, пока кнопка нажата.
+///
+/// Длительность морфа — пружина `DefaultEffects`: так в Compose Material3
+/// (`Button.kt`, `IconButton.kt`), с пометкой «intentional here to prevent any
+/// bounce in this component». Кривую `ButtonStyle` задать не даёт — Flutter
+/// анимирует форму своей, берётся только длительность.
 abstract final class AppButtonStyles {
   /// Small — размер по умолчанию: 40dp, `labelLarge`, отступы 16dp,
   /// при нажатии углы `cornerSmall` (8dp).
@@ -35,7 +40,7 @@ abstract final class AppButtonStyles {
     minimumSize: const WidgetStatePropertyAll(Size.square(40)),
     iconSize: const WidgetStatePropertyAll(24),
     shape: _morphingShape(AppShapes.small),
-    animationDuration: AppMotion.fastSpatial.duration,
+    animationDuration: AppMotion.defaultEffects.duration,
   );
 
   static ButtonStyle _style({
@@ -53,7 +58,7 @@ abstract final class AppButtonStyles {
       textStyle: WidgetStatePropertyAll(label),
       iconSize: WidgetStatePropertyAll(iconSize),
       shape: _morphingShape(pressedCorner),
-      animationDuration: AppMotion.fastSpatial.duration,
+      animationDuration: AppMotion.defaultEffects.duration,
     );
   }
 

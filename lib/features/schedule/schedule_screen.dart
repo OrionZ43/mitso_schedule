@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,9 @@ import '../../data/models/group_ref.dart';
 import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
+import '../../state/settings_controller.dart';
 import '../../theme/app_shapes.dart';
+import '../../theme/app_transitions.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/day_selector.dart';
 import '../../widgets/empty_state.dart';
@@ -18,6 +21,7 @@ import '../../widgets/lesson_card.dart';
 import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
+import 'lesson_details_page.dart';
 
 class ScheduleScreen extends ConsumerWidget {
   const ScheduleScreen({super.key});
@@ -131,29 +135,141 @@ class ScheduleScreen extends ConsumerWidget {
             ),
           ),
         ),
-        SliverToBoxAdapter(child: _DayHeading(day: day)),
-        if (day.isEmpty)
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: EmptyState(title: 'Занятий нет.\nОтдыхай!'),
-          )
-        else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            sliver: SliverList.separated(
-              itemCount: day.lessons.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final Lesson lesson = day.lessons[index];
-                return LessonCard(
-                  lesson: lesson,
-                  now: LessonProgress.of(lesson, day.date, now),
-                );
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 24),
+          sliver: SliverToBoxAdapter(
+            child: _DaySwitcher(
+              date: day.date,
+              onSwipe: (step) {
+                final int index = days.indexOf(day) + step;
+                if (index < 0 || index >= days.length) return;
+                ref
+                    .read(selectedDateProvider.notifier)
+                    .select(days[index].date);
               },
+              child: _DayContent(day: day, days: days, now: now),
             ),
           ),
+        ),
       ],
     ];
+  }
+}
+
+/// Смена дня — паттерн shared axis X: дни идут друг за другом, поэтому более
+/// поздний въезжает справа, более ранний — слева.
+///
+/// https://m3.material.io/styles/motion/transitions/transition-patterns
+///
+/// День можно перелистнуть и горизонтальным свайпом по списку пар.
+class _DaySwitcher extends StatefulWidget {
+  const _DaySwitcher({
+    required this.date,
+    required this.onSwipe,
+    required this.child,
+  });
+
+  final DateTime date;
+
+  /// `+1` — следующий день, `-1` — предыдущий.
+  final ValueChanged<int> onSwipe;
+
+  final Widget child;
+
+  /// Скорость, начиная с которой горизонтальный жест считается перелистыванием.
+  static const double swipeVelocity = 300;
+
+  @override
+  State<_DaySwitcher> createState() => _DaySwitcherState();
+}
+
+class _DaySwitcherState extends State<_DaySwitcher> {
+  bool _backward = false;
+
+  @override
+  void didUpdateWidget(_DaySwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!DateUtils.isSameDay(oldWidget.date, widget.date)) {
+      _backward = widget.date.isBefore(oldWidget.date);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (details) {
+        final double velocity = details.primaryVelocity ?? 0;
+        if (velocity.abs() < _DaySwitcher.swipeVelocity) return;
+        widget.onSwipe(velocity < 0 ? 1 : -1);
+      },
+      child: PageTransitionSwitcher(
+        duration: AppTransitions.sharedAxisDuration,
+        reverse: _backward,
+        layoutBuilder: (entries) =>
+            Stack(alignment: Alignment.topCenter, children: entries),
+        transitionBuilder: (child, animation, secondaryAnimation) =>
+            M3SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              child: child,
+            ),
+        child: KeyedSubtree(key: ValueKey(widget.date), child: widget.child),
+      ),
+    );
+  }
+}
+
+/// Заголовок дня и его пары.
+class _DayContent extends ConsumerWidget {
+  const _DayContent({required this.day, required this.days, required this.now});
+
+  final ScheduleDay day;
+  final List<ScheduleDay> days;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int? subgroup = ref.watch(
+      settingsControllerProvider.select((s) => s.subgroup),
+    );
+    final List<LessonSlot> slots = day.slots(subgroup: subgroup);
+    final List<SlotStatus> statuses = slotTimings(slots, day.date, now);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DayHeading(day: day, slots: slots, now: now),
+        if (slots.isEmpty)
+          const EmptyState(title: 'Занятий нет.\nОтдыхай!')
+        else
+          for (int i = 0; i < slots.length; i++)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+              child: LessonCard<DateTime>(
+                slot: slots[i],
+                timing: statuses[i].timing,
+                progress: statuses[i].progress,
+                startsInMinutes: statuses[i].startsIn,
+                details: (context, close) => LessonDetailsPage(
+                  slot: slots[i],
+                  day: day,
+                  days: days,
+                  status: statuses[i],
+                  subgroup: subgroup,
+                  close: close,
+                ),
+                // Переход к другому дню — после обратной анимации, чтобы
+                // карточка успела свернуться на своё место.
+                onClosed: (date) {
+                  if (date != null) {
+                    ref.read(selectedDateProvider.notifier).select(date);
+                  }
+                },
+              ),
+            ),
+      ],
+    );
   }
 }
 
@@ -179,11 +295,9 @@ class _ScheduleAppBar extends StatelessWidget {
     final ColorScheme colors = context.colors;
     final TextScaler scaler = MediaQuery.textScalerOf(context);
 
-    final String date = DateFormat('EEEE, d MMMM', 'ru').format(now);
-    final String subtitle = [
-      date[0].toUpperCase() + date.substring(1),
-      if (group != null) group!.groupName,
-    ].join(' · ');
+    final String subtitle = group == null
+        ? 'Группа не выбрана'
+        : '${group!.groupName} · ${group!.courseName}';
 
     final TextStyle expandedTitle = context.text.headlineMedium!.emphasized;
     final TextStyle collapsedTitle = context.text.titleLarge!.emphasized;
@@ -372,11 +486,16 @@ class _ScheduleSearchBar extends ConsumerWidget {
       ScheduleSearchField.room => lesson.room,
     };
 
+    // Подгруппы одной пары с тем же предметом — одна строка результата.
+    final Set<String> seen = {};
     final List<(ScheduleDay, Lesson)> matches = [
       if (query.isNotEmpty)
         for (final ScheduleDay day in days)
           for (final Lesson lesson in day.lessons)
-            if (valueOf(lesson)?.toLowerCase().contains(query) ?? false)
+            if ((valueOf(lesson)?.toLowerCase().contains(query) ?? false) &&
+                seen.add(
+                  '${day.date}|${lesson.start}|${lesson.title}|${valueOf(lesson)}',
+                ))
               (day, lesson),
     ];
 
@@ -443,36 +562,89 @@ class _SearchHint extends StatelessWidget {
   }
 }
 
-/// Название дня и сводка по парам.
+/// Название дня и сводка по парам: «Сегодня / среда, 16 сентября» слева,
+/// «4 пары / 08:15—14:25» справа.
 class _DayHeading extends StatelessWidget {
-  const _DayHeading({required this.day});
+  const _DayHeading({
+    required this.day,
+    required this.slots,
+    required this.now,
+  });
 
   final ScheduleDay day;
+  final List<LessonSlot> slots;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    final String date = DateFormat('d MMMM', 'ru').format(day.date);
+    final String? relative = relativeDayName(day.date, now);
+
+    final TextStyle secondary = context.text.bodyMedium!.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 16, 26, 8),
+      padding: const EdgeInsets.fromLTRB(26, 18, 26, 8),
       child: Wrap(
         alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.end,
         spacing: 12,
         runSpacing: 4,
         children: [
-          Text(
-            '${day.title}, ${DateFormat('d MMMM', 'ru').format(day.date)}',
-            style: context.text.bodyMedium!.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  relative ?? day.title,
+                  style: context.text.titleLarge!.emphasized,
+                ),
+              ),
+              Text(
+                relative != null ? '${day.title.toLowerCase()}, $date' : date,
+                style: secondary,
+              ),
+            ],
           ),
-          Text(
-            day.summary,
-            style: context.text.labelMedium!.copyWith(
-              color: context.colors.onSurfaceVariant,
+          if (slots.isEmpty)
+            Text('Выходной', style: secondary)
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${slots.length} ${ScheduleDay.pairsWord(slots.length)}',
+                  style: context.text.titleSmall,
+                ),
+                Text(
+                  '${slots.first.start}—${slots.last.end}',
+                  style: secondary,
+                ),
+              ],
             ),
-          ),
         ],
       ),
     );
   }
+}
+
+/// «Сегодня», «Завтра», «Вчера» или `null` для остальных дней.
+String? relativeDayName(DateTime date, DateTime now) {
+  // Через UTC: разница в днях не должна зависеть от перевода часов.
+  final int diff = DateTime.utc(
+    date.year,
+    date.month,
+    date.day,
+  ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+  return switch (diff) {
+    0 => 'Сегодня',
+    1 => 'Завтра',
+    -1 => 'Вчера',
+    _ => null,
+  };
 }

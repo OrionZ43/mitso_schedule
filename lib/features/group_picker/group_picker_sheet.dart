@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -5,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/group_ref.dart';
 import '../../state/mitso_providers.dart';
+import '../../theme/app_transitions.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/segmented_list.dart';
@@ -44,8 +46,12 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
   MitsoOption? _form;
   MitsoOption? _course;
 
-  /// Запрос текущего шага; хранится, чтобы перестроение не дёргало сайт.
-  late Future<List<MitsoOption>> _options = _load();
+  /// Последний переход был назад — для направления shared axis.
+  bool _backward = false;
+
+  /// Запросы по шагам. Хранятся, чтобы перестроение и возврат назад не
+  /// дёргали сайт повторно.
+  final Map<String, Future<List<MitsoOption>>> _requests = {};
 
   _Step get _step => _course != null
       ? _Step.group
@@ -54,6 +60,14 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
       : _faculty != null
       ? _Step.form
       : _Step.faculty;
+
+  /// Шаг вместе с выбором до него: форма обучения другого факультета — уже
+  /// другая страница.
+  String get _pageKey =>
+      '${_step.name}|${_faculty?.id}|${_form?.id}|${_course?.id}';
+
+  Future<List<MitsoOption>> get _options =>
+      _requests.putIfAbsent(_pageKey, _load);
 
   Future<List<MitsoOption>> _load() async {
     final MitsoApi api = await ref.read(mitsoApiProvider.future);
@@ -65,170 +79,248 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
     };
   }
 
-  // Блок, а не стрелка: стрелка вернула бы Future из setState.
-  void _reload() {
+  void _retry() {
     setState(() {
-      _options = _load();
+      _requests.remove(_pageKey);
     });
   }
 
   void _choose(MitsoOption option) {
-    switch (_step) {
-      case _Step.faculty:
-        _faculty = option;
-      case _Step.form:
-        _form = option;
-      case _Step.course:
-        _course = option;
-      case _Step.group:
-        ref
-            .read(selectedGroupProvider.notifier)
-            .select(
-              GroupRef(
-                facultyId: _faculty!.id,
-                facultyName: _faculty!.name,
-                formId: _form!.id,
-                formName: _form!.name,
-                courseId: _course!.id,
-                courseName: _course!.name,
-                groupId: option.id,
-                groupName: option.name,
-              ),
-            );
-        Navigator.of(context).pop();
-        return;
+    if (_step == _Step.group) {
+      ref
+          .read(selectedGroupProvider.notifier)
+          .select(
+            GroupRef(
+              facultyId: _faculty!.id,
+              facultyName: _faculty!.name,
+              formId: _form!.id,
+              formName: _form!.name,
+              courseId: _course!.id,
+              courseName: _course!.name,
+              groupId: option.id,
+              groupName: option.name,
+            ),
+          );
+      Navigator.of(context).pop();
+      return;
     }
-    _reload();
+    setState(() {
+      _backward = false;
+      switch (_step) {
+        case _Step.faculty:
+          _faculty = option;
+        case _Step.form:
+          _form = option;
+        case _Step.course:
+          _course = option;
+        case _Step.group:
+      }
+    });
   }
 
   void _back() {
-    switch (_step) {
-      case _Step.faculty:
-        return;
-      case _Step.form:
-        _faculty = null;
-      case _Step.course:
-        _form = null;
-      case _Step.group:
-        _course = null;
-    }
-    _reload();
+    setState(() {
+      _backward = true;
+      switch (_step) {
+        case _Step.faculty:
+          return;
+        case _Step.form:
+          _faculty = null;
+        case _Step.course:
+          _form = null;
+        case _Step.group:
+          _course = null;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
     final GroupRef? current = ref.watch(selectedGroupProvider);
-    final String breadcrumb = [
-      _faculty?.name,
-      _form?.name,
-      _course?.name,
-    ].whereType<String>().join(' · ');
 
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 20, 8),
-            child: Row(
-              children: [
-                if (_step != _Step.faculty)
-                  IconButton(
-                    onPressed: _back,
-                    icon: const Icon(Symbols.arrow_back),
-                    tooltip: 'Назад',
-                  )
-                else
-                  const SizedBox(width: 12),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          _step.title,
-                          style: context.text.headlineSmall!.emphasized,
-                        ),
-                      ),
-                      if (breadcrumb.isNotEmpty)
-                        Text(
-                          breadcrumb,
-                          style: context.text.labelLarge!.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+      // Шаги идут друг за другом — shared axis X: вперёд справа налево,
+      // назад наоборот (MDC Motion.md: «An onboarding flow transitions along
+      // the x-axis»).
+      child: PageTransitionSwitcher(
+        duration: AppTransitions.sharedAxisDuration,
+        reverse: _backward,
+        layoutBuilder: (entries) =>
+            Stack(alignment: Alignment.topCenter, children: entries),
+        transitionBuilder: (child, animation, secondaryAnimation) =>
+            M3SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              child: child,
             ),
-          ),
-          Flexible(
-            child: FutureBuilder<List<MitsoOption>>(
-              future: _options,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return _LoadError(
-                    message: snapshot.error is MitsoException
-                        ? (snapshot.error! as MitsoException).message
-                        : 'Не удалось загрузить список.',
-                    onRetry: _reload,
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Padding(
-                    padding: EdgeInsets.all(48),
-                    child: Center(
-                      child: M3LoadingIndicator(
-                        semanticsLabel: 'Загрузка списка',
-                      ),
-                    ),
-                  );
-                }
-                final List<MitsoOption> options = snapshot.data!;
-                if (options.isEmpty) {
-                  return _LoadError(message: 'Список пуст.', onRetry: _reload);
-                }
-                return ListView(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  children: [
-                    SegmentedList(
-                      children: [
-                        for (final MitsoOption option in options)
-                          ListTile(
-                            title: Text(option.name),
-                            trailing: Icon(
-                              _step == _Step.group &&
-                                      current?.groupId == option.id &&
-                                      current?.courseId == _course?.id
-                                  ? Symbols.check
-                                  : Symbols.chevron_right,
-                            ),
-                            onTap: () => _choose(option),
-                          ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+        child: _StepPage(
+          key: ValueKey(_pageKey),
+          step: _step,
+          breadcrumb: [
+            _faculty?.name,
+            _form?.name,
+            _course?.name,
+          ].whereType<String>().join(' · '),
+          options: _options,
+          isCurrent: (option) =>
+              _step == _Step.group &&
+              current?.groupId == option.id &&
+              current?.courseId == _course?.id,
+          onBack: _step == _Step.faculty ? null : _back,
+          onChoose: _choose,
+          onRetry: _retry,
+        ),
       ),
     );
   }
 }
 
+/// Один шаг выбора: заголовок и список вариантов.
+class _StepPage extends StatelessWidget {
+  const _StepPage({
+    super.key,
+    required this.step,
+    required this.breadcrumb,
+    required this.options,
+    required this.isCurrent,
+    required this.onBack,
+    required this.onChoose,
+    required this.onRetry,
+  });
+
+  final _Step step;
+  final String breadcrumb;
+  final Future<List<MitsoOption>> options;
+  final bool Function(MitsoOption option) isCurrent;
+  final VoidCallback? onBack;
+  final ValueChanged<MitsoOption> onChoose;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 20, 8),
+          child: Row(
+            children: [
+              if (onBack != null)
+                IconButton(
+                  onPressed: onBack,
+                  icon: const Icon(Symbols.arrow_back),
+                  tooltip: 'Назад',
+                )
+              else
+                const SizedBox(width: 12),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        step.title,
+                        style: context.text.headlineSmall!.emphasized,
+                      ),
+                    ),
+                    if (breadcrumb.isNotEmpty)
+                      Text(
+                        breadcrumb,
+                        style: context.text.labelLarge!.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Flexible(
+          child: FutureBuilder<List<MitsoOption>>(
+            future: options,
+            builder: (context, snapshot) {
+              final Widget body;
+              if (snapshot.hasError) {
+                body = _LoadError(
+                  key: const ValueKey('error'),
+                  message: snapshot.error is MitsoException
+                      ? (snapshot.error! as MitsoException).message
+                      : 'Не удалось загрузить список.',
+                  onRetry: onRetry,
+                );
+              } else if (!snapshot.hasData) {
+                body = const Padding(
+                  key: ValueKey('loading'),
+                  padding: EdgeInsets.all(48),
+                  child: Center(
+                    child: M3LoadingIndicator(
+                      semanticsLabel: 'Загрузка списка',
+                    ),
+                  ),
+                );
+              } else if (snapshot.data!.isEmpty) {
+                body = _LoadError(
+                  key: const ValueKey('empty'),
+                  message: 'Список пуст.',
+                  onRetry: onRetry,
+                );
+              } else {
+                body = ListView(
+                  key: const ValueKey('list'),
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  children: [
+                    SegmentedList(
+                      children: [
+                        for (final MitsoOption option in snapshot.data!)
+                          ListTile(
+                            title: Text(option.name),
+                            trailing: Icon(
+                              isCurrent(option)
+                                  ? Symbols.check
+                                  : Symbols.chevron_right,
+                            ),
+                            onTap: () => onChoose(option),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              // Индикатор и список не связаны пространственно — fade through
+              // (MDC Motion.md: «Tapping a refresh icon»).
+              return PageTransitionSwitcher(
+                duration: AppTransitions.fadeThroughDuration,
+                layoutBuilder: (entries) =>
+                    Stack(alignment: Alignment.topCenter, children: entries),
+                transitionBuilder: (child, animation, secondaryAnimation) =>
+                    M3FadeThroughTransition(
+                      animation: animation,
+                      secondaryAnimation: secondaryAnimation,
+                      child: child,
+                    ),
+                child: body,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LoadError extends StatelessWidget {
-  const _LoadError({required this.message, required this.onRetry});
+  const _LoadError({super.key, required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;

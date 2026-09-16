@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../theme/app_motion.dart';
+import '../../theme/app_transitions.dart';
 import '../absences/absences_screen.dart';
 import '../notes/notes_screen.dart';
 import '../profile/profile_screen.dart';
@@ -60,10 +60,13 @@ class _HomeShellState extends State<HomeShell> {
 
 /// Переключение вкладок паттерном fade through.
 ///
-/// https://m3.material.io/styles/motion/transitions/transition-patterns
+/// MDC Motion.md, «Fade through»: пример применения — «Tapping destinations
+/// in a bottom navigation bar». Параметры — [M3FadeThroughEnter] /
+/// [M3FadeThroughExit] (порт `MaterialFadeThrough`).
 ///
 /// Состояние вкладок сохраняется, как у [IndexedStack]: все страницы остаются
-/// в дереве, меняются только прозрачность и масштаб.
+/// в дереве с одинаковой обёрткой, скрытые — за [Offstage] с выключенными
+/// тикерами.
 class FadeThroughStack extends StatefulWidget {
   const FadeThroughStack({
     super.key,
@@ -80,13 +83,17 @@ class FadeThroughStack extends StatefulWidget {
 
 class _FadeThroughStackState extends State<FadeThroughStack>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: AppMotion.defaultEffects.duration,
-    value: 1,
-  );
+  late final AnimationController _controller =
+      AnimationController(
+        vsync: this,
+        duration: AppTransitions.fadeThroughDuration,
+        value: 1,
+      )..addStatusListener((status) {
+        // Уходящая вкладка прячется, когда переход закончен.
+        if (status == AnimationStatus.completed) setState(() {});
+      });
 
-  late int _previousIndex = widget.index;
+  int? _previousIndex;
 
   @override
   void didUpdateWidget(FadeThroughStack oldWidget) {
@@ -105,41 +112,38 @@ class _FadeThroughStackState extends State<FadeThroughStack>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final double t = _controller.value;
-        return Stack(
-          children: [
-            for (int i = 0; i < widget.children.length; i++) _buildLayer(i, t),
-          ],
-        );
-      },
+    final bool animating = _controller.isAnimating;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        for (int i = 0; i < widget.children.length; i++)
+          _layer(
+            i,
+            isCurrent: i == widget.index,
+            isOutgoing: animating && i == _previousIndex && i != widget.index,
+          ),
+      ],
     );
   }
 
-  Widget _buildLayer(int i, double t) {
-    final bool isCurrent = i == widget.index;
-    final bool isOutgoing = i == _previousIndex && !isCurrent;
-    if (!isCurrent && !isOutgoing) {
-      return const SizedBox.shrink();
-    }
-
-    // Уходящая страница гаснет в первой трети, приходящая проявляется
-    // в оставшихся двух третях — это и есть fade through.
-    final double opacity = isCurrent
-        ? Curves.easeIn.transform((t.clamp(0.35, 1.0) - 0.35) / 0.65)
-        : 1 - Curves.easeOut.transform((t.clamp(0.0, 0.35)) / 0.35);
-
-    final double scale = isCurrent ? 0.92 + 0.08 * opacity : 1.0;
-
-    return IgnorePointer(
-      ignoring: !isCurrent,
-      child: ExcludeSemantics(
-        excluding: !isCurrent,
-        child: Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          child: Transform.scale(scale: scale, child: widget.children[i]),
+  Widget _layer(int i, {required bool isCurrent, required bool isOutgoing}) {
+    final bool visible = isCurrent || isOutgoing;
+    // Обёртка у всех слоёв одинаковая, меняются только аргументы: иначе
+    // Flutter пересоздал бы поддерево и вкладка потеряла бы состояние.
+    return M3FadeThroughEnter(
+      progress: isCurrent ? _controller : kAlwaysCompleteAnimation,
+      child: M3FadeThroughExit(
+        progress: isOutgoing ? _controller : kAlwaysDismissedAnimation,
+        child: Offstage(
+          offstage: !visible,
+          child: TickerMode(
+            enabled: visible,
+            child: ExcludeSemantics(
+              excluding: !isCurrent,
+              child: widget.children[i],
+            ),
+          ),
         ),
       ),
     );

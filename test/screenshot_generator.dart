@@ -14,7 +14,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
@@ -98,23 +97,21 @@ Future<void> _loadFonts() async {
   if (flutterRoot != null) {
     final String dir = '$flutterRoot/bin/cache/artifacts/material_fonts';
 
-    // google_fonts запрашивает семейства с суффиксом начертания
-    // (Roboto_regular / Roboto_500 / Roboto_700), поэтому настоящий Roboto
-    // регистрируется именно под этими именами, плюс под 'Roboto' —
-    // так резолвится и запасное семейство из AppTypography.
-    const Map<String, String> families = {
-      'Roboto': 'roboto-regular.ttf',
-      'Roboto_regular': 'roboto-regular.ttf',
-      'Roboto_500': 'roboto-medium.ttf',
-      'Roboto_700': 'roboto-bold.ttf',
-      'MaterialIcons': 'materialicons-regular.otf',
+    // Все начертания Roboto — одно семейство, как системный шрифт на Android.
+    const Map<String, List<String>> families = {
+      'Roboto': ['roboto-regular.ttf', 'roboto-medium.ttf', 'roboto-bold.ttf'],
+      'MaterialIcons': ['materialicons-regular.otf'],
     };
 
-    for (final MapEntry<String, String> entry in families.entries) {
-      final File file = File('$dir/${entry.value}');
-      if (!file.existsSync()) continue;
-      final FontLoader loader = FontLoader(entry.key)
-        ..addFont(Future.value(file.readAsBytesSync().buffer.asByteData()));
+    for (final MapEntry<String, List<String>> entry in families.entries) {
+      final FontLoader loader = FontLoader(entry.key);
+      for (final String name in entry.value) {
+        final File file = File('$dir/$name');
+        if (!file.existsSync()) continue;
+        loader.addFont(
+          Future.value(file.readAsBytesSync().buffer.asByteData()),
+        );
+      }
       await loader.load();
     }
   }
@@ -169,9 +166,24 @@ String? _flutterRoot() {
   return null;
 }
 
+/// [testWidgets] с настоящими тенями.
+///
+/// Тестовая среда по умолчанию рисует тени сплошными чёрными блоками. Флаг
+/// проверяется сразу после тела теста, ещё до tearDown, поэтому
+/// возвращается в finally.
+void _shot(String description, Future<void> Function(WidgetTester) body) {
+  testWidgets(description, (tester) async {
+    debugDisableShadows = false;
+    try {
+      await body(tester);
+    } finally {
+      debugDisableShadows = true;
+    }
+  });
+}
+
 void main() {
   setUpAll(() async {
-    GoogleFonts.config.allowRuntimeFetching = false;
     await initializeDateFormatting('ru');
     await _loadFonts();
   });
@@ -179,7 +191,7 @@ void main() {
   for (final bool dark in [false, true]) {
     final String theme = dark ? 'dark' : 'light';
 
-    testWidgets('скриншоты вкладок — $theme', (tester) async {
+    _shot('скриншоты вкладок — $theme', (tester) async {
       await _pumpApp(tester, dark: dark);
 
       for (int i = 0; i < _tabs.length; i++) {
@@ -191,15 +203,15 @@ void main() {
     });
   }
 
-  testWidgets('скриншот пустого дня — суббота', (tester) async {
+  _shot('скриншот пустого дня — суббота', (tester) async {
     await _pumpApp(tester, dark: false);
-    await tester.tap(find.text('Сб'));
+    await tester.tap(find.text('Сб').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await _capture(tester, '5-empty-saturday-light');
   });
 
-  testWidgets('скриншот шита отправки справки', (tester) async {
+  _shot('скриншот шита отправки справки', (tester) async {
     await _pumpApp(tester, dark: false);
     await tester.tap(find.widgetWithText(NavigationDestination, 'Пропуски'));
     await tester.pump();
@@ -208,5 +220,21 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     await _capture(tester, '6-certificate-sheet-light');
+  });
+
+  _shot('скриншот объединённых подгрупп', (tester) async {
+    await _pumpApp(tester, dark: false);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await _capture(tester, '7-subgroups-light');
+  });
+
+  _shot('скриншот подробностей пары', (tester) async {
+    await _pumpApp(tester, dark: false);
+    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+    await _capture(tester, '8-lesson-details-light');
   });
 }

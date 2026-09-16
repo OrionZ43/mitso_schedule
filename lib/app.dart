@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,8 +10,8 @@ import 'state/mitso_providers.dart';
 import 'state/settings_controller.dart';
 import 'theme/app_button_styles.dart';
 import 'theme/app_color_schemes.dart';
-import 'theme/app_motion.dart';
 import 'theme/app_shapes.dart';
+import 'theme/app_transitions.dart';
 import 'theme/app_typography.dart';
 import 'theme/status_colors.dart';
 
@@ -73,10 +74,15 @@ class _BootGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool ready = ref.watch(appBootProvider).hasValue;
 
-    // Переход с экрана загрузки — fade through.
-    return AnimatedSwitcher(
-      duration: AppMotion.slowEffects.duration,
-      switchInCurve: AppMotion.slowEffects.curve,
+    // Экран загрузки и главный не связаны пространственно — fade through.
+    return PageTransitionSwitcher(
+      duration: AppTransitions.fadeThroughDuration,
+      transitionBuilder: (child, animation, secondaryAnimation) =>
+          M3FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
       child: ready ? const HomeShell() : const BootScreen(),
     );
   }

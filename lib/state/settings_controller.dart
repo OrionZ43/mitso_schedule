@@ -12,6 +12,7 @@ class Settings {
     this.dynamicColor = true,
     this.lessonReminder = true,
     this.palette = AppPalette.violet,
+    this.subgroup,
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -25,6 +26,9 @@ class Settings {
 
   /// Сид-палитра, используется как запасной вариант для [dynamicColor].
   final AppPalette palette;
+
+  /// Своя подгруппа: 1 или 2. `null` — показывать занятия всех подгрупп.
+  final int? subgroup;
 
   ThemeMode get themeMode => switch (darkOverride) {
     null => ThemeMode.system,
@@ -45,6 +49,8 @@ class Settings {
     bool? dynamicColor,
     bool? lessonReminder,
     AppPalette? palette,
+    int? subgroup,
+    bool clearSubgroup = false,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -53,6 +59,7 @@ class Settings {
       dynamicColor: dynamicColor ?? this.dynamicColor,
       lessonReminder: lessonReminder ?? this.lessonReminder,
       palette: palette ?? this.palette,
+      subgroup: clearSubgroup ? null : (subgroup ?? this.subgroup),
     );
   }
 }
@@ -71,6 +78,7 @@ class SettingsController extends Notifier<Settings> {
   static const String _dynamicKey = 'settings.dynamicColor';
   static const String _reminderKey = 'settings.lessonReminder';
   static const String _paletteKey = 'settings.palette';
+  static const String _subgroupKey = 'settings.subgroup';
 
   SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
 
@@ -82,6 +90,7 @@ class SettingsController extends Notifier<Settings> {
       dynamicColor: prefs.getBool(_dynamicKey) ?? true,
       lessonReminder: prefs.getBool(_reminderKey) ?? true,
       palette: AppPalette.byName(prefs.getString(_paletteKey)),
+      subgroup: prefs.getInt(_subgroupKey),
     );
   }
 
@@ -109,5 +118,17 @@ class SettingsController extends Notifier<Settings> {
   void setPalette(AppPalette palette) {
     state = state.copyWith(palette: palette);
     _prefs.setString(_paletteKey, palette.name);
+  }
+
+  /// `null` — все подгруппы.
+  void setSubgroup(int? value) {
+    state = value == null
+        ? state.copyWith(clearSubgroup: true)
+        : state.copyWith(subgroup: value);
+    if (value == null) {
+      _prefs.remove(_subgroupKey);
+    } else {
+      _prefs.setInt(_subgroupKey, value);
+    }
   }
 }

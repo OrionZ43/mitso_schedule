@@ -12,6 +12,11 @@ import 'm3_loading_indicator.dart';
 /// indicator: https://m3.material.io/components/loading-indicator/guidelines
 /// Поэтому протяжка обрабатывается здесь: копится overscroll у верхней кромки,
 /// после порога запускается [onRefresh].
+///
+/// Откат индикатора — пружина без перелёта. В Compose Material3
+/// (`PullToRefresh.kt`) позицию двигает `Animatable.animateTo` со штатной
+/// пружиной (damping 1, stiffness 1500), а кросс-фейд и прозрачность —
+/// `MotionSchemeKeyTokens.DefaultEffects` (1, 1600); здесь берётся этот токен.
 class M3PullToRefresh extends StatefulWidget {
   const M3PullToRefresh({
     super.key,
@@ -39,7 +44,7 @@ class _M3PullToRefreshState extends State<M3PullToRefresh>
     with SingleTickerProviderStateMixin {
   late final AnimationController _settle = AnimationController(
     vsync: this,
-    duration: AppMotion.defaultSpatial.duration,
+    duration: AppMotion.defaultEffects.duration,
   )..addListener(() => setState(() {}));
 
   double _dragOffset = 0;
@@ -66,6 +71,13 @@ class _M3PullToRefreshState extends State<M3PullToRefresh>
       if (notification.overscroll < 0 &&
           notification.metrics.extentBefore == 0) {
         setState(() {
+          if (_settle.isAnimating) {
+            // Снова тянут во время отката: откат останавливается (его
+            // колбэк завершения тогда не сработает), протяжка продолжается
+            // с того места, где индикатор виден сейчас.
+            _dragOffset *= 1 - _settle.value;
+            _settle.stop();
+          }
           _mode = _RefreshMode.dragging;
           _dragOffset = math.min(
             _dragOffset - notification.overscroll,
@@ -108,7 +120,7 @@ class _M3PullToRefreshState extends State<M3PullToRefresh>
       ..stop()
       ..value = 0;
     _mode = _RefreshMode.idle;
-    _settle.animateWith(AppMotion.defaultSpatial.simulate()).whenComplete(() {
+    _settle.animateWith(AppMotion.defaultEffects.simulate()).whenComplete(() {
       if (mounted) setState(() => _dragOffset = 0);
     });
     // Во время отката смещение считается от точки отпускания.

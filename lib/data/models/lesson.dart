@@ -82,6 +82,46 @@ class Lesson {
   );
 }
 
+/// Одна пара: всё, что идёт в одно и то же время.
+///
+/// Лабораторные и языки у подгрупп сайт пишет отдельными строками с
+/// одинаковым временем (`1. …`, `2. …`), но для студента это одна пара.
+@immutable
+class LessonSlot {
+  const LessonSlot({
+    required this.start,
+    required this.end,
+    required this.lessons,
+  });
+
+  final String start;
+  final String end;
+
+  /// Строки расписания по порядку подгрупп; хотя бы одна.
+  final List<Lesson> lessons;
+
+  int get startMinutes => lessons.first.startMinutes;
+  int get endMinutes => lessons.first.endMinutes;
+
+  /// Название, если оно у всех строк одно; иначе у подгрупп разные предметы.
+  String? get commonTitle {
+    final String title = lessons.first.title;
+    return lessons.every((l) => l.title == title) ? title : null;
+  }
+
+  /// Идёт по подгруппам — у строк есть номера.
+  bool get bySubgroups => lessons.any((l) => l.subgroup != null);
+
+  /// Разные типы занятий в порядке появления: обычно один.
+  List<Lesson> get distinctTypes {
+    final Set<String> seen = {};
+    return [
+      for (final Lesson l in lessons)
+        if (seen.add(l.typeLabel)) l,
+    ];
+  }
+}
+
 @immutable
 class ScheduleDay {
   const ScheduleDay({required this.date, required this.lessons});
@@ -103,15 +143,43 @@ class ScheduleDay {
   /// Число месяца.
   String get dayNumber => date.day.toString();
 
-  /// Сколько разных временных слотов занято: подгруппы в одно время — одна пара.
-  int get pairCount => lessons.map((l) => l.start).toSet().length;
+  /// Пары дня: строки с одинаковым временем объединены.
+  ///
+  /// [subgroup] — «моя подгруппа»: строки других подгрупп отбрасываются,
+  /// общие для всех остаются. `null` — показывать все.
+  List<LessonSlot> slots({int? subgroup}) {
+    final Map<String, List<Lesson>> byTime = {};
+    for (final Lesson lesson in lessons) {
+      if (subgroup != null &&
+          lesson.subgroup != null &&
+          lesson.subgroup != subgroup) {
+        continue;
+      }
+      byTime.putIfAbsent('${lesson.start}-${lesson.end}', () => []).add(lesson);
+    }
+    return [
+      for (final List<Lesson> group in byTime.values)
+        LessonSlot(
+          start: group.first.start,
+          end: group.first.end,
+          // На сайте подгруппы бывают перепутаны местами: 2, затем 1.
+          lessons: [...group]
+            ..sort((a, b) => (a.subgroup ?? 0).compareTo(b.subgroup ?? 0)),
+        ),
+    ]..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+  }
 
-  /// Подпись справа от названия дня: `3 пары · 09:45—14:25` или `Выходной`.
-  String get summary {
-    if (lessons.isEmpty) return 'Выходной';
-    final String first = lessons.map((l) => l.start).reduce(_min);
-    final String last = lessons.map((l) => l.end).reduce(_max);
-    return '$pairCount ${pairsWord(pairCount)} · $first—$last';
+  /// Сколько пар: подгруппы в одно время — одна пара.
+  int get pairCount => slots().length;
+
+  /// Подпись к дню: `3 пары · 09:45—14:25` или `Выходной`.
+  String get summary => summaryOf(slots());
+
+  static String summaryOf(List<LessonSlot> slots) {
+    if (slots.isEmpty) return 'Выходной';
+    final String first = slots.map((s) => s.start).reduce(_min);
+    final String last = slots.map((s) => s.end).reduce(_max);
+    return '${slots.length} ${pairsWord(slots.length)} · $first—$last';
   }
 
   static String _min(String a, String b) => a.compareTo(b) <= 0 ? a : b;

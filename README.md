@@ -42,7 +42,7 @@ flutter run -d emulator-5554
 
 ```bash
 flutter analyze   # без предупреждений
-flutter test      # 45 тестов
+flutter test      # 49 тестов
 dart format lib test
 ```
 
@@ -52,15 +52,18 @@ dart format lib test
 flutter test test/screenshot_generator.dart
 ```
 
-Кладёт PNG всех четырёх вкладок в светлой и тёмной теме, пустой субботы и шита
-отправки справки в `docs/screenshots/`. Генератор рендерит настоящим движком
-Flutter и сам подгружает Roboto и Material Symbols через `FontLoader` — иначе
-тестовая среда рисует текст и иконки прямоугольниками.
+Кладёт PNG всех четырёх вкладок в светлой и тёмной теме, субботы, шита
+отправки справки, пары подгрупп и страницы подробностей в `docs/screenshots/`.
+Генератор рендерит настоящим движком Flutter и сам подгружает Roboto и Material
+Symbols через `FontLoader` — иначе тестовая среда рисует текст и иконки
+прямоугольниками. Тени включены (`debugDisableShadows = false`): по умолчанию
+тесты рисуют их сплошными чёрными блоками.
 
 | | |
 |---|---|
 | ![Расписание](docs/screenshots/1-schedule-light.png) | ![Пропуски](docs/screenshots/2-absences-light.png) |
 | ![Заметки](docs/screenshots/3-notes-light.png) | ![Профиль](docs/screenshots/4-profile-light.png) |
+| ![Подгруппы](docs/screenshots/7-subgroups-light.png) | ![Подробности пары](docs/screenshots/8-lesson-details-light.png) |
 
 ### Проверки с сетью
 
@@ -115,6 +118,10 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 подтягивается в фоне, при ошибке сети остаётся сохранённое с пометкой.
 Автоповтор упавших запросов отключён, чтобы не нагружать сайт.
 
+Строки подгрупп в одно время объединяются в одну пару (`ScheduleDay.slots`):
+одна карточка, внутри — преподаватель и аудитория каждой подгруппы. В профиле
+можно выбрать свою подгруппу — строки другой скрываются.
+
 ---
 
 ## Что сделано по гайдлайнам
@@ -126,23 +133,54 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 | Компонент | Реализация |
 |---|---|
 | Цвет | `ColorScheme.fromSeed` с `DynamicSchemeVariant.expressive`, 4 сид-палитры, baseline `#6750A4` при выключенных динамических цветах, `DynamicColorBuilder` на Android 12+ |
-| Типографика, форма, движение | Полная `TextTheme` по токенам, шкала радиусов M3, шесть пружинных токенов Expressive (*spatial* для формы, *effects* для цвета) |
+| Типографика, форма | Полная `TextTheme` по токенам на системном Roboto (ничего не скачивается), шкала радиусов M3 |
+| Движение компонентов | Шесть пружинных токенов Expressive; какой токен у какого свойства — как в Compose Material3 (см. «Движение» ниже) |
+| [Переходы](https://m3.material.io/styles/motion/transitions/transition-patterns) | Fade through — вкладки, загрузка → главный экран, загрузка → список; shared axis X — смена дня и шаги выбора группы; container transform — карточка пары → подробности |
 | [Loading indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md) | Порт MDC: `MaterialShapes` и `Morph` из `material_new_shapes`, пружина 200 / 0.6, поворот 50° + 90° за шаг 650 мс, contained — `onPrimaryContainer` на `primaryContainer` |
 | [Progress indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/ProgressIndicator.md) | Волнистый determinate: 4dp, амплитуда 3dp, волна 40dp, зазор 4dp, stop indicator 4dp; волна неподвижна, полная амплитуда только при 0.1–0.9 |
 | [Navigation bar](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomNavigation.md) | Expressive: высота 64dp, индикатор 56×32 `secondaryContainer`, активная подпись `secondary` |
-| [App bar](https://github.com/material-components/material-components-android/blob/master/docs/components/TopAppBar.md) | Medium flexible: 112 / 64dp, заголовок `headlineMedium` → `titleLarge`, подзаголовок-дата под заголовком |
+| [App bar](https://github.com/material-components/material-components-android/blob/master/docs/components/TopAppBar.md) | Medium flexible: 112 / 64dp, заголовок `headlineMedium` → `titleLarge`, подзаголовок (группа и курс) под заголовком |
 | [Search](https://github.com/material-components/material-components-android/blob/master/docs/components/Search.md) | `SearchAnchor.bar` 56dp, форма full, `surfaceContainerHigh` |
 | [Button group](https://github.com/material-components/material-components-android/blob/master/docs/components/ButtonGroup.md) | Connected button group вместо устаревшего segmented button: зазор 2dp, внутренние углы 8 / 4 / 50% |
 | [Buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/CommonButton.md), [icon buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/IconButton.md) | Размеры Small (40dp, `labelLarge`, отступы 16) и Medium (56dp, `titleMedium`, 24); форма full морфится в скруглённый прямоугольник при нажатии |
 | [FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/FloatingActionButton.md), [extended FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/ExtendedFloatingActionButton.md) | `primaryContainer` по умолчанию, тень 6dp, small extended — `titleMedium`, отступы 16 / 8 / 16 |
-| [Lists](https://github.com/material-components/material-components-android/blob/master/docs/components/List.md) | Segmented-список в профиле: углы 16 / 4dp, зазор 2dp, без разделителей |
+| [Lists](https://github.com/material-components/material-components-android/blob/master/docs/components/List.md) | Segmented-список в профиле, выборе группы, подробностях пары и строках подгрупп: углы 16 / 4dp, зазор 2dp, без разделителей |
 | [Chips](https://github.com/material-components/material-components-android/blob/master/docs/components/Chip.md) | Filter chip 32dp, выбранный — `secondaryContainer` без обводки, невыбранный — обводка `outline` |
-| [Cards](https://github.com/material-components/material-components-android/blob/master/docs/components/Card.md), [bottom sheet](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomSheet.md) | Outlined card на `surface`; шит `surfaceContainerLow`, ручка `onSurfaceVariant` 32×4 |
+| [Cards](https://github.com/material-components/material-components-android/blob/master/docs/components/Card.md), [bottom sheet](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomSheet.md) | Предстоящая пара — outlined card на `surface`, идущая — `primary`, прошедшая — тональная `surfaceContainerLow`; шит `surfaceContainerLow`, ручка `onSurfaceVariant` 32×4 |
 | [Switch](https://github.com/material-components/material-components-android/blob/master/docs/components/Switch.md), [checkbox](https://github.com/material-components/material-components-android/blob/master/docs/components/Checkbox.md), [snackbar](https://github.com/material-components/material-components-android/blob/master/docs/components/Snackbar.md), [divider](https://github.com/material-components/material-components-android/blob/master/docs/components/Divider.md) | Совпадают с токенами MDC |
 | [Tooltip](https://github.com/material-components/material-components-android/blob/master/docs/components/Tooltip.md) | По `Widget.Material3.Tooltip`: `primary` / `onPrimary`, `bodySmall`, минимум 28dp |
 | Доступность | `Semantics`, зона нажатия ≥ 48dp, шрифт до 200% без переполнений, контраст статусов проверяется тестом |
 
 Состояние — Riverpod (`Notifier`), настройки переживают перезапуск через `shared_preferences`.
+
+### Движение
+
+Ничего не подбиралось на глаз — источники:
+
+- **Пружины** (`AppMotion`) — значения `ExpressiveMotionTokens.kt` из Compose Material3:
+  FastSpatial 800 / 0.6, DefaultSpatial 380 / 0.8, SlowSpatial 200 / 0.8, FastEffects 3800 / 1,
+  DefaultEffects 1600 / 1, SlowEffects 800 / 1.
+- **Какой токен где** — как у аналогичного компонента в исходниках Compose Material3:
+
+  | Где | Свойство | Токен | Образец |
+  |---|---|---|---|
+  | День в ленте | форма | FastSpatial | `ToggleButton.kt` — форма при выборе |
+  | День в ленте | цвет | DefaultEffects | `ToggleButton.kt` — цвет обводки |
+  | Connected button group | ширина и форма / цвет | FastSpatial / DefaultEffects | `ButtonGroup.kt`, `ToggleButton.kt` |
+  | Кнопки, icon buttons | форма при нажатии | DefaultEffects — намеренно без отскока | `Button.kt`, `IconButton.kt` |
+  | Pull-to-refresh | откат, прозрачность | DefaultEffects | `PullToRefresh.kt` |
+
+- **Переходы** — паттерны из MDC `docs/theming/Motion.md`, числа из исходников
+  `com.google.android.material.transition` и M3-темы (таблицы в самом Motion.md остались от M2):
+
+  | Паттерн | Где | Параметры |
+  |---|---|---|
+  | Fade through (`MaterialFadeThrough`) | вкладки navigation bar, загрузка → главный экран, загрузка → список | 450 мс (`motionDurationLong1`), emphasized; уход до 35% прогресса, появление после, масштаб 92% → 100% |
+  | Shared axis X (`MaterialSharedAxis`) | смена дня (кнопкой, свайпом, из поиска), шаги выбора группы | 450 мс, emphasized, сдвиг 30dp, прозрачность как у fade through; назад — зеркально |
+  | Container transform (`MaterialContainerTransform`) | карточка пары → подробности | 500 мс (`motionDurationLong2`), `OpenContainer` из `package:animations` |
+
+  Fade through и shared axis портированы в `lib/theme/app_transitions.dart`, переключением
+  детей управляет `PageTransitionSwitcher` из `package:animations`.
 
 ---
 
@@ -179,8 +217,8 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
    Таблица берёт `dimens.xml`, но стиль `Widget.Material3.LoadingIndicator`, от которого
    наследуются оба варианта, задаёт 34dp — взято фактическое значение из кода.
 
-7. **Emphasized-начертание — вес w700 обычного Roboto.**
-   `google_fonts` не даёт управлять осями Roboto Flex через `variations`.
+7. **Emphasized-начертание — вес w700 системного Roboto.**
+   Шрифт не скачивается и не лежит в ассетах, поэтому осей Roboto Flex нет — остаётся вес.
 
 8. **Тумблер «Тёмная тема» трёхсостоянчатый внутри.**
    `null` — следовать системной (подпись из макета «Следовать системной»), иначе явный выбор
@@ -211,6 +249,18 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
     `surfaceContainerHigh`. Фон вкладок здесь сам `surface`, поэтому пункт на тон темнее —
     иначе сегменты сливались бы с фоном.
 
+15. **Container transform — на кривой M2 и с одной длительностью.**
+    `OpenContainer` внутри использует `Curves.fastOutSlowIn` и одну `transitionDuration` на оба
+    направления; в MDC M3 — emphasized, 500 мс на открытие и 400 мс на возврат. Взята
+    длительность открытия.
+
+16. **`package:animations` закреплён на 2.x.**
+    3.0.0 собран на `material_ui` вместо `package:flutter/material.dart` (как `dynamic_color` 2.x):
+    с Flutter 3.44 он не компилируется, а его `Material` не видел бы тему приложения.
+
+17. **Пульсирующая точка «Сейчас идёт» — элемент макета, а не спеки.**
+    Для бесконечной пульсации токена движения нет; анимируется только прозрачность, без перелёта.
+
 ---
 
 ## Структура
@@ -220,13 +270,15 @@ lib/
   main.dart                  ProviderScope, SharedPreferences, intl
   app.dart                   MaterialApp, темы, локаль ru_RU, экран загрузки
   theme/                     цвет, типографика, формы, движение, статусные цвета
-  data/                      модели и моковые данные из макета
+  data/                      модели, клиент и разбор apps.mitso.by, демо-данные пропусков
   state/                     Riverpod-контроллеры
-  features/                  boot, home, schedule, absences, notes, profile
+  features/                  boot, home, schedule (+ подробности пары), group_picker,
+                             absences, notes, profile
   widgets/                   M3LoadingIndicator, M3WavyLinearProgress,
                              M3PullToRefresh, DaySelector, LessonCard, …
 test/
-  app_test.dart              вкладки, отметка задачи, отправка справки, тема
+  app_test.dart              вкладки, подгруппы, свайп дня, подробности пары,
+                             выбор группы, задачи, справки, тема, шрифт 200%
   indicators_geometry_test.dart  геометрия форм и волнистой шкалы
   status_contrast_test.dart  контраст статусных цветов
   pull_to_refresh_test.dart  протяжка, обновление и откат индикатора покадрово

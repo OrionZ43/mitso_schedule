@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Типографика по токенам типошкалы M3.
 ///
 /// https://m3.material.io/styles/typography/type-scale-tokens
 ///
+/// Шрифт — системный Roboto: на Android он есть всегда, поэтому ничего не
+/// скачивается и не кладётся в ассеты.
+///
 /// Emphasized-начертания (https://m3.material.io/styles/typography/applying-type)
-/// реализованы весом w700 поверх обычного Roboto: `google_fonts` не даёт
-/// управлять осями Roboto Flex через `variations`, а вес — та часть
-/// emphasized-контраста, которая влияет на макет.
+/// реализованы весом w700: у системного Roboto нет осей Roboto Flex, а вес —
+/// та часть emphasized-контраста, которая влияет на макет.
 abstract final class AppTypography {
   static TextTheme textTheme(Brightness brightness) {
     final Color color = brightness == Brightness.light
@@ -21,20 +22,13 @@ abstract final class AppTypography {
       double tracking,
       FontWeight weight,
     ) {
-      final TextStyle base = GoogleFonts.roboto(
+      return TextStyle(
+        fontFamily: 'Roboto',
         fontSize: size,
         height: height / size,
         letterSpacing: tracking,
         fontWeight: weight,
         color: color,
-      );
-      // Если google_fonts не смог отдать шрифт (нет сети при первом запуске и
-      // нет ассета), он возвращает стиль без семейства. Тогда берём системный
-      // Roboto: на Android он есть всегда, и текст не уезжает на шрифт
-      // по умолчанию.
-      return base.copyWith(
-        fontFamily: base.fontFamily ?? 'Roboto',
-        fontFamilyFallback: const ['Roboto'],
       );
     }
 

@@ -8,6 +8,7 @@ import '../../state/settings_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/connected_button_group.dart';
 import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
 
@@ -33,6 +34,32 @@ class ProfileScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         _GroupHeader(group: ref.watch(selectedGroupProvider)),
+        _SectionTitle('Подгруппа'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ConnectedButtonGroup<int>(
+            values: const [0, 1, 2],
+            labelOf: (value) => switch (value) {
+              1 => '1-я',
+              2 => '2-я',
+              _ => 'Обе',
+            },
+            selected: settings.subgroup ?? 0,
+            onSelected: (value) =>
+                controller.setSubgroup(value == 0 ? null : value),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
+          child: Text(
+            settings.subgroup == null
+                ? 'Лабораторные и языки показываются для обеих подгрупп.'
+                : 'Занятия другой подгруппы скрыты из расписания.',
+            style: context.text.bodyMedium!.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+        ),
         _SectionTitle('Настройки'),
         _SegmentedSection(
           children: [

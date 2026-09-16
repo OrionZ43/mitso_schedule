@@ -36,7 +36,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.4.3
   dynamic_color: ^1.8.1
-  google_fonts: ^8.2.1
   material_symbols_icons: ^4.2960.0
   shared_preferences: ^2.5.5
   intl: ^0.20.2
@@ -44,6 +43,7 @@ dependencies:
     sdk: flutter
   material_new_shapes: ^1.0.0
   html: ^0.15.7
+  animations: ^2.2.0
 
 dev_dependencies:
   flutter_test:

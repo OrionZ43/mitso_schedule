@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
+import 'package:mitso_schedule/widgets/lesson_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_mitso_api.dart';
@@ -22,6 +22,7 @@ Future<FakeMitsoApi> pumpApp(
   WidgetTester tester, {
   bool withGroup = true,
   FakeMitsoApi? api,
+  Map<String, Object> preferences = const {},
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
   // Medium Phone API 36: 1080x2400 при плотности 2.625.
@@ -34,14 +35,15 @@ Future<FakeMitsoApi> pumpApp(
 
   SharedPreferences.setMockInitialValues({
     if (withGroup) 'group.selected': jsonEncode(group2423.toJson()),
+    ...preferences,
   });
-  final SharedPreferences preferences = await SharedPreferences.getInstance();
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
   final FakeMitsoApi fake = api ?? FakeMitsoApi();
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(preferences),
+        sharedPreferencesProvider.overrideWithValue(prefs),
         appBootProvider.overrideWith((ref) async {}),
         mitsoApiProvider.overrideWith((ref) async => fake),
         clockProvider.overrideWithValue(() => fakeNow),
@@ -71,7 +73,6 @@ Future<void> settle(WidgetTester tester) async {
 
 void main() {
   setUpAll(() async {
-    GoogleFonts.config.allowRuntimeFetching = false;
     await initializeDateFormatting('ru');
   });
 
@@ -97,18 +98,83 @@ void main() {
   ) async {
     await pumpApp(tester);
 
-    expect(find.text('Среда, 16 сентября'), findsOneWidget);
+    expect(find.text('Сегодня'), findsOneWidget);
+    expect(find.text('среда, 16 сентября'), findsOneWidget);
+    // Лаба подгрупп в 11:15 — одна пара, а не две.
+    expect(find.text('4 пары'), findsOneWidget);
     // 10:30 — идёт вторая пара, 09:45–11:05.
     expect(find.text('СЕЙЧАС ИДЁТ'), findsOneWidget);
     expect(find.text('осталось 35 мин'), findsOneWidget);
-    // Подгруппы лабораторной в 11:15 — две отдельные карточки.
-    // Вертикальный список дня; внутри есть и горизонтальный селектор дней.
+    // Следующая — в 11:15.
+    expect(find.text('Начнётся через 45 мин'), findsOneWidget);
+  });
+
+  testWidgets('подгруппы в одно время — одна карточка', (tester) async {
+    await pumpApp(tester);
+
+    // Вертикальный список дня; внутри есть и горизонтальная лента дней.
     await tester.scrollUntilVisible(
-      find.text('2 подгруппа'),
+      find.text('Пархимович А. В.'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('1 подгруппа'), findsOneWidget);
+    final Finder card = find.ancestor(
+      of: find.text('Пархимович А. В.'),
+      matching: find.byType(LessonCard<DateTime>),
+    );
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('Калинин М. А.')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('ауд. 63 (к)')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('своя подгруппа скрывает строки другой', (tester) async {
+    await pumpApp(tester, preferences: {'settings.subgroup': 1});
+
+    await tester.scrollUntilVisible(
+      find.text('1 подгруппа'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Пархимович А. В.'), findsNothing);
+    expect(find.text('4 пары'), findsOneWidget);
+  });
+
+  testWidgets('свайп по списку пар листает дни', (tester) async {
+    await pumpApp(tester);
+
+    await tester.fling(find.text('Сегодня'), const Offset(-300, 0), 1200);
+    await settle(tester);
+    expect(find.text('Завтра'), findsOneWidget);
+    expect(find.text('Сегодня'), findsNothing);
+
+    await tester.fling(find.text('Завтра'), const Offset(300, 0), 1200);
+    await settle(tester);
+    expect(find.text('Сегодня'), findsOneWidget);
+  });
+
+  testWidgets('карточка разворачивается в подробности пары', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Преподаватель и аудитория'), findsOneWidget);
+    expect(find.text('Идёт сейчас · осталось 35 мин'), findsOneWidget);
+    expect(find.text('Дальше по предмету'), findsOneWidget);
+
+    // Следующее занятие по предмету — лаба в 11:15 того же дня.
+    await tester.tap(find.text('Ср, 16 сентября · 11:15'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Дальше по предмету'), findsNothing);
+    expect(find.text('Сегодня'), findsOneWidget);
   });
 
   testWidgets('без группы: выбор по цепочке факультет → курс → группа', (
