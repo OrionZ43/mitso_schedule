@@ -48,7 +48,7 @@ class M3Switch extends StatefulWidget {
     super.key,
     required this.value,
     required this.onChanged,
-    this.icons = M3SwitchIcons.selectedOnly,
+    this.icons = M3SwitchIcons.both,
     this.focusNode,
     this.autofocus = false,
   });

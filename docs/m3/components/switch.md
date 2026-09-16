@@ -112,13 +112,14 @@ Flutter (`switch.dart`), что есть сейчас:
 
 ```dart
 M3Switch({required bool value, required ValueChanged<bool>? onChanged,
-  M3SwitchIcons icons = M3SwitchIcons.selectedOnly, FocusNode? focusNode, bool autofocus = false})
+  M3SwitchIcons icons = M3SwitchIcons.both, FocusNode? focusNode, bool autofocus = false})
 ```
 
-**Решение по иконке:** конфигурация «иконка только во включённом» (`M3SwitchIcons.selectedOnly`,
-`Symbols.check` 16dp). Так переключатель M3 показан в «Differences from M2», так же сделан
-`SwitchWithThumbIconSample` в Compose. `M3SwitchIcons.both` (галочка и крестик) и `none` оставлены
-в API, по умолчанию не используются.
+**Решение по иконке (по просьбе заказчика):** конфигурация «иконки в обоих состояниях»
+(`M3SwitchIcons.both`): галочка `Symbols.check` во включённом, крестик `Symbols.close` в
+выключенном, 16dp. Это пример DO из Guidelines → Icon («an X and a checkmark») и конфигурация
+Specs → Configurations. С иконкой ручка выключенного переключателя 24dp
+(`md.comp.switch.with-icon.handle.*`). `selectedOnly` и `none` оставлены в API.
 
 Совпадает с Compose / токенами:
 - раскладка 52×48 (трек 52×32, обводка 2dp; зона нажатия 48dp, как `minimumInteractiveComponentSize`);
