@@ -44,6 +44,7 @@ dependencies:
   material_new_shapes: ^1.0.0
   html: ^0.15.7
   animations: ^2.2.0
+  material_color_utilities: ^0.13.0
 
 dev_dependencies:
   flutter_test:

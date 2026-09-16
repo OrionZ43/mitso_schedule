@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mitso_schedule/theme/app_color_schemes.dart';
 import 'package:mitso_schedule/theme/status_colors.dart';
 
 /// Относительная яркость по WCAG 2.1.
@@ -29,8 +30,9 @@ void main() {
   /// https://m3.material.io/foundations/accessible-design/patterns
   const double minimumBodyContrast = 4.5;
 
-  void check(String name, StatusColors colors) {
+  void check(String name, ColorScheme scheme) {
     test('контраст статусов >= 4.5:1 — $name', () {
+      final StatusColors colors = StatusColors.fromScheme(scheme);
       final pairs = <String, (Color, Color)>{
         'В обработке': (colors.onPending, colors.pending),
         'Одобрено': (colors.onApproved, colors.approved),
@@ -48,6 +50,12 @@ void main() {
     });
   }
 
-  check('светлая тема', StatusColors.light);
-  check('тёмная тема', StatusColors.dark);
+  for (final AppPalette palette in AppPalette.values) {
+    for (final Brightness brightness in Brightness.values) {
+      check(
+        '${palette.label}, ${brightness.name}',
+        AppColorSchemes.ofPalette(palette, brightness),
+      );
+    }
+  }
 }

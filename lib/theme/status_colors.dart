@@ -1,11 +1,19 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
-/// Цвета статусов справок.
+import 'package:flutter/material.dart';
+import 'package:material_color_utilities/material_color_utilities.dart';
+
+/// Цвета статусов справок — дополнительные цвета темы.
 ///
-/// В M3 нет ролей `warning`/`success`, поэтому они заведены как расширение
-/// темы, а не хардкодятся в виджетах. Значения взяты из макета
-/// (`STATUS` в `Расписание - Material 3 Expressive.dc.html`); контраст текста
-/// к своему контейнеру >= 4.5:1 в обеих темах — см. `test/status_contrast_test.dart`.
+/// В M3 нет ролей «ожидает» и «одобрено», поэтому они заведены по правилам
+/// custom colors (https://m3.material.io/styles/color/advanced; MDC
+/// `docs/theming/Color.md` → Custom Colors, Color Harmonization): опорный цвет
+/// гармонизируется с primary схемы (`Blend.harmonize`), из его тональной
+/// палитры (акцентная палитра: тон источника, хрома не ниже 48) берутся четыре роли теми же тонами,
+/// что у акцентных ролей: светлая тема — 40 / 100 / 90 / 30, тёмная —
+/// 80 / 20 / 30 / 90. «Отклонено» — это ошибка, для неё роли error.
+///
+/// Опорные цвета — оттенки статусов из макета.
 @immutable
 class StatusColors extends ThemeExtension<StatusColors> {
   const StatusColors({
@@ -17,33 +25,58 @@ class StatusColors extends ThemeExtension<StatusColors> {
     required this.onRejected,
   });
 
+  /// Контейнер и текст статуса «В обработке».
   final Color pending;
   final Color onPending;
+
+  /// Контейнер и текст статуса «Одобрено».
   final Color approved;
   final Color onApproved;
+
+  /// Контейнер и текст статуса «Отклонено».
   final Color rejected;
   final Color onRejected;
 
-  static const StatusColors light = StatusColors(
-    pending: Color(0xFFFFE1A6),
-    onPending: Color(0xFF4E3900),
-    approved: Color(0xFFBFF0D2),
-    onApproved: Color(0xFF0A4B2C),
-    rejected: Color(0xFFFFDAD6),
-    onRejected: Color(0xFF7A1B14),
-  );
+  /// Опорный цвет «В обработке» (янтарный из макета).
+  static const Color pendingSource = Color(0xFFFFE1A6);
 
-  static const StatusColors dark = StatusColors(
-    pending: Color(0xFF5A4200),
-    onPending: Color(0xFFFFE1A6),
-    approved: Color(0xFF0D4E2E),
-    onApproved: Color(0xFFA9E9C5),
-    rejected: Color(0xFF6E1710),
-    onRejected: Color(0xFFFFB4AB),
-  );
+  /// Опорный цвет «Одобрено» (зелёный из макета).
+  static const Color approvedSource = Color(0xFFBFF0D2);
+
+  factory StatusColors.fromScheme(ColorScheme scheme) {
+    final bool light = scheme.brightness == Brightness.light;
+    (Color, Color) roles(Color source) {
+      final int harmonized = Blend.harmonize(
+        source.toARGB32(),
+        scheme.primary.toARGB32(),
+      );
+      // Акцентная палитра опорного цвета — как primary у `CorePalette.of`:
+      // тон источника, хрома не ниже 48.
+      final Hct hct = Hct.fromInt(harmonized);
+      final TonalPalette palette = TonalPalette.of(
+        hct.hue,
+        math.max(48, hct.chroma),
+      );
+      return light
+          ? (Color(palette.get(90)), Color(palette.get(30)))
+          : (Color(palette.get(30)), Color(palette.get(90)));
+    }
+
+    final (Color pending, Color onPending) = roles(pendingSource);
+    final (Color approved, Color onApproved) = roles(approvedSource);
+    return StatusColors(
+      pending: pending,
+      onPending: onPending,
+      approved: approved,
+      onApproved: onApproved,
+      rejected: scheme.errorContainer,
+      onRejected: scheme.onErrorContainer,
+    );
+  }
 
   static StatusColors of(BuildContext context) =>
-      Theme.of(context).extension<StatusColors>() ?? light;
+      Theme.of(context).extension<StatusColors>() ??
+      StatusColors.fromScheme(Theme.of(context).colorScheme);
 
   @override
   StatusColors copyWith({

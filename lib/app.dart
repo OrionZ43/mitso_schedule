@@ -150,7 +150,7 @@ ThemeData buildTheme(ColorScheme scheme) {
     colorScheme: scheme,
     textTheme: textTheme,
     scaffoldBackgroundColor: scheme.surface,
-    extensions: [isLight ? StatusColors.light : StatusColors.dark],
+    extensions: [StatusColors.fromScheme(scheme)],
 
     // Material Symbols: https://m3.material.io/styles/icons — вес 400,
     // оптический размер по размеру иконки (24dp), grade 0 для тёмных иконок
