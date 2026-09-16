@@ -16,7 +16,7 @@ final List<ScheduleDay> _days = [
 
 final ThemeData _theme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-  textTheme: AppTypography.textTheme(Brightness.light),
+  textTheme: AppTypography.textTheme(),
 );
 
 Future<void> _pump(
