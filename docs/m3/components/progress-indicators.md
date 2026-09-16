@@ -131,6 +131,48 @@ progress indicator не является.
   и `IncreaseVerticalSemanticsBounds` (увеличенная зона фокуса по вертикали).
 
 ## В приложении
+### Реализация во Flutter
+`lib/widgets/m3_wavy_linear_progress.dart` перенесён на Compose `LinearWavyProgressIndicator`
+(определённый) и `LinearProgressDrawingCache`. Строки таблицы «Расхождения» ниже с номерами
+1–8 закрыты. Строки 9–11 касаются экранов и остаются открытыми.
+
+**Совпадает с Compose**
+- Токены: толщина 4/4dp, зазор 4dp, stop indicator 4dp, высота 10dp, длина волны 40dp.
+  Цвета по умолчанию: `primary`, трек — `secondaryContainer`.
+- Амплитуда `indicatorAmplitude` включена только при `0.1 < p < 0.95`. Переход длится 500 мс:
+  нарастание — `Easing.standard`, затухание — `Easing.emphasizedAccelerate`. Новая анимация
+  стартует, только если цель изменилась и предыдущая уже закончилась, как в
+  `updateAmplitudeAnimation`.
+- Бег волны: `waveSpeed` по умолчанию равен длине волны (одна волна в секунду), цикл не короче
+  50 мс, смещение применяется только при амплитуде > 0. Тикер работает, лишь пока амплитуда
+  больше нуля; вне экрана его глушит `TickerMode`.
+- Геометрия:
+  - голова `p × width` зажата в `[cap, width − cap]`;
+  - зазор `min(head − cap, 4)`;
+  - трек начинается с `head + gap + 2·cap`;
+  - stop indicator уменьшается, когда голова его догоняет (`drawStopIndicator`);
+  - волна строится квадратичными Безье от `x = 0`, контрольная точка на высоте
+    `height − stroke`, отрезок вырезается `PathMetric.extractPath` со сдвигом фазы и сжимается
+    по Y до амплитуды;
+  - в RTL рисунок поворачивается на 180°.
+  Числовая часть вынесена в `LinearWavyProgressGeometry` и покрыта тестами.
+- Семантика: `SemanticsRole.progressBar`, `minValue` 0, `maxValue` 100, `value` в процентах.
+- `showTrack: false` убирает трек. Это правило Accessibility для индикатора внутри компонента.
+  Stop indicator остаётся, как в Compose с прозрачным `trackColor`.
+
+**Уменьшение движения.** Как в Compose при `MotionDurationScale = 0`: значение и амплитуда
+меняются сразу, волна не бежит.
+
+**Отступления**
+- `value` анимируется внутри виджета: tween 500 мс, linear
+  (`WavyProgressIndicatorDefaults.ProgressAnimationSpec`). В Compose это делает вызывающий код.
+  Семантика отдаёт целевое значение, а не промежуточное.
+- Ширина. По умолчанию шкала занимает всю ширину родителя (Guidelines → Placement), 240dp
+  (`LinearContainerWidth`) — только при неограниченной ширине. В Compose 240dp берутся, если
+  родитель не задал ширину.
+- Нет `IncreaseVerticalSemanticsBounds`: область фокуса TalkBack не расширяется до 48dp по
+  вертикали. У Flutter `LinearProgressIndicator` её тоже нет.
+
 **Где используется**
 - `lib/widgets/m3_wavy_linear_progress.dart` — `M3WavyLinearProgress`, только определённый
   линейный волнистый.

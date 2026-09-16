@@ -136,7 +136,7 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 | Типографика, форма | Полная `TextTheme` по токенам на системном Roboto (ничего не скачивается), шкала радиусов M3 |
 | Движение компонентов | Шесть пружинных токенов Expressive; какой токен у какого свойства — как в Compose Material3 (см. «Движение» ниже) |
 | [Переходы](https://m3.material.io/styles/motion/transitions/transition-patterns) | Fade through — вкладки, загрузка → главный экран, загрузка → список; shared axis X — смена дня и шаги выбора группы; container transform — карточка пары → подробности |
-| [Loading indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md) | Порт MDC: `MaterialShapes` и `Morph` из `material_new_shapes`, пружина 200 / 0.6, поворот 50° + 90° за шаг 650 мс, contained — `onPrimaryContainer` на `primaryContainer` |
+| [Loading indicator](https://m3.material.io/components/loading-indicator/guidelines) | Порт Compose `LoadingIndicator.kt`: формы `material_new_shapes` с общим коэффициентом × 38/48, новая пружина 0.6 / 200 (порог 0.1) каждые 650 мс, +90° за морф, вращение 360° за 4666 мс; по умолчанию без контейнера, contained — `onPrimaryContainer` на `primaryContainer`; определённый вариант — в pull-to-refresh |
 | [Progress indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/ProgressIndicator.md) | Волнистый determinate: 4dp, амплитуда 3dp, волна 40dp, зазор 4dp, stop indicator 4dp; волна неподвижна, полная амплитуда только при 0.1–0.9 |
 | [Navigation bar](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomNavigation.md) | Expressive: высота 64dp, индикатор 56×32 `secondaryContainer`, активная подпись `secondary` |
 | [App bar](https://github.com/material-components/material-components-android/blob/master/docs/components/TopAppBar.md) | Medium flexible: 112 / 64dp, заголовок `headlineMedium` → `titleLarge`, подзаголовок (группа и курс) под заголовком |
@@ -213,9 +213,13 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
    `Easing`), поэтому `AppMotion` строит `SpringDescription.withDampingRatio` и оборачивает
    симуляцию в `SpringCurve`, чтобы пружины работали и в неявных анимациях.
 
-6. **Размер формы индикатора — 34dp, а не 38dp из таблицы в документации MDC.**
-   Таблица берёт `dimens.xml`, но стиль `Widget.Material3.LoadingIndicator`, от которого
-   наследуются оба варианта, задаёт 34dp — взято фактическое значение из кода.
+6. **Индикаторы и pull-to-refresh перенесены с Compose, но с поправками на Flutter.**
+   `M3PullToRefresh` заменяет вложенную прокрутку на `ScrollPhysics.applyPhysicsToUserOffset`.
+   Поэтому физика списка должна передавать вызов родителю (не `BouncingScrollPhysics`), а
+   короткий список должен быть `AlwaysScrollable`. `M3WavyLinearProgress` сам анимирует
+   `value` за 500 мс (`ProgressAnimationSpec`) и занимает всю ширину родителя. Подробности —
+   в `docs/m3/components/loading-indicator.md`, `progress-indicators.md`, `pull-to-refresh.md`
+   (раздел «Реализация во Flutter»).
 
 7. **Emphasized-начертание — вес w700 системного Roboto.**
    Шрифт не скачивается и не лежит в ассетах, поэтому осей Roboto Flex нет — остаётся вес.
