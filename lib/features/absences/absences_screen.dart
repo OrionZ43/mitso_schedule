@@ -23,7 +23,11 @@ class AbsencesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      // Тоновый стиль Primary из M3 Expressive — как в макете; по умолчанию
+      // у FAB primaryContainer.
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: colors.primary,
+        foregroundColor: colors.onPrimary,
         onPressed: () => showCertificateSheet(context),
         icon: const Icon(Symbols.document_scanner, fill: 1),
         label: const Text('Оправдать пропуск'),

@@ -23,8 +23,6 @@ class NotesScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
         onPressed: ref.read(tasksControllerProvider.notifier).add,
-        backgroundColor: context.colors.primaryContainer,
-        foregroundColor: context.colors.onPrimaryContainer,
         tooltip: 'Добавить задачу',
         child: const Icon(Symbols.add),
       ),

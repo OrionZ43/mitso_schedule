@@ -139,16 +139,29 @@ ThemeData buildTheme(ColorScheme scheme) {
       headerTextStyle: textTheme.bodyLarge,
     ),
 
+    // Filter chip по chip/res из MDC: 32dp, углы 8dp, labelLarge. Выбранный —
+    // secondaryContainer без обводки, невыбранный — прозрачный с обводкой outline.
     chipTheme: ChipThemeData(
-      // Чипы по спеке: высота 32dp, радиус 8dp.
       shape: AppShapes.rounded(AppShapes.chip),
-      labelStyle: textTheme.labelLarge,
-      side: BorderSide(color: scheme.outlineVariant),
-      backgroundColor: Colors.transparent,
-      selectedColor: scheme.primaryContainer,
+      labelStyle: textTheme.labelLarge!.copyWith(
+        color: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? scheme.onSecondaryContainer
+              : scheme.onSurfaceVariant,
+        ),
+      ),
+      color: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? scheme.secondaryContainer
+            : Colors.transparent,
+      ),
+      side: WidgetStateBorderSide.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? BorderSide.none
+            : BorderSide(color: scheme.outline),
+      ),
       showCheckmark: true,
-      checkmarkColor: scheme.onPrimaryContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      checkmarkColor: scheme.onSecondaryContainer,
     ),
 
     cardTheme: CardThemeData(
@@ -158,13 +171,18 @@ ThemeData buildTheme(ColorScheme scheme) {
       margin: EdgeInsets.zero,
     ),
 
+    // FAB и small extended FAB по fab_tokens.xml / efab_tokens.xml:
+    // по умолчанию primaryContainer, тень level3 (6dp), углы 16dp, у extended —
+    // titleMedium и отступы 16 / 8 / 16dp.
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      elevation: 3,
-      backgroundColor: scheme.primary,
-      foregroundColor: scheme.onPrimary,
-      extendedTextStyle: textTheme.titleMedium,
+      elevation: 6,
+      backgroundColor: scheme.primaryContainer,
+      foregroundColor: scheme.onPrimaryContainer,
       shape: AppShapes.rounded(AppShapes.fab),
+      extendedTextStyle: textTheme.titleMedium,
       extendedSizeConstraints: const BoxConstraints.tightFor(height: 56),
+      extendedPadding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
+      extendedIconLabelSpacing: 8,
     ),
 
     bottomSheetTheme: BottomSheetThemeData(
