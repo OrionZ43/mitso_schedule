@@ -1,21 +1,37 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../data/models/lesson.dart';
 import '../theme/app_motion.dart';
-import '../theme/app_shapes.dart';
+import '../theme/app_transitions.dart';
 import '../theme/app_typography.dart';
+import 'm3_button_group.dart';
+import 'm3_buttons.dart';
+import 'm3_toggle_button.dart';
 
-/// Горизонтальный селектор дней.
+/// Селектор дней: по standard button group из toggle-кнопок на каждую
+/// календарную неделю, недели листаются.
 ///
-/// Выбранный день ведёт себя как toggle button из M3 Expressive: в Compose
-/// Material3 (`ToggleButton.kt`) форма при выборе морфится пружиной
-/// `FastSpatial`, а цвет — `DefaultEffects`. Здесь так же: радиус 16dp -> 28dp
-/// на `fastSpatial`, заливка и текст на `defaultEffects`.
+/// Какой компонент и почему — `docs/m3/components/button-groups.md`
+/// («Селектор дней»): выбор одного дня из связанного набора, где соседи
+/// реагируют на нажатие, — standard button group (single-select,
+/// selection-required). Группа идёт одной строкой без переноса и без
+/// прокрутки, поэтому на страницу — одна неделя, а недели — страницы
+/// [PageView]: переход между равноправными страницами — паттерн lateral
+/// (контент едет за пальцем, без затухания).
 ///
-/// Выбранный день всегда прокручивается в видимую область — при свайпе по
-/// списку пар или переходе из поиска он может оказаться за краем. Прокрутка —
-/// пружина без перелёта: перелёт увёл бы ленту за её границы.
+/// Кнопка дня — filled toggle (`ToggleButton`): невыбранная surfaceContainer /
+/// onSurfaceVariant, выбранная primary / onPrimary, цвет без анимации;
+/// формы по фактической высоте (`ToggleButtonDefaults.shapesFor`): round →
+/// при выборе square, pressed — по токену размера; морф FastSpatial. Нажатая
+/// кнопка расширяется за счёт соседей ([M3ButtonGroup]).
+///
+/// Осознанное отступление: подпись в две строки — день недели и число
+/// (Guidelines «Label text»: «Don't truncate or wrap label text»). Одной
+/// строкой «Пн 16» не помещается в ширину кнопки недели на компактном
+/// экране; причина записана в `button-groups.md`.
 class DaySelector extends StatefulWidget {
   const DaySelector({
     super.key,
@@ -24,171 +40,198 @@ class DaySelector extends StatefulWidget {
     required this.onSelected,
   });
 
+  /// Дни по порядку дат; обычно две недели.
   final List<ScheduleDay> days;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// Поля страницы в компактном окне — 16dp (Layout, «Margins»).
+  static const double horizontalPadding = 16;
+
+  /// Вертикальный отступ содержимого — `ButtonDefaults.ContentPadding`
+  /// (`ButtonVerticalPadding` = 8dp): у двухстрочной подписи своего токена нет.
+  static const double verticalPadding = 8;
+
+  /// Смена недели программно — переход с началом и концом на экране:
+  /// Emphasized, 500 мс (`motion.md`, «Переходы»).
+  static const Duration weekChangeDuration = Durations.long2;
+
+  /// Индексы [days], разбитые по календарным неделям (с понедельника).
+  static List<List<int>> weeksOf(List<ScheduleDay> days) {
+    final List<List<int>> weeks = [];
+    DateTime? currentMonday;
+    for (int i = 0; i < days.length; i++) {
+      final DateTime date = days[i].date;
+      final DateTime monday = DateTime(
+        date.year,
+        date.month,
+        date.day - (date.weekday - DateTime.monday),
+      );
+      if (currentMonday == null || monday != currentMonday) {
+        weeks.add([]);
+        currentMonday = monday;
+      }
+      weeks.last.add(i);
+    }
+    return weeks;
+  }
 
   @override
   State<DaySelector> createState() => _DaySelectorState();
 }
 
 class _DaySelectorState extends State<DaySelector> {
-  final GlobalKey _selectedKey = GlobalKey();
-  final ScrollController _scroll = ScrollController();
+  late List<List<int>> _weeks = DaySelector.weeksOf(widget.days);
+  late final PageController _pages = PageController(
+    initialPage: _weekOf(widget.selectedIndex),
+  );
 
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _reveal(animate: false),
-    );
+  int _weekOf(int dayIndex) {
+    for (int w = 0; w < _weeks.length; w++) {
+      if (_weeks[w].contains(dayIndex)) return w;
+    }
+    return 0;
   }
 
   @override
   void didUpdateWidget(DaySelector oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedIndex != widget.selectedIndex) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _reveal(animate: true),
+    // Список может пересоздаваться при каждой сборке экрана; листать назад к
+    // выбранной неделе нужно, только если сменились сами даты.
+    final bool daysChanged =
+        !identical(oldWidget.days, widget.days) &&
+        (oldWidget.days.length != widget.days.length ||
+            Iterable<int>.generate(
+              widget.days.length,
+            ).any((i) => oldWidget.days[i].date != widget.days[i].date));
+    if (daysChanged) _weeks = DaySelector.weeksOf(widget.days);
+    if (daysChanged || oldWidget.selectedIndex != widget.selectedIndex) {
+      // Не во время сборки: прокрутка рассылает уведомления.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+    }
+  }
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _revealSelected() {
+    if (!mounted || !_pages.hasClients) return;
+    final int target = _weekOf(widget.selectedIndex);
+    final double? page = _pages.page;
+    if (page != null && page == target.toDouble()) return;
+    if (reduceMotionOf(context)) {
+      _pages.jumpToPage(target);
+    } else {
+      _pages.animateToPage(
+        target,
+        duration: DaySelector.weekChangeDuration,
+        curve: AppTransitions.emphasized,
       );
     }
   }
 
-  void _reveal({required bool animate}) {
-    final RenderObject? chip = _selectedKey.currentContext?.findRenderObject();
-    if (!mounted || chip == null || !_scroll.hasClients) return;
-    // Позиция именно ленты: Scrollable.ensureVisible прокрутил бы ещё и
-    // вертикальный список экрана.
-    _scroll.position.ensureVisible(
-      chip,
-      alignment: 0.5,
-      duration: animate ? AppMotion.defaultEffects.duration : Duration.zero,
-      curve: AppMotion.defaultEffects.curve,
-    );
+  /// Высота строки текста с текущим масштабом шрифта.
+  static double _lineHeight(TextStyle style, TextScaler scaler) {
+    final TextPainter painter = TextPainter(
+      text: TextSpan(text: '0', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final double height = painter.height;
+    painter.dispose();
+    return height;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Горизонтальной ленте нужна явная высота, поэтому она считается из
-    // текущего масштаба шрифта: 12 сверху + строка дня + 6 + число + 14 снизу.
-    final TextScaler scaler = MediaQuery.textScalerOf(context);
-    final double height = 12 + scaler.scale(16) + 6 + scaler.scale(27) + 14;
+    if (widget.days.isEmpty) return const SizedBox.shrink();
 
-    // Не ListView: дней всего две недели, а ленивый список не построил бы
-    // выбранный день за краем экрана и к нему нельзя было бы прокрутить.
+    final TextTheme text = context.text;
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+
+    // [PageView] нужна высота заранее: она растёт вместе с масштабом шрифта,
+    // минимум — высота кнопки размера M.
+    final double contentHeight =
+        2 * DaySelector.verticalPadding +
+        _lineHeight(text.labelLarge!, scaler) +
+        _lineHeight(text.titleMedium!, scaler);
+    final double buttonHeight = math
+        .max(M3ButtonSize.medium.height, contentHeight)
+        .ceilToDouble();
+    final M3ButtonSize bucket = M3ToggleButtonDefaults.sizeForHeight(
+      buttonHeight,
+    );
+    final M3ToggleButtonShapes shapes = M3ToggleButtonDefaults.shapesForSize(
+      bucket,
+    );
+
     return SizedBox(
-      height: height,
-      child: SingleChildScrollView(
-        controller: _scroll,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          children: [
-            for (int i = 0; i < widget.days.length; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              _DayChip(
-                key: i == widget.selectedIndex ? _selectedKey : null,
-                day: widget.days[i],
-                selected: i == widget.selectedIndex,
-                onTap: () => widget.onSelected(i),
-              ),
+      height: math.max(buttonHeight, kMinInteractiveDimension),
+      child: PageView.builder(
+        controller: _pages,
+        itemCount: _weeks.length,
+        itemBuilder: (context, week) => Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: DaySelector.horizontalPadding,
+          ),
+          child: M3ButtonGroup(
+            spacing: M3ButtonGroupDefaults.spacingFor(bucket),
+            children: [
+              for (final int index in _weeks[week])
+                M3ButtonGroupItem(
+                  key: ValueKey(widget.days[index].date),
+                  weight: 1,
+                  builder: (context, states) => M3ToggleButton(
+                    checked: index == widget.selectedIndex,
+                    onCheckedChange: (_) => widget.onSelected(index),
+                    size: bucket,
+                    shapes: shapes,
+                    minHeight: buttonHeight,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: DaySelector.verticalPadding,
+                    ),
+                    semantics: M3ButtonSemantics.radio,
+                    statesController: states,
+                    child: _DayLabel(day: widget.days[index]),
+                  ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _DayChip extends StatelessWidget {
-  const _DayChip({
-    super.key,
-    required this.day,
-    required this.selected,
-    required this.onTap,
-  });
+/// День недели над числом; цвет — цвет содержимого кнопки.
+class _DayLabel extends StatelessWidget {
+  const _DayLabel({required this.day});
 
   final ScheduleDay day;
-  final bool selected;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-
-    final Color background = selected
-        ? colors.primary
-        : colors.surfaceContainer;
-    final Color nameColor = selected
-        ? colors.onPrimary.withValues(alpha: 0.82)
-        : colors.onSurfaceVariant;
-    final Color numberColor = selected ? colors.onPrimary : colors.onSurface;
-
+    final Color color = DefaultTextStyle.of(context).style.color!;
     return Semantics(
-      button: true,
-      selected: selected,
       label: '${day.title}, ${DateFormat.MMMMd('ru').format(day.date)}',
-      child: TweenAnimationBuilder<double>(
-        // Форма — spatial-пружина, с перелётом.
-        tween: Tween<double>(
-          end: selected ? AppShapes.extraLarge : AppShapes.dayUnselected,
-        ),
-        duration: AppMotion.fastSpatial.duration,
-        curve: AppMotion.fastSpatial.curve,
-        builder: (context, radius, child) {
-          return TweenAnimationBuilder<Color?>(
-            // Цвет — effects-пружина, без перелёта.
-            tween: ColorTween(end: background),
-            duration: AppMotion.defaultEffects.duration,
-            curve: AppMotion.defaultEffects.curve,
-            builder: (context, color, child) {
-              return Material(
-                color: color,
-                borderRadius: AppShapes.all(radius),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(onTap: onTap, child: child),
-              );
-            },
-            child: child,
-          );
-        },
-        // Текст внутри озвучивать не нужно — метка задана выше целиком,
-        // при этом действие нажатия у InkWell сохраняется.
-        child: ExcludeSemantics(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 56),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedDefaultTextStyle(
-                    duration: AppMotion.defaultEffects.duration,
-                    curve: AppMotion.defaultEffects.curve,
-                    style: context.text.labelMedium!.copyWith(color: nameColor),
-                    child: Text(day.shortName),
-                  ),
-                  const SizedBox(height: 6),
-                  AnimatedDefaultTextStyle(
-                    duration: AppMotion.defaultEffects.duration,
-                    curve: AppMotion.defaultEffects.curve,
-                    style: context.text.titleMedium!.emphasized.copyWith(
-                      fontSize: 18,
-                      color: numberColor,
-                    ),
-                    child: Text(day.dayNumber),
-                  ),
-                ],
-              ),
-            ),
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // `md.comp.button.small.label-text` и `medium.label-text`.
+          Text(
+            day.shortName,
+            style: context.text.labelLarge!.copyWith(color: color),
           ),
-        ),
+          Text(
+            day.dayNumber,
+            style: context.text.titleMedium!.copyWith(color: color),
+          ),
+        ],
       ),
     );
   }
