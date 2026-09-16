@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Сид-палитры приложения.
+/// Статичные схемы на выбор, когда динамические цвета выключены.
 ///
-/// Значения — из макета (`PAL` в `.dc.html`). Сама схема не берётся из макета
-/// пословно: по гайдлайну роли выводятся из сида через
-/// [ColorScheme.fromSeed] с вариантом [DynamicSchemeVariant.expressive].
-/// https://m3.material.io/styles/color/system/overview
+/// https://m3.material.io/styles/color/choosing-a-scheme — static схема
+/// строится из «hand-picked source color». [baseline] — эталонная схема M3
+/// (`#6750A4`), остальные — сиды из макета, выведенные Material Color
+/// Utilities (styles/color/advanced: «define your own scheme variant»).
 enum AppPalette {
-  // Имя элемента — идентификатор палитры из макета (цвет сида),
-  // [label] — название итогового цвета, который увидит пользователь:
-  // вариант `expressive` поворачивает оттенок (см. [AppColorSchemes.variant]).
+  baseline('Базовая', Color(0xFF6750A4)),
+  // Имя — сид из макета, [label] — итоговый цвет: вариант
+  // [AppColorSchemes.paletteVariant] поворачивает оттенок сида.
   violet('Бирюзовая', Color(0xFF6B3FD4)),
   blue('Зелёная', Color(0xFF1F5FD0)),
   green('Терракотовая', Color(0xFF1E6B4E)),
@@ -22,62 +22,69 @@ enum AppPalette {
 
   static AppPalette byName(String? name) => AppPalette.values.firstWhere(
     (p) => p.name == name,
-    orElse: () => AppPalette.violet,
+    orElse: () => AppPalette.baseline,
   );
 }
 
 abstract final class AppColorSchemes {
-  /// Baseline-сид M3, используется когда динамические цвета выключены.
-  static const Color baselineSeed = Color(0xFF6750A4);
+  /// Вариант вывода палитр из макета. Гайдлайны вариант не предписывают;
+  /// `expressive` выбран заказчиком и заметно поворачивает оттенок, поэтому
+  /// палитры подписаны по итоговому цвету.
+  static const DynamicSchemeVariant paletteVariant =
+      DynamicSchemeVariant.expressive;
 
-  /// Вариант вывода схемы из сида.
-  ///
-  /// `expressive` заметно поворачивает оттенок: из сида violet `#6B3FD4`
-  /// получается бирюзовый primary `#006B5A`, из coral `#A93B4F` — синий
-  /// `#286294`. Так и задумано в M3 Expressive, поэтому палитры названы по
-  /// цвету-источнику, а не по итоговому primary.
-  static const DynamicSchemeVariant variant = DynamicSchemeVariant.expressive;
+  /// Android 12–13: системных ролей нет, есть только палитры обоев. Android
+  /// сам строит схему обоев вариантом tonal spot, поэтому и здесь он.
+  static const DynamicSchemeVariant wallpaperVariant =
+      DynamicSchemeVariant.tonalSpot;
 
-  static ColorScheme fromSeed(Color seed, Brightness brightness) {
+  /// Схема статичной палитры.
+  static ColorScheme ofPalette(AppPalette palette, Brightness brightness) {
+    if (palette == AppPalette.baseline) {
+      // Эталон M3 (`ColorLightTokens` / `ColorDarkTokens`): во Flutter это
+      // встроенная схема `ThemeData`, а не вывод из сида — `fromSeed(#6750A4)`
+      // дал бы другие роли.
+      return ThemeData(brightness: brightness, useMaterial3: true).colorScheme;
+    }
     return ColorScheme.fromSeed(
-      seedColor: seed,
+      seedColor: palette.seed,
       brightness: brightness,
-      dynamicSchemeVariant: variant,
+      dynamicSchemeVariant: paletteVariant,
     );
   }
 
   static final Map<(AppPalette, Brightness), Color> _primaryCache = {};
 
-  /// Итоговый primary палитры — им красится образец в выборе палитры,
-  /// чтобы кружок совпадал с тем, что получится на экране.
+  /// Итоговый primary палитры — им красится образец в выборе палитры.
   static Color primaryOf(AppPalette palette, Brightness brightness) {
     return _primaryCache.putIfAbsent((
       palette,
       brightness,
-    ), () => fromSeed(palette.seed, brightness).primary);
+    ), () => ofPalette(palette, brightness).primary);
   }
 
-  /// Итоговая схема экрана.
+  /// Итоговая схема.
   ///
-  /// * [dynamicEnabled] == false -> baseline-схема M3 (`#6750A4`);
-  /// * [dynamicEnabled] == true  -> схема с устройства ([deviceScheme],
-  ///   Android 12+), иначе сид устройства [deviceAccent], иначе [palette].
+  /// * динамические цвета выключены → выбранная статичная [palette];
+  /// * включены → роли системы ([systemScheme], Android 14+), иначе схема из
+  ///   акцента обоев ([wallpaperSeed], Android 12–13), иначе [palette].
   static ColorScheme resolve({
     required AppPalette palette,
     required Brightness brightness,
     required bool dynamicEnabled,
-    ColorScheme? deviceScheme,
-    Color? deviceAccent,
+    ColorScheme? systemScheme,
+    Color? wallpaperSeed,
   }) {
-    if (!dynamicEnabled) {
-      return fromSeed(baselineSeed, brightness);
+    if (dynamicEnabled) {
+      if (systemScheme != null) return systemScheme;
+      if (wallpaperSeed != null) {
+        return ColorScheme.fromSeed(
+          seedColor: wallpaperSeed,
+          brightness: brightness,
+          dynamicSchemeVariant: wallpaperVariant,
+        );
+      }
     }
-    if (deviceScheme != null) {
-      return deviceScheme;
-    }
-    if (deviceAccent != null) {
-      return fromSeed(deviceAccent, brightness);
-    }
-    return fromSeed(palette.seed, brightness);
+    return ofPalette(palette, brightness);
   }
 }

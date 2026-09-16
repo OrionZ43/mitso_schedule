@@ -11,7 +11,7 @@ class Settings {
     this.darkOverride,
     this.dynamicColor = true,
     this.lessonReminder = true,
-    this.palette = AppPalette.violet,
+    this.palette = AppPalette.baseline,
     this.subgroup,
   });
 
@@ -24,7 +24,7 @@ class Settings {
   /// Напоминание за 15 минут до пары.
   final bool lessonReminder;
 
-  /// Сид-палитра, используется как запасной вариант для [dynamicColor].
+  /// Статичная палитра — когда [dynamicColor] выключен или обоев нет.
   final AppPalette palette;
 
   /// Своя подгруппа: 1 или 2. `null` — показывать занятия всех подгрупп.

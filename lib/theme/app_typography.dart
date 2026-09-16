@@ -7,15 +7,9 @@ import 'package:flutter/material.dart';
 /// Шрифт — системный Roboto: на Android он есть всегда, поэтому ничего не
 /// скачивается и не кладётся в ассеты.
 ///
-/// Emphasized-начертания (https://m3.material.io/styles/typography/applying-type)
-/// реализованы весом w700: у системного Roboto нет осей Roboto Flex, а вес —
-/// та часть emphasized-контраста, которая влияет на макет.
+/// Цвет текста в стилях не задаётся — его подставляет тема из `onSurface`.
 abstract final class AppTypography {
-  static TextTheme textTheme(Brightness brightness) {
-    final Color color = brightness == Brightness.light
-        ? const Color(0xFF1C1B20)
-        : const Color(0xFFE8E1EC);
-
+  static TextTheme textTheme() {
     TextStyle style(
       double size,
       double height,
@@ -28,7 +22,6 @@ abstract final class AppTypography {
         height: height / size,
         letterSpacing: tracking,
         fontWeight: weight,
-        color: color,
       );
     }
 
@@ -53,9 +46,31 @@ abstract final class AppTypography {
 }
 
 /// Emphasized-начертание токена типошкалы.
+///
+/// https://m3.material.io/styles/typography/type-scale-tokens — 15 emphasized
+/// стилей (май 2025) с теми же размером и строкой. Значения —
+/// Compose `tokens/TypeScaleTokens.kt` (`*Emphasized*`), MDC `Typography.md`:
+///   * display, headline, titleLarge, body — вес Medium (500);
+///   * titleMedium, titleSmall, label — вес Bold (700).
+/// Это ровно «на ступень тяжелее» базового веса (400 → 500, 500 → 700).
+/// Tracking у emphasized: display/headline/titleLarge — 0, bodyLarge — 0.15,
+/// остальные как у базовых.
 extension TextStyleEmphasis on TextStyle {
-  /// Акцентное начертание (w700) — заголовки экранов, названия пар, кнопки.
-  TextStyle get emphasized => copyWith(fontWeight: FontWeight.w700);
+  TextStyle get emphasized {
+    final bool regular = (fontWeight ?? FontWeight.w400).value <= 400;
+    final double size = fontSize ?? 14;
+    final double? tracking = switch ((regular, size)) {
+      // bodyLarge: 16sp с обычным весом.
+      (true, 16) => 0.15,
+      // display*, headline*, titleLarge (22sp и крупнее).
+      (true, >= 22) => 0,
+      _ => letterSpacing,
+    };
+    return copyWith(
+      fontWeight: regular ? FontWeight.w500 : FontWeight.w700,
+      letterSpacing: tracking,
+    );
+  }
 }
 
 /// Короткий доступ к токенам типошкалы из виджетов.

@@ -11,9 +11,11 @@ import 'state/settings_controller.dart';
 import 'theme/app_button_styles.dart';
 import 'theme/app_color_schemes.dart';
 import 'theme/app_shapes.dart';
+import 'theme/app_state_layer.dart';
 import 'theme/app_transitions.dart';
 import 'theme/app_typography.dart';
 import 'theme/status_colors.dart';
+import 'theme/system_color_roles.dart';
 
 /// Подготовка при старте: клиент сайта и его сертификаты. Пока не
 /// завершится, показывается [BootScreen]. Искусственной задержки нет — по
@@ -27,42 +29,89 @@ final appBootProvider = FutureProvider<void>((ref) async {
   }
 });
 
-class ScheduleApp extends ConsumerWidget {
+/// Цвета обоев с устройства.
+///
+/// Android 14+ — готовые системные роли ([SystemColorRoles]); Android 12–13 —
+/// только палитры обоев из `dynamic_color`, из них берётся акцент.
+final dynamicColorsProvider =
+    FutureProvider<({ColorScheme? light, ColorScheme? dark, Color? seed})>((
+      ref,
+    ) async {
+      final system = await SystemColorRoles.load();
+      if (system != null) {
+        return (light: system.light, dark: system.dark, seed: null);
+      }
+      try {
+        final palette = await DynamicColorPlugin.getCorePalette();
+        final Color? seed = palette == null
+            ? null
+            : Color(palette.primary.get(40));
+        return (light: null, dark: null, seed: seed);
+      } catch (_) {
+        return (light: null, dark: null, seed: null);
+      }
+    }, retry: noRetry);
+
+class ScheduleApp extends ConsumerStatefulWidget {
   const ScheduleApp({super.key});
 
   static const Locale locale = Locale('ru', 'RU');
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ScheduleApp> createState() => _ScheduleAppState();
+}
+
+class _ScheduleAppState extends ConsumerState<ScheduleApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Обои или контраст могли смениться, пока приложение было в фоне.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(dynamicColorsProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final Settings settings = ref.watch(settingsControllerProvider);
+    final dynamicColors = ref.watch(dynamicColorsProvider).value;
 
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        ColorScheme scheme(Brightness brightness) => AppColorSchemes.resolve(
-          palette: settings.palette,
-          brightness: brightness,
-          dynamicEnabled: settings.dynamicColor,
-          deviceScheme: brightness == Brightness.light
-              ? lightDynamic
-              : darkDynamic,
-        );
+    ColorScheme scheme(Brightness brightness) => AppColorSchemes.resolve(
+      palette: settings.palette,
+      brightness: brightness,
+      dynamicEnabled: settings.dynamicColor,
+      systemScheme: brightness == Brightness.light
+          ? dynamicColors?.light
+          : dynamicColors?.dark,
+      wallpaperSeed: dynamicColors?.seed,
+    );
 
-        return MaterialApp(
-          title: 'Расписание',
-          debugShowCheckedModeBanner: false,
-          themeMode: settings.themeMode,
-          theme: buildTheme(scheme(Brightness.light)),
-          darkTheme: buildTheme(scheme(Brightness.dark)),
-          locale: locale,
-          supportedLocales: const [locale],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: const _BootGate(),
-        );
-      },
+    return MaterialApp(
+      title: 'Расписание',
+      debugShowCheckedModeBanner: false,
+      themeMode: settings.themeMode,
+      theme: buildTheme(scheme(Brightness.light)),
+      darkTheme: buildTheme(scheme(Brightness.dark)),
+      locale: ScheduleApp.locale,
+      supportedLocales: const [ScheduleApp.locale],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const _BootGate(),
     );
   }
 }
@@ -91,9 +140,10 @@ class _BootGate extends ConsumerWidget {
 /// Сборка темы из готовой [ColorScheme].
 ThemeData buildTheme(ColorScheme scheme) {
   final bool isLight = scheme.brightness == Brightness.light;
-  final TextTheme textTheme = AppTypography.textTheme(
-    scheme.brightness,
-  ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+  final TextTheme textTheme = AppTypography.textTheme().apply(
+    bodyColor: scheme.onSurface,
+    displayColor: scheme.onSurface,
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -102,10 +152,44 @@ ThemeData buildTheme(ColorScheme scheme) {
     scaffoldBackgroundColor: scheme.surface,
     extensions: [isLight ? StatusColors.light : StatusColors.dark],
 
+    // Material Symbols: https://m3.material.io/styles/icons — вес 400,
+    // оптический размер по размеру иконки (24dp), grade 0 для тёмных иконок
+    // на светлом фоне и −25 для светлых на тёмном.
+    iconTheme: IconThemeData(
+      size: 24,
+      opticalSize: 24,
+      weight: 400,
+      grade: isLight ? 0 : -25,
+      fill: 0,
+      color: scheme.onSurface,
+    ),
+
+    // State layer цветом содержимого: https://m3.material.io/foundations/interaction/states,
+    // `StateTokens.kt` — pressed/focus 10%, hover 8%. Базовые значения для
+    // виджетов без своего overlayColor; содержимое на surface-ролях — onSurface.
+    // Ripple — как `ripple()` в Compose, без эффекта InkSparkle.
+    splashFactory: InkRipple.splashFactory,
+    splashColor: scheme.onSurface.withValues(
+      alpha: AppStateLayer.pressedOpacity,
+    ),
+    highlightColor: scheme.onSurface.withValues(
+      alpha: AppStateLayer.pressedOpacity,
+    ),
+    hoverColor: scheme.onSurface.withValues(alpha: AppStateLayer.hoverOpacity),
+    focusColor: scheme.onSurface.withValues(alpha: AppStateLayer.focusOpacity),
+
+    // App bar: `AppBarTokens` — контейнер surface, при прокрутке под ним —
+    // surfaceContainer, без тени; заголовок titleLarge, отступ действий 4dp.
     appBarTheme: AppBarTheme(
-      backgroundColor: scheme.surface,
+      backgroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.scrolledUnder)
+            ? scheme.surfaceContainer
+            : scheme.surface,
+      ),
       surfaceTintColor: Colors.transparent,
       scrolledUnderElevation: 0,
+      titleTextStyle: textTheme.titleLarge,
+      actionsPadding: const EdgeInsetsDirectional.only(end: 4),
     ),
 
     // Navigation bar по токенам MDC Expressive (bottomnavigation/tokens.xml):
@@ -153,51 +237,14 @@ ThemeData buildTheme(ColorScheme scheme) {
       headerTextStyle: textTheme.bodyLarge,
     ),
 
-    // Filter chip по chip/res из MDC: 32dp, углы 8dp, labelLarge. Выбранный —
-    // secondaryContainer без обводки, невыбранный — прозрачный с обводкой outline.
-    chipTheme: ChipThemeData(
-      shape: AppShapes.rounded(AppShapes.chip),
-      labelStyle: textTheme.labelLarge!.copyWith(
-        color: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? scheme.onSecondaryContainer
-              : scheme.onSurfaceVariant,
-        ),
-      ),
-      color: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected)
-            ? scheme.secondaryContainer
-            : Colors.transparent,
-      ),
-      side: WidgetStateBorderSide.resolveWith(
-        (states) => states.contains(WidgetState.selected)
-            ? BorderSide.none
-            : BorderSide(color: scheme.outline),
-      ),
-      showCheckmark: true,
-      checkmarkColor: scheme.onSecondaryContainer,
-    ),
+    // Чипы и карточки: умолчания Flutter M3 совпадают с токенами
+    // (`FilterChipTokens`: обводка outlineVariant; карточки 12dp, filled
+    // surfaceContainerHighest, outlined surface + outlineVariant).
+    cardTheme: const CardThemeData(margin: EdgeInsets.zero),
 
-    // Outlined card по card/tokens.xml: фон surface, обводка outlineVariant 1dp.
-    // Радиус 28dp вместо medium — согласованное отступление.
-    cardTheme: CardThemeData(
-      elevation: 0,
-      color: scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppShapes.all(AppShapes.card),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      margin: EdgeInsets.zero,
-    ),
-
-    // FAB и small extended FAB по fab_tokens.xml / efab_tokens.xml:
-    // по умолчанию primaryContainer, тень level3 (6dp), углы 16dp, у extended —
-    // titleMedium и отступы 16 / 8 / 16dp.
+    // Small extended FAB (`ExtendedFabSmallTokens`): titleMedium, 56dp,
+    // отступы 16 / 8 / 16dp. Цвета и тень FAB — умолчания M3.
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      elevation: 6,
-      backgroundColor: scheme.primaryContainer,
-      foregroundColor: scheme.onPrimaryContainer,
-      shape: AppShapes.rounded(AppShapes.fab),
       extendedTextStyle: textTheme.titleMedium,
       extendedSizeConstraints: const BoxConstraints.tightFor(height: 56),
       extendedPadding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
@@ -213,6 +260,8 @@ ThemeData buildTheme(ColorScheme scheme) {
       dragHandleColor: scheme.onSurfaceVariant,
       dragHandleSize: const Size(32, 4),
       showDragHandle: true,
+      // Scrim: роль scrim с непрозрачностью 32% (`ScrimTokens`).
+      modalBarrierColor: scheme.scrim.withValues(alpha: 0.32),
     ),
 
     // Кнопки размера Small по button/tokens.xml; обводка outlined —
@@ -230,24 +279,30 @@ ThemeData buildTheme(ColorScheme scheme) {
     ),
     iconButtonTheme: IconButtonThemeData(style: AppButtonStyles.iconSmall()),
 
-    // Plain tooltip по стилю Widget.Material3.Tooltip: primary / onPrimary,
-    // bodySmall, отступ 4dp, минимум 28dp, углы extraSmall.
+    // Plain tooltip: `PlainTooltipTokens` — inverseSurface / inverseOnSurface,
+    // bodySmall, углы 4dp; Compose `Tooltip.kt` — поля 8×4, минимум 40×24,
+    // ширина до 200dp.
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
-        color: scheme.primary,
+        color: scheme.inverseSurface,
         borderRadius: AppShapes.all(AppShapes.extraSmall),
       ),
-      textStyle: textTheme.bodySmall!.copyWith(color: scheme.onPrimary),
-      padding: const EdgeInsets.all(4),
-      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+      textStyle: textTheme.bodySmall!.copyWith(color: scheme.onInverseSurface),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: const BoxConstraints(
+        minWidth: 40,
+        minHeight: 24,
+        maxWidth: 200,
+      ),
     ),
 
-    checkboxTheme: CheckboxThemeData(
-      shape: AppShapes.rounded(2),
-      side: BorderSide(color: scheme.onSurfaceVariant, width: 2),
-    ),
-
+    // Пункт списка: `ListTokens` — поля 16 / 16, сверху и снизу 10, между
+    // слотами 12.
     listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
+      minVerticalPadding: 10,
+      horizontalTitleGap: 12,
+      minLeadingWidth: 24,
       titleTextStyle: textTheme.bodyLarge,
       subtitleTextStyle: textTheme.bodyMedium!.copyWith(
         color: scheme.onSurfaceVariant,
@@ -268,6 +323,8 @@ ThemeData buildTheme(ColorScheme scheme) {
         color: scheme.onInverseSurface,
       ),
       shape: AppShapes.rounded(AppShapes.extraSmall),
+      // Compose `SnackbarHost`: поле 12dp вокруг снекбара.
+      insetPadding: const EdgeInsets.all(12),
     ),
   );
 }

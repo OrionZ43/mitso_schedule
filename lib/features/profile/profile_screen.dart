@@ -89,7 +89,7 @@ class ProfileScreen extends ConsumerWidget {
         _SectionTitle('Палитра'),
         _PalettePicker(
           selected: settings.palette,
-          enabled: settings.dynamicColor,
+          enabled: !settings.dynamicColor,
           onSelected: controller.setPalette,
         ),
       ],
@@ -223,8 +223,7 @@ class _PalettePicker extends StatelessWidget {
 
   final AppPalette selected;
 
-  /// При выключенных динамических цветах приложение использует baseline-схему,
-  /// поэтому выбор палитры ни на что не влияет.
+  /// Палитра применяется, только когда динамические цвета выключены.
   final bool enabled;
 
   final ValueChanged<AppPalette> onSelected;
