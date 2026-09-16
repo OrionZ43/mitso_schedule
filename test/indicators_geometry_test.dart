@@ -201,48 +201,79 @@ void main() {
     });
   });
 
-  group('M3WavyLinearProgress', () {
-    test('геометрия по спеке', () {
-      expect(M3WavyLinearProgress.wavelength, 40);
-      expect(M3WavyLinearProgress.amplitude, 3);
+  group('M3WavyLinearProgress — токены и DeterminateDrawable из MDC', () {
+    test('геометрия по токенам', () {
       expect(M3WavyLinearProgress.thickness, 4);
       expect(M3WavyLinearProgress.trackGap, 4);
       expect(M3WavyLinearProgress.stopIndicatorSize, 4);
+      expect(M3WavyLinearProgress.amplitude, 3);
+      expect(M3WavyLinearProgress.wavelength, 40);
+      expect(M3WavyLinearProgress.height, 10);
     });
 
-    test('амплитуда плавно уходит в ноль на 100%', () {
-      expect(M3WavyLinearProgress.amplitudeFor(0.0), 3);
-      expect(M3WavyLinearProgress.amplitudeFor(0.66), 3);
-      expect(M3WavyLinearProgress.amplitudeFor(0.9), 3);
-      expect(M3WavyLinearProgress.amplitudeFor(0.95), closeTo(1.5, 1e-9));
-      expect(M3WavyLinearProgress.amplitudeFor(1.0), 0);
+    test('полная амплитуда только в диапазоне 0.1..0.9', () {
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.0), isFalse);
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.05), isFalse);
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.1), isTrue);
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.66), isTrue);
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.9), isTrue);
+      expect(M3WavyLinearProgress.hasFullAmplitude(0.95), isFalse);
+      expect(M3WavyLinearProgress.hasFullAmplitude(1.0), isFalse);
     });
 
-    test('значения вне 0..1 приводятся к границам', () {
-      expect(M3WavyLinearProgress.amplitudeFor(-1), 3);
-      expect(M3WavyLinearProgress.amplitudeFor(2), 0);
+    test('зазор сходит на нет у самого начала', () {
+      expect(M3WavyLinearProgress.displayedGap(0), 0);
+      expect(M3WavyLinearProgress.displayedGap(0.005), closeTo(2, 1e-9));
+      expect(M3WavyLinearProgress.displayedGap(0.5), 4);
     });
 
-    testWidgets('высота фиксирована и равна 14dp', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 200,
-                child: M3WavyLinearProgress(value: 0.66),
-              ),
-            ),
+    Widget progress(double value) => MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 200,
+            child: M3WavyLinearProgress(value: value),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
 
+    testWidgets('неподвижная волна не перерисовывается покадрово', (
+      tester,
+    ) async {
+      await tester.pumpWidget(progress(0.66));
+      await tester.pump();
       expect(
         tester.getSize(find.byType(M3WavyLinearProgress)).height,
         M3WavyLinearProgress.height,
       );
-      await tester.pump(const Duration(milliseconds: 500));
+      // waveSpeed = 0, как по умолчанию в MDC: новых кадров не заказывается.
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('выход за 0.9 гасит волну анимацией за 500 мс', (tester) async {
+      CustomPainter painter() => tester
+          .renderObject<RenderCustomPaint>(
+            find.descendant(
+              of: find.byType(M3WavyLinearProgress),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .painter!;
+
+      await tester.pumpWidget(progress(0.66));
+      await tester.pump();
+
+      await tester.pumpWidget(progress(0.95));
+      await tester.pump(const Duration(milliseconds: 250));
+      final CustomPainter midway = painter();
+      await tester.pump(const Duration(milliseconds: 300));
+      final CustomPainter settled = painter();
+
+      // На середине амплитуда ещё гаснет, к концу — ноль и дальше не меняется.
+      expect(settled.shouldRepaint(midway), isTrue);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(painter().shouldRepaint(settled), isFalse);
       expect(tester.takeException(), isNull);
     });
   });

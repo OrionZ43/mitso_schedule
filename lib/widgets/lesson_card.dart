@@ -192,9 +192,12 @@ class _NowSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
+        // Карточка залита primary, поэтому токенные цвета шкалы (primary на
+        // secondaryContainer) здесь не читаются — берём onPrimary, как в макете.
         M3WavyLinearProgress(
           value: lesson.progress ?? 0,
           color: colors.onPrimary,
+          trackColor: colors.onPrimary.withValues(alpha: 0.32),
           semanticsLabel: 'Прогресс пары',
         ),
       ],

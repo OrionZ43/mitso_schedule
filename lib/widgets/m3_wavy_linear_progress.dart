@@ -1,93 +1,149 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Волнистая линейная шкала прогресса Material 3 Expressive.
 ///
-/// https://m3.material.io/components/progress-indicators/overview
+/// Порт determinate-варианта `Widget.Material3Expressive.LinearProgressIndicator.Wavy`
+/// из material-components-android:
+/// https://github.com/material-components/material-components-android/blob/master/docs/components/ProgressIndicator.md
 ///
-/// Flutter 3.44 умеет часть новой спеки штатно (`LinearProgressIndicator`
-/// с `year2023: false` даёт `trackGap` и `stopIndicator*`), но волнистого
-/// варианта не поставляет — проверено по
-/// `packages/flutter/lib/src/material/progress_indicator.dart`. Поэтому
-/// активная часть рисуется здесь синусоидой на [CustomPainter].
+/// Во Flutter 3.44 волнистого варианта нет (`LinearProgressIndicator` умеет
+/// только зазор и stop indicator). Размеры — из `progressindicator/res/values/tokens.xml`,
+/// поведение амплитуды и зазора — из `DeterminateDrawable.java`.
 class M3WavyLinearProgress extends StatefulWidget {
   const M3WavyLinearProgress({
     super.key,
     required this.value,
     this.color,
     this.trackColor,
+    this.waveSpeed = 0,
     this.semanticsLabel,
   });
 
   /// Прогресс 0..1.
   final double value;
 
-  /// Активная часть. По умолчанию `colorScheme.primary`.
+  /// Активная часть и stop indicator. По умолчанию `colorScheme.primary`
+  /// (`m3_comp_progress_indicator_active_indicator_color`).
   final Color? color;
 
-  /// Трек. По умолчанию активный цвет с прозрачностью [trackOpacity].
+  /// Трек. По умолчанию `colorScheme.secondaryContainer`
+  /// (`m3_comp_progress_indicator_track_color`).
   final Color? trackColor;
+
+  /// Скорость бега волны, dp в секунду. Как и `waveSpeed` в MDC, по умолчанию
+  /// 0 — волна неподвижна.
+  final double waveSpeed;
 
   final String? semanticsLabel;
 
-  /// Длина волны.
-  static const double wavelength = 40;
-
-  /// Амплитуда синусоиды.
-  static const double amplitude = 3;
-
-  /// Толщина активной части и трека.
+  /// `m3_comp_progress_indicator_linear_track_thickness`.
   static const double thickness = 4;
 
-  /// Зазор между активной частью и треком.
+  /// `m3_comp_progress_indicator_linear_track_active_indicator_space`.
   static const double trackGap = 4;
 
-  /// Диаметр точки-ограничителя в конце шкалы.
+  /// `m3_comp_progress_indicator_linear_stop_indicator_size`.
   static const double stopIndicatorSize = 4;
 
-  /// Высота виджета: волна плюс запас на амплитуду.
-  static const double height = 14;
+  /// `m3_comp_progress_indicator_linear_active_indicator_wave_amplitude`.
+  static const double amplitude = 3;
 
-  /// Прозрачность трека относительно активного цвета.
-  static const double trackOpacity = 0.32;
+  /// `m3_comp_progress_indicator_linear_active_indicator_wave_wavelength`.
+  static const double wavelength = 40;
 
-  /// Период бегущей волны.
-  static const Duration wavePeriod = Duration(milliseconds: 2000);
+  /// Высота: толщина плюс размах волны в обе стороны.
+  static const double height = thickness + 2 * amplitude;
 
-  /// С этого значения амплитуда начинает уходить в ноль, на 1.0 волна плоская.
-  static const double flattenFrom = 0.9;
+  /// `FULL_AMPLITUDE_PROGRESS_MIN` / `_MAX`: вне этого диапазона волна гаснет.
+  static const double fullAmplitudeProgressMin = 0.1;
+  static const double fullAmplitudeProgressMax = 0.9;
 
-  /// Амплитуда волны для заданного прогресса.
-  ///
-  /// Вынесено из painter-а, чтобы геометрию можно было проверить юнит-тестом.
-  static double amplitudeFor(double value) {
-    final double v = value.clamp(0.0, 1.0);
-    if (v <= flattenFrom) return amplitude;
-    final double t = ((v - flattenFrom) / (1 - flattenFrom)).clamp(0.0, 1.0);
-    return amplitude * (1 - t);
-  }
+  /// `AMPLITUDE_ANIMATION_DURATION_MS`.
+  static const Duration amplitudeAnimationDuration = Duration(
+    milliseconds: 500,
+  );
+
+  /// `GAP_RAMP_DOWN_THRESHOLD`: у самого начала зазор сходит на нет.
+  static const double gapRampDownThreshold = 0.01;
+
+  /// Должна ли волна быть включена при данном прогрессе.
+  static bool hasFullAmplitude(double value) =>
+      value >= fullAmplitudeProgressMin && value <= fullAmplitudeProgressMax;
+
+  /// Зазор между активной частью и треком при данном прогрессе.
+  static double displayedGap(double value) =>
+      trackGap * math.min(1.0, value.clamp(0.0, 1.0) / gapRampDownThreshold);
 
   @override
   State<M3WavyLinearProgress> createState() => _M3WavyLinearProgressState();
 }
 
 class _M3WavyLinearProgressState extends State<M3WavyLinearProgress>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _phase = AnimationController(
+    with TickerProviderStateMixin {
+  late final AnimationController _amplitude = AnimationController(
     vsync: this,
-    duration: M3WavyLinearProgress.wavePeriod,
-  )..repeat();
+    duration: M3WavyLinearProgress.amplitudeAnimationDuration,
+    value: M3WavyLinearProgress.hasFullAmplitude(widget.value) ? 1 : 0,
+  );
+
+  /// Включение волны — стандартный easing, выключение — emphasized
+  /// accelerate, как `amplitudeOnInterpolator` / `amplitudeOffInterpolator`.
+  late CurvedAnimation _amplitudeCurve = _curveFor(on: true);
+
+  Ticker? _phaseTicker;
+  double _phase = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPhaseTicker();
+  }
+
+  @override
+  void didUpdateWidget(M3WavyLinearProgress oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final bool wasOn = M3WavyLinearProgress.hasFullAmplitude(oldWidget.value);
+    final bool isOn = M3WavyLinearProgress.hasFullAmplitude(widget.value);
+    if (wasOn != isOn) {
+      _amplitudeCurve.dispose();
+      _amplitudeCurve = _curveFor(on: isOn);
+      isOn ? _amplitude.forward() : _amplitude.reverse();
+    }
+    if (oldWidget.waveSpeed != widget.waveSpeed) _syncPhaseTicker();
+  }
+
+  CurvedAnimation _curveFor({required bool on}) => CurvedAnimation(
+    parent: _amplitude,
+    curve: on ? Easing.standard : Easing.emphasizedAccelerate,
+    reverseCurve: on ? Easing.standard : Easing.emphasizedAccelerate,
+  );
+
+  /// Бегущая волна требует покадровой перерисовки, неподвижная — нет.
+  void _syncPhaseTicker() {
+    _phaseTicker?.dispose();
+    _phaseTicker = null;
+    if (widget.waveSpeed == 0) return;
+    _phaseTicker = createTicker((elapsed) {
+      final double seconds =
+          elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+      setState(() => _phase = seconds * widget.waveSpeed);
+    })..start();
+  }
 
   @override
   void dispose() {
-    _phase.dispose();
+    _phaseTicker?.dispose();
+    _amplitudeCurve.dispose();
+    _amplitude.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color active = widget.color ?? Theme.of(context).colorScheme.primary;
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final double value = widget.value.clamp(0.0, 1.0);
 
     return Semantics(
@@ -97,19 +153,16 @@ class _M3WavyLinearProgressState extends State<M3WavyLinearProgress>
         height: M3WavyLinearProgress.height,
         width: double.infinity,
         child: AnimatedBuilder(
-          animation: _phase,
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _WavyPainter(
-                value: value,
-                phase: _phase.value,
-                color: active,
-                trackColor:
-                    widget.trackColor ??
-                    active.withValues(alpha: M3WavyLinearProgress.trackOpacity),
-              ),
-            );
-          },
+          animation: _amplitudeCurve,
+          builder: (context, _) => CustomPaint(
+            painter: _WavyPainter(
+              value: value,
+              amplitudeFraction: _amplitudeCurve.value,
+              phase: _phase,
+              color: widget.color ?? colors.primary,
+              trackColor: widget.trackColor ?? colors.secondaryContainer,
+            ),
+          ),
         ),
       ),
     );
@@ -119,6 +172,7 @@ class _M3WavyLinearProgressState extends State<M3WavyLinearProgress>
 class _WavyPainter extends CustomPainter {
   _WavyPainter({
     required this.value,
+    required this.amplitudeFraction,
     required this.phase,
     required this.color,
     required this.trackColor,
@@ -126,7 +180,10 @@ class _WavyPainter extends CustomPainter {
 
   final double value;
 
-  /// Фаза бегущей волны, 0..1 за один период.
+  /// Доля от полной амплитуды, 0..1.
+  final double amplitudeFraction;
+
+  /// Сдвиг волны в dp.
   final double phase;
 
   final Color color;
@@ -134,81 +191,76 @@ class _WavyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double centerY = size.height / 2;
     final double width = size.width;
     if (width <= 0) return;
 
     const double stroke = M3WavyLinearProgress.thickness;
-    const double gap = M3WavyLinearProgress.trackGap;
-    const double stopRadius = M3WavyLinearProgress.stopIndicatorSize / 2;
+    final double centerY = size.height / 2;
+    final double gap = M3WavyLinearProgress.displayedGap(value);
 
-    // Точка-ограничитель всегда прижата к правому концу шкалы.
-    final double stopCenterX = width - stopRadius;
-    final double activeEnd = (value * width).clamp(0.0, width);
+    // Скругления концов — половина толщины (`trackCornerRadius` 50%),
+    // поэтому отрезки отступают от краёв на радиус скругления.
+    const double cap = stroke / 2;
+    final double activeEnd = cap + value * (width - 2 * cap);
 
-    final Paint trackPaint = Paint()
-      ..color = trackColor
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final Paint activePaint = Paint()
-      ..color = color
+    Paint strokePaint(Color c) => Paint()
+      ..color = c
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    // Трек: от конца активной части с зазором и до правого края.
-    final double trackStart = activeEnd + gap + stroke / 2;
-    final double trackEnd = stopCenterX - gap;
+    // Трек — от конца активной части с зазором до самого края: stop indicator
+    // в MDC лежит поверх трека, а не отделён от него.
+    final double trackStart = value <= 0 ? cap : activeEnd + gap + stroke;
+    final double trackEnd = width - cap;
     if (trackStart < trackEnd) {
       canvas.drawLine(
         Offset(trackStart, centerY),
         Offset(trackEnd, centerY),
-        trackPaint,
+        strokePaint(trackColor),
       );
     }
 
-    // Активная часть: синусоида с бегущей фазой.
-    if (activeEnd > 0) {
-      canvas.drawPath(_wavePath(activeEnd, centerY, stroke), activePaint);
+    if (value > 0) {
+      canvas.drawPath(_wave(cap, activeEnd, centerY), strokePaint(color));
     }
 
-    // Stop indicator — того же цвета, что активная часть.
+    // Stop indicator: центр отступает от края на половину толщины трека.
+    const double stopRadius = M3WavyLinearProgress.stopIndicatorSize / 2;
     canvas.drawCircle(
-      Offset(stopCenterX, centerY),
+      Offset(width - cap, centerY),
       stopRadius,
       Paint()..color = color,
     );
   }
 
-  Path _wavePath(double end, double centerY, double stroke) {
+  Path _wave(double start, double end, double centerY) {
     final Path path = Path();
-    final double amplitude = M3WavyLinearProgress.amplitudeFor(value);
-    final double start = stroke / 2;
-    final double last = math.max(start, end - stroke / 2);
+    final double amplitude = M3WavyLinearProgress.amplitude * amplitudeFraction;
 
     double yAt(double x) {
       if (amplitude == 0) return centerY;
-      final double angle =
-          2 * math.pi * ((x / M3WavyLinearProgress.wavelength) + phase);
-      return centerY + amplitude * math.sin(angle);
+      return centerY +
+          amplitude *
+              math.sin(
+                2 * math.pi * (x - phase) / M3WavyLinearProgress.wavelength,
+              );
     }
 
     path.moveTo(start, yAt(start));
-    // Шаг в 1 логический пиксель: на длине волны 40dp этого достаточно,
-    // чтобы ломаная читалась как гладкая синусоида.
-    for (double x = start + 1; x < last; x += 1) {
+    // Шаг в 1dp: на длине волны 40dp ломаная неотличима от синусоиды.
+    for (double x = start + 1; x < end; x += 1) {
       path.lineTo(x, yAt(x));
     }
-    path.lineTo(last, yAt(last));
+    path.lineTo(end, yAt(end));
     return path;
   }
 
   @override
   bool shouldRepaint(_WavyPainter old) {
     return old.value != value ||
+        old.amplitudeFraction != amplitudeFraction ||
         old.phase != phase ||
         old.color != color ||
         old.trackColor != trackColor;
