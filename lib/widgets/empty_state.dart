@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:material_new_shapes/material_new_shapes.dart';
 
 import '../theme/app_typography.dart';
 
@@ -44,18 +43,15 @@ class EmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: context.text.titleLarge!.emphasized.copyWith(fontSize: 20),
+            style: context.text.titleLarge!.emphasized,
           ),
           if (description != null) ...[
             const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 260),
-              child: Text(
-                description!,
-                textAlign: TextAlign.center,
-                style: context.text.bodyMedium!.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
+            Text(
+              description!,
+              textAlign: TextAlign.center,
+              style: context.text.bodyMedium!.copyWith(
+                color: context.colors.onSurfaceVariant,
               ),
             ),
           ],
@@ -66,6 +62,13 @@ class EmptyState extends StatelessWidget {
   }
 }
 
+/// Декор пустого состояния из библиотеки форм M3.
+///
+/// https://m3.material.io/styles/shape — абстрактные формы для декоративных
+/// элементов («Use abstract shapes on imagery and decorative UI»), без смысла,
+/// закреплённого за формой. Формы — `MaterialShapes` (Dart-порт
+/// `androidx.graphics.shapes`): круг, квадрат и треугольник, как в макете;
+/// сочетание круглых и угловатых форм — приём «tension» из M3 Expressive.
 class _GeometricIllustration extends StatelessWidget {
   const _GeometricIllustration({
     required this.size,
@@ -79,11 +82,15 @@ class _GeometricIllustration extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
 
-    // Пропорции макета: круг 0.58 ширины, квадрат 0.47, треугольник 0.35x0.35.
+    // Пропорции композиции — из макета.
     final double w = size.width;
     final double h = size.height;
-    final double circle = w * 0.58;
-    final double square = w * 0.47;
+
+    Widget shape(RoundedPolygon polygon, Color color, double side) => SizedBox(
+      width: side,
+      height: side,
+      child: CustomPaint(painter: _PolygonPainter(polygon, color)),
+    );
 
     return ExcludeSemantics(
       child: SizedBox(
@@ -94,54 +101,35 @@ class _GeometricIllustration extends StatelessWidget {
             Positioned(
               left: w * 0.04,
               top: h * 0.12,
-              child: Container(
-                width: circle,
-                height: circle,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  shape: BoxShape.circle,
-                ),
+              child: shape(
+                MaterialShapes.circle,
+                colors.primaryContainer,
+                w * 0.58,
               ),
             ),
             Positioned(
               right: w * 0.02,
               bottom: 0,
-              child: Transform.rotate(
-                angle: 14 * math.pi / 180,
-                child: Container(
-                  width: square,
-                  height: square,
-                  decoration: BoxDecoration(
-                    color: colors.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(square * 0.34),
-                  ),
-                ),
+              child: shape(
+                MaterialShapes.square,
+                colors.tertiaryContainer,
+                w * 0.47,
               ),
             ),
             Positioned(
               right: w * 0.14,
               top: 0,
-              child: ClipPath(
-                clipper: _TriangleClipper(),
-                child: Container(
-                  width: w * 0.33,
-                  height: h * 0.34,
-                  color: colors.surfaceContainerHigh,
-                ),
+              child: shape(
+                MaterialShapes.triangle,
+                colors.surfaceContainerHigh,
+                w * 0.33,
               ),
             ),
             if (withAccentDot)
               Positioned(
                 left: w * 0.3,
                 bottom: h * 0.17,
-                child: Container(
-                  width: w * 0.15,
-                  height: w * 0.15,
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                child: shape(MaterialShapes.circle, colors.primary, w * 0.15),
               ),
           ],
         ),
@@ -150,14 +138,21 @@ class _GeometricIllustration extends StatelessWidget {
   }
 }
 
-class _TriangleClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) => Path()
-    ..moveTo(size.width / 2, 0)
-    ..lineTo(size.width, size.height)
-    ..lineTo(0, size.height)
-    ..close();
+/// Рисует нормализованную форму на всю площадь.
+class _PolygonPainter extends CustomPainter {
+  _PolygonPainter(this.polygon, this.color);
+
+  final RoundedPolygon polygon;
+  final Color color;
 
   @override
-  bool shouldReclip(_TriangleClipper oldClipper) => false;
+  void paint(Canvas canvas, Size size) {
+    final Path unit = polygon.normalized().toPath();
+    final Matrix4 scale = Matrix4.diagonal3Values(size.width, size.height, 1);
+    canvas.drawPath(unit.transform(scale.storage), Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_PolygonPainter oldDelegate) =>
+      oldDelegate.polygon != polygon || oldDelegate.color != color;
 }
