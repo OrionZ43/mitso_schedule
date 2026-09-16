@@ -151,6 +151,47 @@ Compose против 50° в MDC. Плюс 90° на морф есть в обо
   определённого варианта `role: SemanticsRole.progressBar`, `minValue`, `maxValue`, `value`.
 
 ## В приложении
+### Реализация во Flutter
+`lib/widgets/m3_loading_indicator.dart` переписан с MDC на Compose `LoadingIndicator.kt`.
+Строки таблицы «Расхождения» ниже с номерами 1–8 и 11 закрыты. Строки 9 (контраст в
+кнопке «Отправить») и 10 (задержка 200 мс на загрузочном экране) касаются экранов и остаются
+открытыми.
+
+**Совпадает с Compose**
+- API: `M3LoadingIndicator(contained, size, color, containerColor, polygons, semanticsLabel)`
+  и `M3LoadingIndicator.determinate(progress: …)`. По умолчанию `contained: false`, цвет
+  `primary`. С контейнером: круг `primaryContainer`, форма `onPrimaryContainer`. Сторона по
+  умолчанию 48dp, допустимо от 24 до 240dp (assert). Форма рисуется от фактического размера.
+- Формы. `IndeterminateIndicatorPolygons` и `DeterminateIndicatorPolygons` (круг, повёрнутый
+  на 18°, и SoftBurst). Каждая форма проходит `normalized()` в `morphSequence`. Коэффициент
+  один на всю последовательность: `calculateScaleFactor × 38/48` (для стандартного набора
+  ≈ 0,866). Путь масштабируется и центрируется по `getBounds()`, как в `processPath`, затем
+  поворачивается вокруг центра.
+- Неопределённый вариант (`LoadingIndicatorMotion.frameAt`). Каждые 650 мс запускается новая
+  пружина 0 → 1: 0.6 / 200, порог 0.1. Когда она завершается, `snapTo(0)`, индекс +1, цель
+  угла +90° (по модулю 360°), начальный угол 90°. Общее вращение линейное, 360° за 4666 мс.
+  Угол = `morph × 90 + цель + общее вращение`.
+- Момент завершения пружины считается как в Compose: `estimateAnimationDurationMillis`, порт в
+  `lib/theme/compose_spring.dart`. Для 0 → 1 это 297 мс, то есть меньше интервала.
+- Определённый вариант: номер морфа = `floor(n × p)`, доля = `(p × n) % 1`, при `p == 1`
+  берётся 1, поворот `−p × 180°`. Своей анимации нет.
+- Семантика как у Flutter `ProgressIndicator`: неопределённый — `SemanticsRole.loadingSpinner`,
+  определённый — `progressBar` с `minValue`/`maxValue`/`value`. Live region нет.
+
+**Уменьшение движения** (`reduceMotionOf`, «Удалить анимации»). Поведение взято из Compose при
+`MotionDurationScale = 0` (`SuspendAnimation.kt`, `doAnimationFrameWithScale`): анимации
+заканчиваются в первом кадре, а `delay(650)` работает как обычно. Раз в 650 мс форма
+сменяется следующей без морфа и поворачивается на 90°, общего вращения нет. Между шагами кадры
+не перерисовываются. Это же требует правило «Follows accessibility settings» из
+`styles/motion/transitions`: без shape morphing.
+
+**Отступления**
+- Если сменить набор `polygons`, цикл начинается заново: индекс 0, угол 90°. В Compose
+  `morphProgress`, угол и общее вращение хранятся в `remember` без ключа и продолжаются с
+  текущих значений. В приложении набор форм не меняется.
+- Интервал 650 мс отсчитывается от первого кадра тикера. В Compose `delay` не привязан к
+  кадрам, поэтому возможна разница в один кадр.
+
 **Где используется**
 - `lib/widgets/m3_loading_indicator.dart` — `M3LoadingIndicator`, `LoadingIndicatorMotion`,
   `LoadingIndicatorShapes`.
