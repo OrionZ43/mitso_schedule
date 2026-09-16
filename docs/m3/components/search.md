@@ -132,6 +132,59 @@ Compose, contained full-screen (`SearchBar.kt`):
   преподаватель / аудитория» и `ListTile`-результаты в `suggestionsBuilder`, `_SearchHint`).
   Тема: `searchBarTheme` и `searchViewTheme` в `lib/app.dart`.
 
+### Реализация во Flutter
+
+Виджет `lib/widgets/m3_search.dart` готов; экран расписания на него ещё не переведён, поэтому
+«Где используется» и расхождения ниже описывают текущий `SearchAnchor.bar`.
+
+- API:
+  - `M3SearchBar({required String hintText, required Widget Function(BuildContext, String query) contentBuilder, TextEditingController? controller, ValueChanged<String>? onSearch})`;
+  - изнутри контента `M3SearchScope.of(context)`: `query`, `close()`, `setQuery(String)`,
+    `announce(String)` (→ `SemanticsService.sendAnnouncement`);
+  - `contentBuilder` — обычный builder: вызывается при каждом изменении запроса и при
+    перестройке `M3SearchBar`, `ConsumerWidget` внутри обновляются сами (расхождение 7 уходит).
+- Точно по Compose:
+  - свёрнутая строка: 56dp, `surfaceContainerHigh`, `StadiumBorder`, без тени, ширина 360..720dp;
+    иконка поиска `onSurface` в 16dp от края, текст в 52dp (зона 48dp + `SearchBarIconOffsetX`);
+    подсказка `bodyLarge` `onSurfaceVariant`, запрос `onSurface`; введённый текст остаётся в
+    строке после закрытия;
+  - открытый поиск — свой `PopupRoute` в корневом навигаторе (аналог `BasicEdgeToEdgeDialog`),
+    раскладка — порт `FullScreenSearchBarLayout(isContained = true)`: подложка
+    `surfaceContainerLow` с прозрачностью `progress`; ширина и центр поля — по неограниченному
+    прогрессу (перелёт FastSpatial виден), верх и прозрачность — по ограниченному; поле на
+    `inset.top + 4dp`, контент на 8dp ниже; скругление подложки `28dp × max(1 − progress, back)`;
+  - пружина `FastSpatial` в обе стороны с сохранением скорости; контент — пауза 50 мс, затем
+    100 мс `Easing.standardAccelerate`; скрытие 100 мс `Easing.standardDecelerate`;
+  - поиск убирается, как только прогресс ≤ 0.02 (`SearchBarState.currentValue`); пока он
+    сворачивается, свёрнутая строка скрыта (`isVisible` в `AppBarWithSearch`);
+  - ведущая иконка сразу становится `IconButton` «Назад» (`SampleLeadingIcon`), «Очистить» — пока
+    запрос не пуст; фокус при открытии, закрытие снимает фокус и прячет клавиатуру;
+    `TextInputAction.search`;
+  - системный «назад» — через `PopScope`; `Navigator.pop` из контента тоже сворачивает с анимацией;
+  - predictive back — `WidgetsBindingObserver.handleStartBackGesture` / `Update…` / `Commit…` /
+    `Cancel…`: подложка до 90%, 8dp от края со стороны жеста (не дальше свёрнутой строки), сдвиг
+    по Y до 24dp, кривая `PredictiveBack.transform` = `Cubic(0.1, 0.1, 0, 1)`; после commit
+    геометрия жеста сохраняется на время сворачивания. Проверено тестом через канал
+    `flutter/backgesture`;
+  - доступность: свёрнутая строка — `Semantics(textField, label: подсказка, value: запрос)`, у поля
+    в открытом поиске подсказка — `hintText`.
+- Отступления:
+  1. Поля строки в фокусе 12dp по токену `md.comp.search-view.contained.leading-margin`; Compose
+     берёт 8dp (`FullScreenExpandedHorizontalPadding`).
+  2. Compose ставит полю `contentDescription` «Строка поиска» и `stateDescription` «Подсказки
+     показаны ниже». Здесь доступное имя — подсказка (Search → Accessibility), а появление
+     результатов озвучивает контент через `M3SearchScope.announce`: гайд этого требует, Compose
+     сам не делает.
+  3. Прямоугольник свёрнутой строки обновляется на тике анимации, а не в раскладке, как
+     `collapsedBounds`: Flutter не даёт читать чужой размер во время layout. Если строка под
+     поиском сдвинется, отставание — один кадр.
+  4. Кнопка «Поиск» на клавиатуре только прячет клавиатуру и вызывает `onSearch`; в примере Compose
+     она сворачивает поиск, но у нас результаты живут в открытом поиске.
+  5. Predictive back не дойдёт до приложения, пока в `android/app/src/main/AndroidManifest.xml` нет
+     `android:enableOnBackInvokedCallback="true"`: без флага Android шлёт обычный «назад», и поиск
+     сворачивается без жестовой анимации.
+  6. Поля свёрнутой строки 24dp задаёт экран, в который её вставляют.
+
 ### Расхождения
 1. **Стиль открытого поиска.** Сейчас: Flutter `SearchView` в стиле divided. Шапка 72dp с
    прозрачной строкой, разделитель `outline` от Flutter и ещё один свой

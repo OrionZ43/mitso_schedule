@@ -100,6 +100,49 @@ Segmented-список собран верно: зазор 2dp, крайние �
 - Swipe-действия дублируются одиночным действием, например кнопкой «ещё».
 
 ## В приложении
+
+### Реализация во Flutter
+
+`lib/widgets/segmented_list.dart` переписан. Экраны пока передают в `SegmentedList` старые
+`ListTile` / `SwitchListTile`: они по-прежнему лежат в статичном контейнере 16/4, поэтому
+«Где используется» и расхождения ниже описывают экраны до перевода на `M3ListItem`.
+
+- API:
+  - `M3ListItem({required Widget headline, Widget? leading, Widget? overline, Widget? supporting, Widget? trailing, VoidCallback? onTap, VoidCallback? onLongPress, bool selected = false, bool enabled = true, Color? containerColor, String? semanticsLabel})`;
+  - `SegmentedList({required List<Widget> children})` — зазор 2dp, позицию каждому ребёнку отдаёт
+    `SegmentedListPosition(index, count)` (его же можно поставить вручную в `ListView.builder`);
+    `SegmentedList.shapeFor(index, count)` — `segmentedShapes`.
+- Точно по Compose:
+  - раскладка — свой `RenderBox`, порт `InteractiveListItemMeasurePolicy`: поля 16/16/10/10, 12dp
+    между слотами, минимальная высота 56/72/88 по `ListItemType`, выравнивание по центру, по верху —
+    от 60dp внутренней высоты (`InteractiveListVerticalAlignmentBreakpoint`);
+  - стили и цвета слотов по `ListTokens`: `bodyLarge` `onSurface`, `bodyMedium` / `labelSmall`
+    `onSurfaceVariant`, иконки `onSurfaceVariant`, текст в leading — `titleMedium`; selected — всё
+    `onSecondaryContainer` на `secondaryContainer`; disabled — `onSurface` 38%;
+  - форма: позиционная `segmentedShapes` (одиночный 16, первый 16/4, средние 4, последний 4/16),
+    без позиции — 4dp (`ListItemDefaults.shapes()`); по состояниям `shapeForInteraction`:
+    pressed → selected → focused — 16dp, hovered — 12dp; морфинг — порт `AnimatedShapeState`
+    (разворот с сохранением скорости, от видимой формы к новой цели) на пружине FastSpatial;
+    смена позиции применяется без морфинга, как `key(shapes)` в Compose;
+  - цвета — пружина DefaultEffects;
+  - ripple обрезан текущей формой, state layer — `AppStateLayer` цветом содержимого;
+  - семантика: `MergeSemantics`, button у нажимаемого пункта, флаг selected, enabled;
+    `semanticsLabel` заменяет текст слотов.
+- Отступления:
+  1. Многострочный supporting определяется эвристикой Compose из intrinsic-замера (выше 30sp с
+     учётом масштаба шрифта): `RenderBox` отдаёт только первую базовую линию, а Compose сравнивает
+     первую и последнюю.
+  2. Цвета интерполируются в sRGB (`Color.lerp`), в Compose — в Oklab.
+  3. Нет dragged-состояния (перетаскивание не используется) и ролей radio / checkbox у выбираемых
+     пунктов: второй признак выбора (иконка, radio) и роль добавляет экран.
+  4. Disabled-контейнер — заданный `containerColor`. В Compose при переопределении `containerColor`
+     disabled-контейнер остаётся `surface`, и отключённый пункт выпадал бы из списка.
+  5. Контейнер по умолчанию `surfaceContainer`, как в примерах Compose (README, отступление 14).
+  6. Compose уменьшает `LocalMinimumInteractiveComponentSize` для контролов в слотах; во Flutter
+     зона нажатия контролов в слотах не меняется.
+  7. `M3ListItem` должен быть прямым ребёнком `SegmentedList`: обёртка вокруг него получит
+     статичный контейнер, и морфинг спрячется под ним.
+
 - Где используется:
   - `lib/widgets/segmented_list.dart` → `SegmentedList`: `Material` на каждый пункт,
     `surfaceContainer`, углы 16/4, зазор 2dp, внутри `ListTile` / `SwitchListTile`;
