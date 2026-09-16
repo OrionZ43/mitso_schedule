@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Выгрузка гайдлайнов m3.material.io (tool/m3_guidelines.py)
+.m3-guidelines/
