@@ -1,6 +1,8 @@
 # Группы кнопок (Button groups)
 
-Статус в приложении: ✅ портировано — standard group (`M3ButtonGroup`), селектор дней и connected group (см. «Реализация во Flutter»; отступления записаны там же). Разделы ниже описывают прежнее состояние до порта.
+Статус в приложении: ✅ соответствует — лента дней на `M3ButtonGroup`, фильтры и настройки на `ConnectedButtonGroup` (отступления — README, п. 3, 15)
+
+> Разделы «В приложении → Расхождения» ниже описывают состояние до порта (16.09.2026); что сделано и что осталось — в «Реализация во Flutter» и в README.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/button-groups/guidelines (и /specs, /accessibility); дамп `.m3-guidelines/components__button-groups.md`

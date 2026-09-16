@@ -1,6 +1,8 @@
 # Расширенная плавающая кнопка (Extended FAB)
 
-Статус в приложении: ⚠️ частично
+Статус в приложении: ✅ соответствует — `M3ExtendedFab` (primary) в «Пропусках», вне вкладок
+
+> Разделы «В приложении → Расхождения» ниже описывают состояние до порта (16.09.2026); что сделано и что осталось — в «Реализация во Flutter» и в README.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/extended-fab/guidelines (и /specs, /accessibility); дамп `.m3-guidelines/components__extended-fab.md`

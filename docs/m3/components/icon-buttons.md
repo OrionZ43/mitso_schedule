@@ -1,6 +1,8 @@
 # Кнопки-иконки (Icon buttons)
 
-Статус в приложении: ⚠️ частично
+Статус в приложении: ✅ соответствует — `M3IconButton` в app bar и листах
+
+> Разделы «В приложении → Расхождения» ниже описывают состояние до порта (16.09.2026); что сделано и что осталось — в «Реализация во Flutter» и в README.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/icon-buttons/guidelines (и /specs, /accessibility); дамп `.m3-guidelines/components__icon-buttons.md`

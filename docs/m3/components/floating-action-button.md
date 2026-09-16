@@ -1,6 +1,8 @@
 # Плавающая кнопка действия (Floating action button, FAB)
 
-Статус в приложении: ⚠️ частично
+Статус в приложении: ✅ соответствует — medium FAB в «Заметках», вне вкладок, показ по `animateFloatingActionButton`
+
+> Разделы «В приложении → Расхождения» ниже описывают состояние до порта (16.09.2026); что сделано и что осталось — в «Реализация во Flutter» и в README.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/floating-action-button/guidelines (и /specs, /accessibility); дамп `.m3-guidelines/components__floating-action-button.md`
