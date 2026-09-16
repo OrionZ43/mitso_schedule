@@ -1,6 +1,6 @@
 # Группы кнопок (Button groups)
 
-Статус в приложении: ❌ не соответствует (селектор дней); ⚠️ частично (connected group в «Заметках» и «Профиле»)
+Статус в приложении: ✅ портировано — standard group (`M3ButtonGroup`), селектор дней и connected group (см. «Реализация во Flutter»; отступления записаны там же). Разделы ниже описывают прежнее состояние до порта.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/button-groups/guidelines (и /specs, /accessibility); дамп `.m3-guidelines/components__button-groups.md`
@@ -109,3 +109,21 @@
 1. Обернуть кнопку в render-обёртку по образцу `_RenderInputPadding` (минимум 48dp по высоте, `hitTest` → центр ребёнка) вместо простого `SizedBox`.
 2. В `_ConnectedButtonState.build` считать внутренний радиус так: `_pressed ? pressedInnerCorner : (selected ? full : innerCorner)`.
 3. Цвет: `TweenAnimationBuilder<Color?>` заменить прямым значением (как Compose) — или оставить с записью в README.
+
+### Реализация во Flutter
+**Standard button group** — `M3ButtonGroup` + `M3ButtonGroupItem` (`lib/widgets/m3_button_group.dart`).
+- `RenderM3ButtonGroup` повторяет `ButtonGroupMeasurePolicy.measure`: ширины детей без веса — `maxIntrinsicWidth`, с весом (`M3ButtonGroupItem.weight`) — делят остаток; затем цикл расширения нажатых (`M3ButtonGroup.expandPressed`: первый / средний / последний, `expandedRatio` 0.15, пределы `compressionLimit`), дети измеряются с жёсткой шириной, промежуток постоянный (`Arrangement.spacedBy`, с учётом RTL), выравнивание по вертикали — сверху. Общая ширина не меняется. Parent data: прогресс `Animation<double>`, `compressionLimit` (у элемента по умолчанию 24dp, у ребёнка без элемента 0 — как `ButtonGroupParentData`), вес.
+- `M3ButtonGroupItem` — порт `EnlargeOnPressNode`: слушает `WidgetStatesController` кнопки (аналог `interactionSource`), при нажатии пружина FastSpatial к 1; когда нажатий нет — покадровое ожидание `value > 0.75` не дольше 1000 мс, затем пружина к 0; новое нажатие отменяет ожидание. Прогресс не ограничен [0, 1] — перелёт виден на ширине.
+- Промежутки: `M3ButtonGroupDefaults.spacingFor(size)` — 18 / 12 / 8 / 8 / 8dp.
+- Отступления: (1) прирост не округляется до целых пикселей (в Compose `roundToInt` — артефакт целочисленной раскладки); (2) overflow-меню не портировано (для toggle-групп MDC его запрещает); (3) при «Удалить анимации» расширение отключено — оно не передаёт состояние, только движение.
+
+**Connected group** — `ConnectedButtonGroup<T>` (`lib/widgets/connected_button_group.dart`), API прежний. Теперь строка `M3ToggleButton` размера S с формами `ConnectedButtonGroup.shapesFor(index, count)` = `connected{Leading,Middle,Trailing}ButtonShapes()` (средняя — 8dp на всех углах, pressed 4dp, checked full). Закрыты расхождения 1–4 списка выше: зона нажатия 48dp по всей высоте (`M3TouchTarget`, касание в полях уходит в кнопку); pressed важнее checked; цвет без анимации; подпись одной строкой без многоточия. Семантика — `selected` + `inMutuallyExclusiveGroup`.
+
+**Селектор дней** — `DaySelector` (`lib/widgets/day_selector.dart`), конструктор прежний. Реализовано решение «группа на неделю»: дни делятся на календарные недели с понедельника (`DaySelector.weeksOf`), каждая неделя — страница `PageView` (lateral: едет за пальцем, без затухания) с `M3ButtonGroup` на всю ширину (поля 16dp, кнопки с равным весом, одной строкой). Кнопка дня — filled `M3ToggleButton`: surfaceContainer / onSurfaceVariant ↔ primary / onPrimary без анимации; формы `M3ToggleButtonDefaults.shapesFor(высота)` (60dp → корзина M: full, pressed 12dp, выбранная 16dp; при 200% шрифта 104dp → L: 16 / 28dp), промежуток по той же корзине (8dp); нажатие расширяет кнопку за счёт соседей. Когда `selectedIndex` уходит в другую неделю, страница листается сама; при «Удалить анимации» — прыжком. Семантика: `button`, `selected`, `inMutuallyExclusiveGroup`, метка — полная дата («Среда, 16 сентября»). Высота растёт с масштабом шрифта. Закрыты расхождения 1–5 и 7–8 списка выше.
+
+Осознанные отступления селектора:
+1. **Подпись в две строки** (день недели над числом) — против «Don't truncate or wrap label text». Одной строкой («Ср 16») подпись не помещается в кнопку недели на компактном экране: 6–7 кнопок делят ширину окна без полей 16dp, это 40–56dp на кнопку, а при 200% шрифта двухбуквенный день уже занимает ~35dp. Две короткие строки не переносятся и не обрезаются.
+2. Шрифты строк — `label-text` размеров S (`labelLarge`, день) и M (`titleMedium`, число); вертикальный отступ 8dp — `ButtonDefaults.ContentPadding` (`ButtonVerticalPadding`). Токенов для двухстрочной подписи нет. Итоговая высота 60dp ≥ M 56dp.
+3. Программная смена недели — переход Emphasized, 500 мс (`motion.md`, «Переходы»: начало и конец на экране), а не пружина: у pager в M3 своего токена нет.
+4. `compressionLimit` кнопок дня — значение Compose по умолчанию (24dp); при кнопках 40–56dp рост раньше упирается в 15% ширины.
+5. При 7 днях в неделе (с воскресеньем) на экране 360dp ширина кнопки ~40dp < 48dp — зона нажатия по ширине ограничена самой кнопкой (промежуток 8dp касаний не ловит).
