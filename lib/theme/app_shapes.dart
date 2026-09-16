@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Шкала радиусов Material 3.
@@ -46,4 +48,42 @@ abstract final class AppShapes {
   static const RoundedRectangleBorder bottomSheetShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(top: Radius.circular(bottomSheet)),
   );
+}
+
+/// Форма индикатора navigation bar в M3 Expressive: таблетка 56×32dp.
+///
+/// Flutter рисует индикатор в фиксированной рамке 64×32 (`_kIndicatorWidth`
+/// в `navigation_bar.dart`) и ширину не настраивает, а MDC Expressive задаёт
+/// `m3_comp_nav_bar_item_vertical_active_indicator_width` = 56dp. Фон и ripple
+/// индикатора рисуются по его форме, поэтому форма сужает таблетку внутри рамки.
+class NavigationIndicatorBorder extends StadiumBorder {
+  const NavigationIndicatorBorder({super.side, this.width = 56});
+
+  final double width;
+
+  Rect _inset(Rect rect) => Rect.fromCenter(
+    center: rect.center,
+    width: math.min(width, rect.width),
+    height: rect.height,
+  );
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      super.getOuterPath(_inset(rect), textDirection: textDirection);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      super.getInnerPath(_inset(rect), textDirection: textDirection);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) =>
+      super.paint(canvas, _inset(rect), textDirection: textDirection);
+
+  @override
+  NavigationIndicatorBorder copyWith({BorderSide? side}) =>
+      NavigationIndicatorBorder(side: side ?? this.side, width: width);
+
+  @override
+  NavigationIndicatorBorder scale(double t) =>
+      NavigationIndicatorBorder(side: side.scale(t), width: width * t);
 }

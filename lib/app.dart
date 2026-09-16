@@ -94,23 +94,26 @@ ThemeData buildTheme(ColorScheme scheme) {
       scrolledUnderElevation: 0,
     ),
 
+    // Navigation bar по токенам MDC Expressive (bottomnavigation/tokens.xml):
+    // высота 64dp, индикатор 56×32 secondaryContainer, подпись активного
+    // пункта — secondary.
     navigationBarTheme: NavigationBarThemeData(
-      height: 80,
+      height: 64,
       backgroundColor: scheme.surfaceContainer,
-      indicatorShape: AppShapes.stadium,
-      indicatorColor: scheme.primaryContainer,
+      indicatorShape: const NavigationIndicatorBorder(),
+      indicatorColor: scheme.secondaryContainer,
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           size: 24,
           color: states.contains(WidgetState.selected)
-              ? scheme.onPrimaryContainer
+              ? scheme.onSecondaryContainer
               : scheme.onSurfaceVariant,
         ),
       ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => textTheme.labelMedium!.copyWith(
           color: states.contains(WidgetState.selected)
-              ? scheme.onSurface
+              ? scheme.secondary
               : scheme.onSurfaceVariant,
         ),
       ),
@@ -170,17 +173,6 @@ ThemeData buildTheme(ColorScheme scheme) {
       shape: AppShapes.bottomSheetShape,
       dragHandleColor: scheme.outlineVariant,
       showDragHandle: true,
-    ),
-
-    segmentedButtonTheme: SegmentedButtonThemeData(
-      style: SegmentedButton.styleFrom(
-        // Высота 40dp и радиус full — по спеке segmented buttons.
-        minimumSize: const Size(0, 40),
-        selectedBackgroundColor: scheme.primaryContainer,
-        selectedForegroundColor: scheme.onPrimaryContainer,
-        textStyle: textTheme.labelLarge,
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
     ),
 
     filledButtonTheme: FilledButtonThemeData(

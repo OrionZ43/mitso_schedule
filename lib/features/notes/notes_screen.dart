@@ -7,6 +7,7 @@ import '../../state/tasks_controller.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/connected_button_group.dart';
 import '../../widgets/empty_state.dart';
 
 class NotesScreen extends ConsumerWidget {
@@ -48,17 +49,12 @@ class NotesScreen extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
-            child: SegmentedButton<TaskFilter>(
-              segments: [
-                for (final TaskFilter value in TaskFilter.values)
-                  ButtonSegment<TaskFilter>(
-                    value: value,
-                    label: Text(value.label),
-                  ),
-              ],
-              selected: {filter},
-              onSelectionChanged: (selection) =>
-                  ref.read(taskFilterProvider.notifier).select(selection.first),
+            // Connected button group: segmented button в M3 Expressive устарел.
+            child: ConnectedButtonGroup<TaskFilter>(
+              values: TaskFilter.values,
+              labelOf: (filter) => filter.label,
+              selected: filter,
+              onSelected: ref.read(taskFilterProvider.notifier).select,
             ),
           ),
           if (tasks.isEmpty)
