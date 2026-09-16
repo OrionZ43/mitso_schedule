@@ -4,6 +4,10 @@
 // системное хранилище, которое само докачивает промежуточный.
 //
 //   flutter test integration_test/mitso_tls_test.dart -d <устройство>
+//
+// Внимание: прогон пересобирает app-debug.apk с этим тестом вместо приложения.
+// Перед `flutter install` соберите приложение заново:
+//   flutter build apk --debug -t lib/main.dart
 import 'dart:io';
 
 import 'package:flutter/material.dart';

@@ -77,6 +77,12 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 разблокирован: Android 15+ закрывает сеть приложениям не на переднем плане, и
 тест упадёт с `Failed host lookup`.
 
+> **После integration-теста пересоберите приложение.** `flutter test integration_test/…`
+> собирает `app-debug.apk` с тестом вместо `lib/main.dart`, а `flutter install` ставит
+> последний собранный APK. Запущенная из лаунчера тестовая сборка ждёт команд от компьютера
+> и не рисует ни одного кадра — приложение висит на сплэше. Перед установкой:
+> `flutter build apk --debug -t lib/main.dart` (или просто `flutter run`).
+
 ---
 
 ## Источник данных: apps.mitso.by
