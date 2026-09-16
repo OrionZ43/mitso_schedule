@@ -103,6 +103,46 @@ plain tooltip, а родительский стиль **метки значен�
   - `lib/features/group_picker/group_picker_sheet.dart` — «Назад» в заголовке шита (не app bar);
   - `lib/features/notes/notes_screen.dart` — FAB «Добавить задачу».
 
+**Реализация во Flutter**
+
+Виджет `M3PlainTooltip` (`lib/widgets/m3_tooltip.dart`), тесты `test/m3_tooltip_test.dart`. В экраны
+пока не подключён, расхождения ниже относятся к текущим `tooltip:` у кнопок.
+
+```dart
+M3PlainTooltip({required String message, required Widget child, bool preferBelow = false,
+  EdgeInsetsGeometry anchorPadding = EdgeInsets.zero})
+// Для IconButton: anchorPadding: M3PlainTooltip.iconButtonPadding (контейнер 40dp в зоне 48dp).
+```
+
+Построен на `RawTooltip` (Flutter 3.44): долгое нажатие, оверлей, `Semantics(tooltip)`, закрытие при
+касании в другом месте, одна подсказка за раз.
+
+Совпадает с Compose / токенами:
+- `inverseSurface`, углы 4dp, `bodySmall` / `onInverseSurface`, поля 8×4dp, мин. 40×24dp, макс.
+  ширина 200dp; текст прижат к началу, как в `Box` у `PlainTooltip`;
+- позиция `abovePositioning`: по центру элемента, над ним с зазором 4dp; если не помещается —
+  под ним; по обеим осям в пределах окна. `preferBelow` — `belowPositioning` (для app bar);
+- появление и скрытие: масштаб 0.8 ↔ 1 (от центра) пружиной `FastSpatial`, прозрачность 0 ↔ 1
+  `FastEffects`; при смене направления пружины сохраняют скорость; оверлей убирается, когда
+  успокоилась более долгая пружина (`FastSpatial`, ≈416 мс);
+- без тактильного отклика (в `handleGestures` его нет); клавиатура: видна, пока элемент в фокусе,
+  Escape закрывает (`keyboardBehavior`).
+
+Осознанные отличия:
+1. **Когда скрывается.** По гайду «disappear 1.5 seconds after navigating away from the target
+   region» — через 1,5 с после того, как палец отпущен (так же `RawTooltip.touchDelay`). В Compose
+   неперсистентная подсказка живёт `TooltipDuration` = 1,5 с от показа или до отпускания, если оно
+   позже. Уход курсора — тоже 1,5 с (в Compose сразу).
+2. **Зазор от видимой границы.** Compose берёт границы якоря вместе с `minimumInteractiveComponentSize`,
+   поэтому у `IconButton` визуальный зазор 8dp. Гайд требует 4dp от видимой границы — это
+   `anchorPadding`. Видимую границу автоматически не определить, её передаёт вызывающий код.
+3. **Порог долгого нажатия** — `kLongPressTimeout` Flutter (500 мс); в Compose —
+   `ViewConfiguration.longPressTimeoutMillis` Android (400 мс по умолчанию).
+4. **Семантика.** Текст подсказки сливается с узлом кнопки (`MergeSemantics`). Действие
+   `onLongClick` с подписью, которое добавляет `anchorSemantics` в Compose, не добавляется;
+   роль `SemanticsRole.tooltip` не задаётся (см. «Доступность»).
+5. Уменьшение движения: без масштаба, только прозрачность.
+
 **Расхождения**
 
 | # | Сейчас | Должно быть | Источник |
@@ -121,7 +161,10 @@ plain tooltip, а родительский стиль **метки значен�
    - `constraints: BoxConstraints(minWidth: 40, minHeight: 24, maxWidth: 200)`.
 
    Комментарий про `Widget.Material3.Tooltip` исправить.
-2. Позиция. Задать `positionDelegate` (есть у `Tooltip` во Flutter 3.44): `TooltipPositionContext`
+2. Пункты 2 и 3 **сделаны** в `M3PlainTooltip` (см. «Реализация во Flutter»); осталось заменить
+   `tooltip:` у icon buttons и FAB обёрткой (у кнопок в app bar — `preferBelow: true`, у
+   `IconButton` — `anchorPadding: M3PlainTooltip.iconButtonPadding`).
+   Позиция. Задать `positionDelegate` (есть у `Tooltip` во Flutter 3.44): `TooltipPositionContext`
    даёт `target`, `targetSize` и `tooltipSize`. Подсказку ставить над визуальной границей
    элемента с зазором 4dp, а если не помещается — под ней. Учесть, что цель `IconButton` — это
    область касания 48dp, а визуальная граница — 40dp. Для кнопок в `AppBar` / `SliverAppBar`

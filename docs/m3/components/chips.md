@@ -115,6 +115,41 @@ Compose (`Chip.kt`):
     `onPrimary` с прозрачностью 0.22;
   - `lib/widgets/lesson_card.dart` → `SubgroupBadge`: `labelSmall`, фон `surfaceContainerHigh`.
 
+### Реализация во Flutter
+Виджет `M3FilterChip` (`lib/widgets/m3_filter_chip.dart`), тесты `test/m3_filter_chip_test.dart`.
+В экраны пока не подключён, расхождения ниже относятся к текущим `FilterChip` / `ChoiceChip`.
+
+```dart
+M3FilterChip({required Widget label, required bool selected,
+  required ValueChanged<bool>? onSelected, Widget? leading, FocusNode? focusNode, bool autofocus = false})
+```
+
+Совпадает с Compose `FilterChip` (flat) / токенами:
+- контейнер 32dp, углы 8dp, зона нажатия 48dp (касание рядом с контейнером передаётся в него,
+  ripple остаётся в границах формы);
+- поля `ContentPadding` 8dp + `ChipArrangement`: подпись на 8dp правее слота иконки и на 8dp левее
+  пустого замыкающего слота. Без иконки 16/16dp, с галочкой 8 + 18 + 8 … 16dp;
+- `labelLarge`; невыбранный — прозрачный, обводка 1dp `outlineVariant`, подпись `onSurfaceVariant`,
+  ведущая иконка `primary`; выбранный — `secondaryContainer` без обводки, подпись и иконка
+  `onSecondaryContainer`; disabled — подпись и иконки `onSurface` 38%, обводка `onSurface` 12%,
+  фон выбранного `onSurface` 12%. Цвета меняются без анимации;
+- галочка `Symbols.check` 18dp только у выбранного: `expandHorizontally` — `FastSpatial`,
+  `fadeIn` — `SlowEffects`; `shrinkHorizontally` — `DefaultEffects`, `fadeOut` — `FastEffects`;
+  слот обрезается, ширина идёт от начала; пока слот уезжает, в нём остаётся галочка
+  (`rememberRetainedState`);
+- с `leading` слот не анимируется, при выборе иконка сразу меняется на галочку
+  (`FilterChipWithLeadingIconSample`);
+- `Semantics(checked)` вместе с подписью (`MergeSemantics`), фокус, Space и Enter.
+
+Осознанные отличия:
+1. **Цвет state layer по токенам** `md.comp.filter-chip.*.state-layer.color`: нажатие невыбранного —
+   `onSecondaryContainer`, выбранного — `onSurfaceVariant`; наведение, фокус и перетаскивание —
+   цвет подписи. Compose берёт для ripple цвет содержимого `Surface`.
+2. Ripple — `InkWell` (splash из `Theme.splashFactory`) и рисуется под подписью, как все
+   ink-эффекты Flutter; в Compose индикация поверх содержимого.
+3. Уменьшение движения: слот иконки меняет ширину без пружины, прозрачность анимируется.
+4. Ограничение ширины `widthIn(max = 1000.dp)` не повторяется: подпись в `Flexible`.
+
 ### Расхождения
 1. **Обводка невыбранного чипа.** Сейчас `BorderSide(color: scheme.outline)` в `chipTheme`.
    По токену `outlineVariant`; Flutter по умолчанию уже так делает (`_FilterChipDefaultsM3.side`).
@@ -167,7 +202,8 @@ Compose (`Chip.kt`):
 2. `_PalettePicker`: убрать `Opacity`, отключать через `onSelected: null`. Образец цвета —
    `avatar: SizedBox.square(dimension: 18, child: DecoratedBox(shape: circle))`. Для отключённого
    состояния цвет образца умножить на 0.38 (`disabled.leading-icon.opacity`).
-3. Если нужно движение Compose: свой `M3FilterChip` на `Material` + `InkWell` + `Row`, где ведущая
+3. **Сделано** — `M3FilterChip` (см. «Реализация во Flutter»), осталось подключить в поиске.
+   Исходный план: свой `M3FilterChip` на `Material` + `InkWell` + `Row`, где ведущая
    иконка в `AnimatedSize`/`SizeTransition` с контроллером `AppMotion.fastSpatial` (выдвижение)
    и `AppMotion.defaultEffects` (скрытие), прозрачность `slowEffects` (вход) и `fastEffects`
    (выход); цвета без анимации. `Semantics(checked: selected)`.
