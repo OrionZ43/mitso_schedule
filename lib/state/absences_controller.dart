@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_data.dart';
+import '../data/absences_demo_data.dart';
 import '../data/models/certificate.dart';
 
 final absencesControllerProvider =
@@ -10,7 +10,7 @@ final absencesControllerProvider =
 
 class AbsencesController extends Notifier<List<Certificate>> {
   @override
-  List<Certificate> build() => MockData.certificates;
+  List<Certificate> build() => AbsencesDemoData.certificates;
 
   /// Отправляет справку: она встаёт в начало списка со статусом «В обработке».
   ///

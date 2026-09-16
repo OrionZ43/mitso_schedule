@@ -1,17 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../data/mock_data.dart';
-import '../../data/models/student_profile.dart';
+import '../../data/models/group_ref.dart';
+import '../../state/mitso_providers.dart';
 import '../../state/settings_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/segmented_list.dart';
+import '../group_picker/group_picker_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -22,7 +20,6 @@ class ProfileScreen extends ConsumerWidget {
     final SettingsController controller = ref.read(
       settingsControllerProvider.notifier,
     );
-    final StudentProfile profile = MockData.profile;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
@@ -35,24 +32,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 18),
-        _ProfileHeader(profile: profile),
-        _SectionTitle('LMS Moodle'),
-        _SegmentedSection(
-          children: [
-            _CredentialRow(
-              icon: Symbols.badge,
-              label: 'Логин',
-              value: profile.moodleLogin,
-              secret: false,
-            ),
-            _CredentialRow(
-              icon: Symbols.key,
-              label: 'Пароль',
-              value: profile.moodlePassword,
-              secret: true,
-            ),
-          ],
-        ),
+        _GroupHeader(group: ref.watch(selectedGroupProvider)),
         _SectionTitle('Настройки'),
         _SegmentedSection(
           children: [
@@ -90,10 +70,11 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile});
+/// Выбранная группа: её расписание показывается на главной.
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.group});
 
-  final StudentProfile profile;
+  final GroupRef? group;
 
   @override
   Widget build(BuildContext context) {
@@ -106,56 +87,65 @@ class _ProfileHeader extends StatelessWidget {
         color: colors.surfaceContainer,
         borderRadius: AppShapes.all(AppShapes.extraLargeIncreased),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: colors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: ExcludeSemantics(
-              child: Text(
-                profile.initials,
-                style: context.text.headlineSmall!.emphasized.copyWith(
-                  fontSize: 26,
-                  color: colors.onPrimary,
+          Row(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(Symbols.school, size: 36, color: colors.onPrimary),
               ),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  style: context.text.titleLarge!.emphasized.copyWith(
-                    height: 1.25,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _InfoChip(
-                      label: profile.group,
-                      background: colors.primaryContainer,
-                      foreground: colors.onPrimaryContainer,
+                    Text(
+                      group?.groupName ?? 'Группа не выбрана',
+                      style: context.text.titleLarge!.emphasized.copyWith(
+                        height: 1.25,
+                      ),
                     ),
-                    _InfoChip(
-                      label: profile.course,
-                      background: colors.surface,
-                      foreground: colors.onSurfaceVariant,
-                    ),
+                    if (group != null) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _InfoChip(
+                            label: group!.courseName,
+                            background: colors.primaryContainer,
+                            foreground: colors.onPrimaryContainer,
+                          ),
+                          _InfoChip(
+                            label: group!.facultyName,
+                            background: colors.surface,
+                            foreground: colors.onSurfaceVariant,
+                          ),
+                          _InfoChip(
+                            label: group!.formName,
+                            background: colors.surface,
+                            foreground: colors.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonalIcon(
+            onPressed: () => showGroupPicker(context),
+            icon: const Icon(Symbols.groups),
+            label: Text(group == null ? 'Выбрать группу' : 'Сменить группу'),
           ),
         ],
       ),
@@ -192,121 +182,6 @@ class _InfoChip extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Строка с логином или паролем: значение, глаз и кнопка копирования.
-class _CredentialRow extends StatefulWidget {
-  const _CredentialRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.secret,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool secret;
-
-  /// Сколько держится состояние «Скопировано».
-  static const Duration copiedFeedback = Duration(milliseconds: 1600);
-
-  @override
-  State<_CredentialRow> createState() => _CredentialRowState();
-}
-
-class _CredentialRowState extends State<_CredentialRow> {
-  bool _revealed = false;
-  bool _copied = false;
-  Timer? _timer;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.value));
-    if (!mounted) return;
-    setState(() => _copied = true);
-    _timer?.cancel();
-    _timer = Timer(_CredentialRow.copiedFeedback, () {
-      if (mounted) setState(() => _copied = false);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-    final bool hidden = widget.secret && !_revealed;
-    final String display = hidden ? '••••••••••' : widget.value;
-
-    // Wrap, а не Row: при системном шрифте 200% «глаз» и «Копировать»
-    // переезжают на вторую строку вместо горизонтального переполнения.
-    return Padding(
-      // Отступы пункта списка: m3_comp_list_list_item_leading/top_space.
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
-        runSpacing: 4,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, color: colors.onSurfaceVariant),
-              const SizedBox(width: 14),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: context.text.bodySmall!.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      display,
-                      style: context.text.bodyLarge!.copyWith(
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: hidden ? 0.8 : 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (widget.secret)
-                IconButton(
-                  onPressed: () => setState(() => _revealed = !_revealed),
-                  icon: Icon(
-                    _revealed ? Symbols.visibility_off : Symbols.visibility,
-                  ),
-                  tooltip: _revealed ? 'Скрыть пароль' : 'Показать пароль',
-                ),
-              TextButton(
-                onPressed: _copy,
-                style: _copied
-                    ? TextButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: colors.onPrimary,
-                      )
-                    : null,
-                child: Text(_copied ? 'Скопировано' : 'Копировать'),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

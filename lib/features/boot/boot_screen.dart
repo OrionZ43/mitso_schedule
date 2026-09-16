@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../data/mock_data.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/m3_loading_indicator.dart';
 
@@ -31,7 +30,7 @@ class BootScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${MockData.profile.group} · ИКТиУ',
+              'Международный университет «МИТСО»',
               style: context.text.labelLarge!.copyWith(
                 color: context.colors.onSurfaceVariant,
               ),

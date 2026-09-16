@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../data/mock_data.dart';
+import '../../data/absences_demo_data.dart';
 import '../../data/models/certificate.dart';
 import '../../state/absences_controller.dart';
 import '../../theme/app_shapes.dart';
@@ -55,7 +55,7 @@ class AbsencesScreen extends ConsumerWidget {
                     const SizedBox(width: 7),
                     Flexible(
                       child: Text(
-                        MockData.syncStatus,
+                        AbsencesDemoData.syncStatus,
                         style: context.text.labelMedium!.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
@@ -106,10 +106,10 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         children: [
           const AbsenceDonut(
-            missedHours: MockData.missedHours,
-            justifiedHours: MockData.justifiedHours,
-            unjustifiedHours: MockData.unjustifiedHours,
-            limitHours: MockData.missedLimitHours,
+            missedHours: AbsencesDemoData.missedHours,
+            justifiedHours: AbsencesDemoData.justifiedHours,
+            unjustifiedHours: AbsencesDemoData.unjustifiedHours,
+            limitHours: AbsencesDemoData.missedLimitHours,
           ),
           const SizedBox(height: 20),
           Row(
@@ -117,7 +117,7 @@ class _SummaryCard extends StatelessWidget {
               Expanded(
                 child: _LegendTile(
                   color: colors.primaryContainer,
-                  value: '${MockData.justifiedHours} ч',
+                  value: '${AbsencesDemoData.justifiedHours} ч',
                   label: 'оправдано',
                 ),
               ),
@@ -125,7 +125,7 @@ class _SummaryCard extends StatelessWidget {
               Expanded(
                 child: _LegendTile(
                   color: colors.primary,
-                  value: '${MockData.unjustifiedHours} ч',
+                  value: '${AbsencesDemoData.unjustifiedHours} ч',
                   label: 'без справки',
                 ),
               ),

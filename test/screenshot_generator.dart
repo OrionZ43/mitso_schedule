@@ -16,8 +16,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fake_mitso_api.dart';
 
 const String _outputDir = 'docs/screenshots';
 
@@ -44,7 +48,10 @@ Future<void> _pumpApp(WidgetTester tester, {required bool dark}) async {
     tester.view.resetDevicePixelRatio();
   });
 
-  SharedPreferences.setMockInitialValues({'settings.dark': dark});
+  SharedPreferences.setMockInitialValues({
+    'settings.dark': dark,
+    'group.selected': jsonEncode(group2423.toJson()),
+  });
   final SharedPreferences preferences = await SharedPreferences.getInstance();
 
   await tester.pumpWidget(
@@ -52,6 +59,9 @@ Future<void> _pumpApp(WidgetTester tester, {required bool dark}) async {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(preferences),
         appBootProvider.overrideWith((ref) async {}),
+        // Настоящая страница 2423 УИР и фиксированное время вместо сети.
+        mitsoApiProvider.overrideWith((ref) async => FakeMitsoApi()),
+        clockProvider.overrideWithValue(() => fakeNow),
       ],
       child: RepaintBoundary(key: _rootKey, child: const ScheduleApp()),
     ),
@@ -162,6 +172,7 @@ String? _flutterRoot() {
 void main() {
   setUpAll(() async {
     GoogleFonts.config.allowRuntimeFetching = false;
+    await initializeDateFormatting('ru');
     await _loadFonts();
   });
 

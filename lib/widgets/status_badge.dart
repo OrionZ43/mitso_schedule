@@ -11,10 +11,14 @@ class LessonTypeBadge extends StatelessWidget {
   const LessonTypeBadge({
     super.key,
     required this.type,
+    required this.label,
     this.onPrimarySurface = false,
   });
 
   final LessonType type;
+
+  /// Подпись: «Лекция», «Лаб» или сокращение с сайта для прочих типов.
+  final String label;
 
   /// Карточка текущей пары залита `primary` — бейдж становится полупрозрачным.
   final bool onPrimarySurface;
@@ -36,13 +40,13 @@ class LessonTypeBadge extends StatelessWidget {
               colors.tertiaryContainer,
               colors.onTertiaryContainer,
             ),
+            LessonType.other => (
+              colors.secondaryContainer,
+              colors.onSecondaryContainer,
+            ),
           };
 
-    return _Badge(
-      background: background,
-      foreground: foreground,
-      label: type.label,
-    );
+    return _Badge(background: background, foreground: foreground, label: label);
   }
 }
 

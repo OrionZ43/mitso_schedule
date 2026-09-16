@@ -15,6 +15,7 @@ class EmptyState extends StatelessWidget {
     this.description,
     this.withAccentDot = false,
     this.illustrationSize = const Size(120, 110),
+    this.action,
   });
 
   final String title;
@@ -24,6 +25,9 @@ class EmptyState extends StatelessWidget {
   final bool withAccentDot;
 
   final Size illustrationSize;
+
+  /// Кнопка под текстом: «Выбрать группу», «Повторить».
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +59,7 @@ class EmptyState extends StatelessWidget {
               ),
             ),
           ],
+          if (action != null) ...[const SizedBox(height: 20), action!],
         ],
       ),
     );

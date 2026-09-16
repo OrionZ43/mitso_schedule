@@ -1,17 +1,28 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Поднимает приложение целиком с чистыми настройками.
+import 'support/fake_mitso_api.dart';
+
+/// Поднимает приложение целиком.
 ///
-/// `pumpAndSettle` здесь не применяется: индикатор загрузки, волнистая шкала
-/// и пульсирующая точка анимируются бесконечно, поэтому дерево никогда не
-/// «успокаивается». Кадры прокручиваются явными [WidgetTester.pump].
-Future<void> pumpApp(WidgetTester tester) async {
+/// Сайт подменён [FakeMitsoApi] с настоящей страницей 2423 УИР, время
+/// зафиксировано на [fakeNow]. `pumpAndSettle` не применяется: индикатор
+/// загрузки, волнистая шкала и пульсирующая точка анимируются бесконечно,
+/// поэтому кадры прокручиваются явными [WidgetTester.pump].
+Future<FakeMitsoApi> pumpApp(
+  WidgetTester tester, {
+  bool withGroup = true,
+  FakeMitsoApi? api,
+}) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
   // Medium Phone API 36: 1080x2400 при плотности 2.625.
   tester.view.physicalSize = const Size(1080, 2400);
@@ -21,23 +32,29 @@ Future<void> pumpApp(WidgetTester tester) async {
     tester.view.resetDevicePixelRatio();
   });
 
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({
+    if (withGroup) 'group.selected': jsonEncode(group2423.toJson()),
+  });
   final SharedPreferences preferences = await SharedPreferences.getInstance();
+  final FakeMitsoApi fake = api ?? FakeMitsoApi();
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(preferences),
-        // Без искусственной задержки загрузки.
         appBootProvider.overrideWith((ref) async {}),
+        mitsoApiProvider.overrideWith((ref) async => fake),
+        clockProvider.overrideWithValue(() => fakeNow),
       ],
       child: const ScheduleApp(),
     ),
   );
 
-  // Экран загрузки -> главный экран.
+  // Экран загрузки -> главный экран, расписание разобрано.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 600));
+  await tester.pump(const Duration(milliseconds: 100));
+  return fake;
 }
 
 /// Переход на вкладку по подписи в navigation bar.
@@ -47,45 +64,110 @@ Future<void> openTab(WidgetTester tester, String label) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
+Future<void> settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
 void main() {
-  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+  setUpAll(() async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await initializeDateFormatting('ru');
+  });
 
   testWidgets('переключение вкладок меняет содержимое', (tester) async {
     await pumpApp(tester);
 
-    // Стартуем на расписании.
-    expect(find.text('Базы данных'), findsWidgets);
+    // Стартуем на расписании: реальные пары среды 16 сентября.
+    expect(find.text('Веб-дизайн и шаблоны проектирования'), findsWidgets);
 
     await openTab(tester, 'Пропуски');
     expect(find.text('часов пропущено'), findsOneWidget);
-    expect(find.text('Мои справки'), findsOneWidget);
 
     await openTab(tester, 'Заметки');
-    expect(find.text('Сдать лабораторную №3'), findsOneWidget);
+    expect(find.textContaining('Дедлайнов пока нет'), findsOneWidget);
 
     await openTab(tester, 'Профиль');
-    expect(find.text('Артём Кузнецов'), findsOneWidget);
+    expect(find.text('2423 УИР'), findsOneWidget);
+    expect(find.text('Экономический'), findsOneWidget);
   });
 
-  testWidgets('отметка задачи переносит её в «Выполненные»', (tester) async {
+  testWidgets('открывается сегодняшний день, идущая пара отмечена', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    expect(find.text('Среда, 16 сентября'), findsOneWidget);
+    // 10:30 — идёт вторая пара, 09:45–11:05.
+    expect(find.text('СЕЙЧАС ИДЁТ'), findsOneWidget);
+    expect(find.text('осталось 35 мин'), findsOneWidget);
+    // Подгруппы лабораторной в 11:15 — две отдельные карточки.
+    // Вертикальный список дня; внутри есть и горизонтальный селектор дней.
+    await tester.scrollUntilVisible(
+      find.text('2 подгруппа'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('1 подгруппа'), findsOneWidget);
+  });
+
+  testWidgets('без группы: выбор по цепочке факультет → курс → группа', (
+    tester,
+  ) async {
+    final FakeMitsoApi api = await pumpApp(tester, withGroup: false);
+    expect(find.text('Выберите группу'), findsOneWidget);
+    expect(api.scheduleRequests, 0);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Выбрать группу'));
+    await settle(tester);
+    expect(find.text('Факультет'), findsOneWidget);
+
+    for (final (String option, String nextStep) in [
+      ('Экономический', 'Форма обучения'),
+      ('Дневная', 'Курс'),
+      ('3 курс', 'Группа'),
+    ]) {
+      await tester.tap(find.text(option));
+      await settle(tester);
+      expect(find.text(nextStep), findsOneWidget);
+    }
+
+    await tester.tap(find.text('2423 УИР'));
+    await settle(tester);
+    await settle(tester);
+
+    expect(api.scheduleRequests, 1);
+    expect(find.text('Веб-дизайн и шаблоны проектирования'), findsWidgets);
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('group.selected'), contains('2423 UIR'));
+  });
+
+  testWidgets('сайт недоступен и кэша нет — ошибка с повтором', (tester) async {
+    await pumpApp(tester, api: FakeMitsoApi(failSchedule: true));
+
+    expect(find.text('Не удалось загрузить расписание'), findsOneWidget);
+    expect(find.text('Нет соединения с сайтом расписания.'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Повторить'), findsOneWidget);
+  });
+
+  testWidgets('добавленная задача уходит в «Выполненные» после отметки', (
+    tester,
+  ) async {
     await pumpApp(tester);
     await openTab(tester, 'Заметки');
 
-    const String task = 'Сдать лабораторную №3';
-    expect(find.text(task), findsOneWidget);
+    await tester.tap(find.byTooltip('Добавить задачу'));
+    await settle(tester);
+    expect(find.text('Новая задача'), findsOneWidget);
 
     await tester.tap(find.byType(Checkbox).first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    await settle(tester);
+    expect(find.text('Новая задача'), findsNothing);
 
-    // Из активных задача ушла.
-    expect(find.text(task), findsNothing);
-
-    // И появилась среди выполненных.
     await tester.tap(find.text('Выполненные'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text(task), findsOneWidget);
+    await settle(tester);
+    expect(find.text('Новая задача'), findsOneWidget);
   });
 
   testWidgets('отправка справки добавляет её в начало списка', (tester) async {
@@ -97,7 +179,6 @@ void main() {
     await tester.tap(find.text('Оправдать пропуск'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('Прикрепить фото справки'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Отправить'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Отправить'));
@@ -133,7 +214,6 @@ void main() {
       SwitchListTile,
       'Тёмная тема',
     );
-    expect(darkSwitch, findsOneWidget);
     expect(tester.widget<SwitchListTile>(darkSwitch).value, isFalse);
 
     await tester.tap(darkSwitch);
@@ -145,7 +225,6 @@ void main() {
       Brightness.dark,
     );
 
-    // Значение уехало в SharedPreferences.
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('settings.dark'), isTrue);
   });

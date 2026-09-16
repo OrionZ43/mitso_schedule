@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Расписание загружается с apps.mitso.by. В шаблоне Flutter это разрешение
+         было только в debug/profile, и release-сборка не смогла бы выйти в сеть. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="mitso_schedule"
         android:name="${applicationName}"

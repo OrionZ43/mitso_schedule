@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
+import 'state/mitso_providers.dart';
 import 'state/settings_controller.dart';
 import 'theme/app_button_styles.dart';
 import 'theme/app_color_schemes.dart';
@@ -13,10 +14,16 @@ import 'theme/app_shapes.dart';
 import 'theme/app_typography.dart';
 import 'theme/status_colors.dart';
 
-/// Загрузка настроек и моков. Показывается [BootScreen], пока не завершится.
+/// Подготовка при старте: клиент сайта и его сертификаты. Пока не
+/// завершится, показывается [BootScreen]. Искусственной задержки нет — по
+/// гайдлайну индикатор загрузки только для настоящего ожидания.
 final appBootProvider = FutureProvider<void>((ref) async {
   ref.watch(settingsControllerProvider);
-  await Future<void>.delayed(const Duration(milliseconds: 1200));
+  try {
+    await ref.read(mitsoApiProvider.future);
+  } catch (_) {
+    // Ошибку клиента покажет экран расписания; запуск она не блокирует.
+  }
 });
 
 class ScheduleApp extends ConsumerWidget {

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_data.dart';
 import '../data/models/task_item.dart';
 
 /// Вкладка сегментированной кнопки: активные или выполненные.
@@ -29,7 +28,8 @@ final tasksControllerProvider =
 
 class TasksController extends Notifier<List<TaskItem>> {
   @override
-  List<TaskItem> build() => MockData.tasks;
+  // Задачи — локальные записи пользователя, без стартовых примеров.
+  List<TaskItem> build() => const [];
 
   void toggle(String id) {
     state = [

@@ -12,14 +12,17 @@ import 'status_badge.dart';
 /// Обычная — outlined card радиусом 28dp; текущая — залитая `primary`
 /// радиусом 32dp с меткой «Сейчас идёт» и волнистой шкалой прогресса.
 class LessonCard extends StatelessWidget {
-  const LessonCard({super.key, required this.lesson});
+  const LessonCard({super.key, required this.lesson, this.now});
 
   final Lesson lesson;
+
+  /// Прогресс пары, если она идёт прямо сейчас.
+  final LessonProgress? now;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
-    final bool isNow = lesson.isNow;
+    final bool isNow = now != null;
 
     final Color foreground = isNow ? colors.onPrimary : colors.onSurface;
     final Color secondary = isNow
@@ -85,9 +88,21 @@ class LessonCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      LessonTypeBadge(
-                        type: lesson.type,
-                        onPrimarySurface: isNow,
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          LessonTypeBadge(
+                            type: lesson.type,
+                            label: lesson.typeLabel,
+                            onPrimarySurface: isNow,
+                          ),
+                          if (lesson.subgroup != null)
+                            _SubgroupBadge(
+                              number: lesson.subgroup!,
+                              onPrimarySurface: isNow,
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 9),
                       Text(
@@ -97,18 +112,22 @@ class LessonCard extends StatelessWidget {
                           color: foreground,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _MetaRow(
-                        icon: Symbols.person,
-                        text: lesson.teacher,
-                        color: secondary,
-                      ),
-                      const SizedBox(height: 4),
-                      _MetaRow(
-                        icon: Symbols.door_front,
-                        text: lesson.room,
-                        color: secondary,
-                      ),
+                      if (lesson.teacher != null) ...[
+                        const SizedBox(height: 10),
+                        _MetaRow(
+                          icon: Symbols.person,
+                          text: lesson.teacher!,
+                          color: secondary,
+                        ),
+                      ],
+                      if (lesson.room != null) ...[
+                        const SizedBox(height: 4),
+                        _MetaRow(
+                          icon: Symbols.door_front,
+                          text: roomLabel(lesson.room!),
+                          color: secondary,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -116,7 +135,7 @@ class LessonCard extends StatelessWidget {
             ),
             if (isNow) ...[
               const SizedBox(height: 18),
-              _NowSection(lesson: lesson),
+              _NowSection(progress: now!),
             ],
           ],
         ),
@@ -151,9 +170,9 @@ class _MetaRow extends StatelessWidget {
 
 /// Блок текущей пары: метка с пульсирующей точкой, остаток и шкала прогресса.
 class _NowSection extends StatelessWidget {
-  const _NowSection({required this.lesson});
+  const _NowSection({required this.progress});
 
-  final Lesson lesson;
+  final LessonProgress progress;
 
   @override
   Widget build(BuildContext context) {
@@ -183,20 +202,19 @@ class _NowSection extends StatelessWidget {
                 ),
               ],
             ),
-            if (lesson.timeLeft != null)
-              Text(
-                'осталось ${lesson.timeLeft}',
-                style: context.text.labelMedium!.copyWith(
-                  color: colors.onPrimary.withValues(alpha: 0.85),
-                ),
+            Text(
+              'осталось ${progress.minutesLeft} мин',
+              style: context.text.labelMedium!.copyWith(
+                color: colors.onPrimary.withValues(alpha: 0.85),
               ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
         // Карточка залита primary, поэтому токенные цвета шкалы (primary на
         // secondaryContainer) здесь не читаются — берём onPrimary, как в макете.
         M3WavyLinearProgress(
-          value: lesson.progress ?? 0,
+          value: progress.fraction,
           color: colors.onPrimary,
           trackColor: colors.onPrimary.withValues(alpha: 0.32),
           semanticsLabel: 'Прогресс пары',
@@ -245,6 +263,62 @@ class _PulsingDotState extends State<_PulsingDot>
         decoration: BoxDecoration(
           color: context.colors.onPrimary,
           shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+/// Номер аудитории с сайта → подпись: `71` → `ауд. 71`, прочее без изменений.
+String roomLabel(String room) =>
+    RegExp(r'^\d').hasMatch(room) ? 'ауд. $room' : room;
+
+/// Прогресс идущей пары.
+@immutable
+class LessonProgress {
+  const LessonProgress({required this.fraction, required this.minutesLeft});
+
+  /// Доля прошедшего времени, 0..1.
+  final double fraction;
+
+  /// Сколько минут до конца, с округлением вверх.
+  final int minutesLeft;
+
+  /// Прогресс [lesson] в дне [day] на момент [now]; `null`, если пара не идёт.
+  static LessonProgress? of(Lesson lesson, DateTime day, DateTime now) {
+    if (!DateUtils.isSameDay(day, now)) return null;
+    final int seconds = now.hour * 3600 + now.minute * 60 + now.second;
+    final int start = lesson.startMinutes * 60;
+    final int end = lesson.endMinutes * 60;
+    if (seconds < start || seconds >= end) return null;
+    return LessonProgress(
+      fraction: (seconds - start) / (end - start),
+      minutesLeft: ((end - seconds) / 60).ceil(),
+    );
+  }
+}
+
+class _SubgroupBadge extends StatelessWidget {
+  const _SubgroupBadge({required this.number, required this.onPrimarySurface});
+
+  final int number;
+  final bool onPrimarySurface;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: onPrimarySurface
+            ? colors.onPrimary.withValues(alpha: 0.22)
+            : colors.surfaceContainerHigh,
+        borderRadius: AppShapes.all(AppShapes.chip),
+      ),
+      child: Text(
+        '$number подгруппа',
+        style: context.text.labelSmall!.copyWith(
+          color: onPrimarySurface ? colors.onPrimary : colors.onSurfaceVariant,
         ),
       ),
     );

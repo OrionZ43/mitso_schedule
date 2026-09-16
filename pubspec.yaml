@@ -43,6 +43,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   material_new_shapes: ^1.0.0
+  html: ^0.15.7
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +66,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Промежуточный и корневой сертификаты GlobalSign: apps.mitso.by не отдаёт
+  # промежуточный в TLS-цепочке, а Android не умеет докачивать его сам.
+  assets:
+    - assets/certs/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
