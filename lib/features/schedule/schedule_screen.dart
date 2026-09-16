@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -13,12 +12,13 @@ import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
 import '../../state/settings_controller.dart';
 import '../../theme/app_shapes.dart';
-import '../../theme/app_transitions.dart';
+import '../../theme/app_motion.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/day_selector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/lesson_card.dart';
 import '../../widgets/m3_loading_indicator.dart';
+import '../../widgets/m3_pager.dart';
 import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
 import 'lesson_details_page.dart';
@@ -138,16 +138,13 @@ class ScheduleScreen extends ConsumerWidget {
         SliverPadding(
           padding: const EdgeInsets.only(bottom: 24),
           sliver: SliverToBoxAdapter(
-            child: _DaySwitcher(
-              date: day.date,
-              onSwipe: (step) {
-                final int index = days.indexOf(day) + step;
-                if (index < 0 || index >= days.length) return;
-                ref
-                    .read(selectedDateProvider.notifier)
-                    .select(days[index].date);
-              },
-              child: _DayContent(day: day, days: days, now: now),
+            child: _DayPager(
+              days: days,
+              selectedIndex: days.indexOf(day),
+              now: now,
+              onPageChanged: (index) => ref
+                  .read(selectedDateProvider.notifier)
+                  .select(days[index].date),
             ),
           ),
         ),
@@ -156,65 +153,66 @@ class ScheduleScreen extends ConsumerWidget {
   }
 }
 
-/// Смена дня — паттерн shared axis X: дни идут друг за другом, поэтому более
-/// поздний въезжает справа, более ранний — слева.
+/// Дни — равноправные страницы одного уровня, поэтому смена дня — паттерн
+/// **lateral**: https://m3.material.io/styles/motion/transitions. Страницы
+/// едут вместе и следуют за пальцем, без затухания («Fading content as it
+/// slides makes the peer relationship and swipe gesture less obvious»).
 ///
-/// https://m3.material.io/styles/motion/transitions/transition-patterns
-///
-/// День можно перелистнуть и горизонтальным свайпом по списку пар.
-class _DaySwitcher extends StatefulWidget {
-  const _DaySwitcher({
-    required this.date,
-    required this.onSwipe,
-    required this.child,
+/// Выбор дня в ленте или в поиске перелистывает pager как
+/// `PagerState.animateScrollToPage` в Compose.
+class _DayPager extends StatefulWidget {
+  const _DayPager({
+    required this.days,
+    required this.selectedIndex,
+    required this.now,
+    required this.onPageChanged,
   });
 
-  final DateTime date;
-
-  /// `+1` — следующий день, `-1` — предыдущий.
-  final ValueChanged<int> onSwipe;
-
-  final Widget child;
-
-  /// Скорость, начиная с которой горизонтальный жест считается перелистыванием.
-  static const double swipeVelocity = 300;
+  final List<ScheduleDay> days;
+  final int selectedIndex;
+  final DateTime now;
+  final ValueChanged<int> onPageChanged;
 
   @override
-  State<_DaySwitcher> createState() => _DaySwitcherState();
+  State<_DayPager> createState() => _DayPagerState();
 }
 
-class _DaySwitcherState extends State<_DaySwitcher> {
-  bool _backward = false;
+class _DayPagerState extends State<_DayPager> {
+  late final PageController _controller = PageController(
+    initialPage: widget.selectedIndex,
+  );
 
   @override
-  void didUpdateWidget(_DaySwitcher oldWidget) {
+  void didUpdateWidget(_DayPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!DateUtils.isSameDay(oldWidget.date, widget.date)) {
-      _backward = widget.date.isBefore(oldWidget.date);
-    }
+    if (!_controller.hasClients) return;
+    final double page = _controller.page ?? widget.selectedIndex.toDouble();
+    // Страница уже сменилась жестом — pager сам на месте.
+    if (page.round() == widget.selectedIndex) return;
+    M3Pager.animateToPage(
+      _controller,
+      widget.selectedIndex,
+      reduceMotion: reduceMotionOf(context),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragEnd: (details) {
-        final double velocity = details.primaryVelocity ?? 0;
-        if (velocity.abs() < _DaySwitcher.swipeVelocity) return;
-        widget.onSwipe(velocity < 0 ? 1 : -1);
-      },
-      child: PageTransitionSwitcher(
-        duration: AppTransitions.sharedAxisDuration,
-        reverse: _backward,
-        layoutBuilder: (entries) =>
-            Stack(alignment: Alignment.topCenter, children: entries),
-        transitionBuilder: (child, animation, secondaryAnimation) =>
-            M3SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              child: child,
-            ),
-        child: KeyedSubtree(key: ValueKey(widget.date), child: widget.child),
+    return ExpandablePageView(
+      controller: _controller,
+      itemCount: widget.days.length,
+      minHeight: 240,
+      onPageChanged: widget.onPageChanged,
+      itemBuilder: (context, index) => _DayContent(
+        day: widget.days[index],
+        days: widget.days,
+        now: widget.now,
       ),
     );
   }
