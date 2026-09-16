@@ -1,9 +1,12 @@
 # Расписание — Material 3 Expressive
 
-Android-приложение расписания для студента МИТСО (гр. 2423 УИР, 3 курс ИКТиУ) на Flutter.
-Весь интерфейс на русском, данные моковые, бэкенда нет.
+Android-приложение на Flutter: расписание студентов Международного университета
+«МИТСО» с [apps.mitso.by](https://apps.mitso.by/). Интерфейс на русском, дизайн —
+Material 3 Expressive строго по гайдлайнам Google.
 
-Макет-источник: `docs/Расписание - Material 3 Expressive.dc.html`.
+- Правила работы с проектом — [`CLAUDE.md`](CLAUDE.md).
+- Справочник по компонентам и стилям M3 — [`docs/m3/`](docs/m3/README.md).
+- Исходный макет — `docs/Расписание - Material 3 Expressive.dc.html`.
 
 ---
 
@@ -11,39 +14,32 @@ Android-приложение расписания для студента МИТ
 
 ### Android Studio
 
-1. **File → Open** → выбрать папку `mitso_schedule`.
-2. Дождаться `Pub get` (или выполнить `flutter pub get` в терминале).
-3. В списке устройств выбрать эмулятор и нажать **Run** (`Shift+F10`).
+1. **File → Open** → папка `mitso_schedule`.
+2. Дождаться `Pub get` (или `flutter pub get`).
+3. Выбрать устройство и нажать **Run** (`Shift+F10`).
 
-### Эмулятор из командной строки
+### Командная строка
 
 ```bash
-flutter emulators --launch Medium_Phone_API_36.0   # или свой AVD
-flutter run -d emulator-5554
+flutter run                                   # на подключённом устройстве
+flutter build apk --debug -t lib/main.dart    # -t обязателен, см. ниже
 ```
 
-Заявленный минимум — `minSdk 24`, сборка — `compileSdk 36`.
+`minSdk 24`, `compileSdk 36`. Проверено на Pixel 7 (Android 17).
 
-Приложение проверено на Pixel 7 (Android 17): запускается, в logcat нет ошибок.
-
-> **Если Google Maven недоступен.** Из некоторых сетей `dl.google.com` отдаёт 404 на любой
-> артефакт, и первая сборка падает на `Plugin 'com.android.application' ... was not found`.
-> Обход — зеркала Google Maven в глобальном init-скрипте Gradle
-> (`~/.gradle/init.d/google-maven-mirror.gradle`), проект при этом не меняется.
-> Скрипт должен добавлять зеркала и в `pluginManagement`, и в `dependencyResolutionManagement`,
-> явно возвращать `gradlePluginPortal()` и не добавлять репозитории на уровне проектов в сборки
-> с `FAIL_ON_PROJECT_REPOS` — так настроена включённая сборка `flutter_tools/gradle`.
->
-> В `gradle-wrapper.properties` задан `distributionSha256Sum`: если дистрибутив Gradle
-> скачается не полностью, сборка сразу упадёт на проверке суммы, а не на битом архиве
-> (`zip END header not found`).
+> **Если Google Maven недоступен.** Из некоторых сетей `dl.google.com` отдаёт 404, и первая
+> сборка падает на `Plugin 'com.android.application' ... was not found`. Обход — зеркала Google
+> Maven в глобальном init-скрипте Gradle (`~/.gradle/init.d/google-maven-mirror.gradle`), проект
+> не меняется. Скрипт добавляет зеркала и в `pluginManagement`, и в
+> `dependencyResolutionManagement`, возвращает `gradlePluginPortal()` и не трогает сборки с
+> `FAIL_ON_PROJECT_REPOS`. В `gradle-wrapper.properties` задан `distributionSha256Sum`.
 
 ### Проверки
 
 ```bash
-flutter analyze   # без предупреждений
-flutter test      # 49 тестов
 dart format lib test
+flutter analyze        # без замечаний
+flutter test           # 203 теста
 ```
 
 ### Скриншоты
@@ -52,12 +48,9 @@ dart format lib test
 flutter test test/screenshot_generator.dart
 ```
 
-Кладёт PNG всех четырёх вкладок в светлой и тёмной теме, субботы, шита
-отправки справки, пары подгрупп и страницы подробностей в `docs/screenshots/`.
-Генератор рендерит настоящим движком Flutter и сам подгружает Roboto и Material
-Symbols через `FontLoader` — иначе тестовая среда рисует текст и иконки
-прямоугольниками. Тени включены (`debugDisableShadows = false`): по умолчанию
-тесты рисуют их сплошными чёрными блоками.
+PNG всех вкладок в светлой и тёмной теме, субботы, листа справки, пар подгрупп и страницы
+подробностей — в `docs/screenshots/`. Генератор подгружает Roboto и Material Symbols через
+`FontLoader` и включает настоящие тени (`debugDisableShadows = false`).
 
 | | |
 |---|---|
@@ -75,16 +68,13 @@ flutter test test/live/mitso_live_check.dart                  # на компь�
 flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на Android
 ```
 
-Второй тест проверяет на устройстве, что без вложенных сертификатов соединение
-падает, а с ними расписание загружается. Экран телефона должен быть включён и
-разблокирован: Android 15+ закрывает сеть приложениям не на переднем плане, и
-тест упадёт с `Failed host lookup`.
+Второй тест проверяет, что без вложенных сертификатов соединение падает, а с ними расписание
+загружается. Экран телефона должен быть разблокирован: Android 15+ закрывает сеть приложениям
+не на переднем плане.
 
 > **После integration-теста пересоберите приложение.** `flutter test integration_test/…`
-> собирает `app-debug.apk` с тестом вместо `lib/main.dart`, а `flutter install` ставит
-> последний собранный APK. Запущенная из лаунчера тестовая сборка ждёт команд от компьютера
-> и не рисует ни одного кадра — приложение висит на сплэше. Перед установкой:
-> `flutter build apk --debug -t lib/main.dart` (или просто `flutter run`).
+> собирает `app-debug.apk` с тестом вместо `lib/main.dart`; такая сборка из лаунчера висит на
+> сплэше. Перед установкой: `flutter build apk --debug -t lib/main.dart`.
 
 ---
 
@@ -92,199 +82,100 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 
 Расписание открытое, вход не нужен.
 
-- **Сайт на Yii2.** POST-запросы защищены CSRF-токеном, привязанным к сессии:
-  сначала GET страницы формы даёт cookie и `<meta name="csrf-token">`.
-- **Выбор группы** — цепочка виджета Krajee DepDrop:
-  `schedule/education` → `schedule/course` → `schedule/group`, ответы JSON
-  `{"output":[{"id","name"}]}`. Факультеты лежат прямо в разметке формы.
-  Идентификаторы — транслит: ``E`konomicheskij``, `Dnevnaya`, `3 kurs`, `2423 UIR`.
-- **Расписание** — один POST на `schedule/group-schedule` возвращает сразу
-  текущую и следующую неделю. Параметр недели сервер проверяет только на
-  непустоту.
-- **Разметка**: `div.weekly-schedule` по неделям, в них `h2` «Понедельник,
-  14 сентября» и таблица «Время | Дисциплина и преподаватель | Аудитория».
-  Пара — `Название(тип) Фамилия И. О.`, подгруппы — строки `1. …` / `2. …`
-  в одно время, пустой слот — `(нет занятий)`. Даты без года.
-- **Сертификат**: сервер отдаёт только `*.mitso.by` без промежуточного
-  «GlobalSign GCC R46 AlphaSSL CA 2025». Браузеры и Windows докачивают его сами,
-  Android — нет. Промежуточный и корень GlobalSign Root R46 лежат в
-  `assets/certs` и добавляются к системным; проверка сертификата не отключается.
-- Ещё на сайте есть расписание преподавателей, дисциплин и архив прошлых
-  недель — пока не используются.
-- `student.mitso.by` — лицевой счёт с балансом оплаты (вход по номеру счёта).
-  Пропусков и справок там нет, поэтому вкладка «Пропуски» пока на демо-данных.
+- **Сайт на Yii2.** POST-запросы защищены CSRF-токеном сессии: сначала GET страницы формы
+  даёт cookie и `<meta name="csrf-token">`.
+- **Выбор группы** — цепочка Krajee DepDrop: `schedule/education` → `schedule/course` →
+  `schedule/group`, ответы `{"output":[{"id","name"}]}`. Идентификаторы — транслит:
+  ``E`konomicheskij``, `Dnevnaya`, `3 kurs`, `2423 UIR`.
+- **Расписание** — один POST на `schedule/group-schedule` возвращает текущую и следующую неделю.
+- **Разметка**: `div.weekly-schedule`, в нём `h2` «Понедельник, 14 сентября» и таблица.
+  Пара — `Название(тип) Фамилия И. О.`, подгруппы — строки `1. …` / `2. …` в одно время.
+- **Сертификат**: сервер отдаёт только `*.mitso.by` без промежуточного «GlobalSign GCC R46
+  AlphaSSL CA 2025», Android его не докачивает. Промежуточный и корень лежат в `assets/certs`
+  и добавляются к системным; проверка сертификата не отключается.
+- `student.mitso.by` — лицевой счёт (вход по номеру счёта). Пропусков там нет, поэтому вкладка
+  «Пропуски» пока на демо-данных.
 
-В приложении расписание кэшируется: сохранённое показывается сразу, свежее
-подтягивается в фоне, при ошибке сети остаётся сохранённое с пометкой.
-Автоповтор упавших запросов отключён, чтобы не нагружать сайт.
-
-Строки подгрупп в одно время объединяются в одну пару (`ScheduleDay.slots`):
-одна карточка, внутри — преподаватель и аудитория каждой подгруппы. В профиле
-можно выбрать свою подгруппу — строки другой скрываются.
+Расписание кэшируется: сохранённое показывается сразу, свежее подтягивается в фоне; если
+обновление не удалось, снекбар предлагает повторить. Автоповторов нет. Строки подгрупп в одно
+время — одна пара (`ScheduleDay.slots`); в профиле можно оставить только свою подгруппу.
 
 ---
 
-## Что сделано по гайдлайнам
+## Material 3 Expressive
 
-Компоненты сверены с документацией и токенами
-[material-components-android](https://github.com/material-components/material-components-android/tree/master/docs/components)
-(`docs/components/*.md` и `lib/.../res/values/*tokens.xml`).
+Каждый компонент сверен с тремя источниками — m3.material.io (текст гайдлайнов и таблицы токенов
+выгружает `python tool/m3_guidelines.py`), исходниками Compose Material3 и MDC-Android. Разбор по
+компонентам, расхождения и решения — в [`docs/m3/`](docs/m3/README.md).
 
-| Компонент | Реализация |
-|---|---|
-| Цвет | `ColorScheme.fromSeed` с `DynamicSchemeVariant.expressive`, 4 сид-палитры, baseline `#6750A4` при выключенных динамических цветах, `DynamicColorBuilder` на Android 12+ |
-| Типографика, форма | Полная `TextTheme` по токенам на системном Roboto (ничего не скачивается), шкала радиусов M3 |
-| Движение компонентов | Шесть пружинных токенов Expressive; какой токен у какого свойства — как в Compose Material3 (см. «Движение» ниже) |
-| [Переходы](https://m3.material.io/styles/motion/transitions/transition-patterns) | Fade through — вкладки, загрузка → главный экран, загрузка → список; shared axis X — смена дня и шаги выбора группы; container transform — карточка пары → подробности |
-| [Loading indicator](https://m3.material.io/components/loading-indicator/guidelines) | Порт Compose `LoadingIndicator.kt`: формы `material_new_shapes` с общим коэффициентом × 38/48, новая пружина 0.6 / 200 (порог 0.1) каждые 650 мс, +90° за морф, вращение 360° за 4666 мс; по умолчанию без контейнера, contained — `onPrimaryContainer` на `primaryContainer`; определённый вариант — в pull-to-refresh |
-| [Progress indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/ProgressIndicator.md) | Волнистый determinate: 4dp, амплитуда 3dp, волна 40dp, зазор 4dp, stop indicator 4dp; волна неподвижна, полная амплитуда только при 0.1–0.9 |
-| [Navigation bar](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomNavigation.md) | Expressive: высота 64dp, индикатор 56×32 `secondaryContainer`, активная подпись `secondary` |
-| [App bar](https://github.com/material-components/material-components-android/blob/master/docs/components/TopAppBar.md) | Medium flexible: 112 / 64dp, заголовок `headlineMedium` → `titleLarge`, подзаголовок (группа и курс) под заголовком |
-| [Search](https://github.com/material-components/material-components-android/blob/master/docs/components/Search.md) | `SearchAnchor.bar` 56dp, форма full, `surfaceContainerHigh` |
-| [Button group](https://github.com/material-components/material-components-android/blob/master/docs/components/ButtonGroup.md) | Connected button group вместо устаревшего segmented button: зазор 2dp, внутренние углы 8 / 4 / 50% |
-| [Buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/CommonButton.md), [icon buttons](https://github.com/material-components/material-components-android/blob/master/docs/components/IconButton.md) | Размеры Small (40dp, `labelLarge`, отступы 16) и Medium (56dp, `titleMedium`, 24); форма full морфится в скруглённый прямоугольник при нажатии |
-| [FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/FloatingActionButton.md), [extended FAB](https://github.com/material-components/material-components-android/blob/master/docs/components/ExtendedFloatingActionButton.md) | `primaryContainer` по умолчанию, тень 6dp, small extended — `titleMedium`, отступы 16 / 8 / 16 |
-| [Lists](https://github.com/material-components/material-components-android/blob/master/docs/components/List.md) | Segmented-список в профиле, выборе группы, подробностях пары и строках подгрупп: углы 16 / 4dp, зазор 2dp, без разделителей |
-| [Chips](https://github.com/material-components/material-components-android/blob/master/docs/components/Chip.md) | Filter chip 32dp, выбранный — `secondaryContainer` без обводки, невыбранный — обводка `outline` |
-| [Cards](https://github.com/material-components/material-components-android/blob/master/docs/components/Card.md), [bottom sheet](https://github.com/material-components/material-components-android/blob/master/docs/components/BottomSheet.md) | Предстоящая пара — outlined card на `surface`, идущая — `primary`, прошедшая — тональная `surfaceContainerLow`; шит `surfaceContainerLow`, ручка `onSurfaceVariant` 32×4 |
-| [Switch](https://github.com/material-components/material-components-android/blob/master/docs/components/Switch.md), [checkbox](https://github.com/material-components/material-components-android/blob/master/docs/components/Checkbox.md), [snackbar](https://github.com/material-components/material-components-android/blob/master/docs/components/Snackbar.md), [divider](https://github.com/material-components/material-components-android/blob/master/docs/components/Divider.md) | Совпадают с токенами MDC |
-| [Tooltip](https://github.com/material-components/material-components-android/blob/master/docs/components/Tooltip.md) | По `Widget.Material3.Tooltip`: `primary` / `onPrimary`, `bodySmall`, минимум 28dp |
-| Доступность | `Semantics`, зона нажатия ≥ 48dp, шрифт до 200% без переполнений, контраст статусов проверяется тестом |
+Flutter 3.44 не поставляет Expressive-компоненты и `MotionScheme`, поэтому они портированы с
+Compose:
 
-Состояние — Riverpod (`Notifier`), настройки переживают перезапуск через `shared_preferences`.
+| Что | Виджет | Образец Compose |
+|---|---|---|
+| Пружины `MotionScheme`, скорость при смене цели, уменьшение движения | `AppMotion`, `springTo`, `reduceMotionOf` | `MotionScheme.kt`, `ExpressiveMotionTokens.kt` |
+| Кнопки, icon buttons, toggle buttons | `M3Button`, `M3IconButton`, `M3ToggleButton` | `Button.kt`, `IconButton.kt`, `ToggleButton.kt` |
+| Группы кнопок (нажатая расширяется, соседи сжимаются) | `M3ButtonGroup`, `ConnectedButtonGroup`, `DaySelector` | `ButtonGroup.kt` |
+| FAB, medium FAB, extended FAB, показ и скрытие | `M3Fab`, `M3ExtendedFab`, `M3AnimatedFabVisibility` | `FloatingActionButton.kt` |
+| Переключатель с галочкой и крестиком | `M3Switch` | `Switch.kt` |
+| Чекбокс, filter chip, plain tooltip | `M3Checkbox`, `M3FilterChip`, `M3PlainTooltip` | `Checkbox.kt`, `Chip.kt`, `Tooltip.kt` |
+| Flexible navigation bar | `M3NavigationBar` | `ShortNavigationBar.kt`, `NavigationItem.kt` |
+| Medium flexible и small app bar, доводка | `SliverMediumFlexibleAppBar`, `M3SmallAppBar`, `M3AppBarSettle` | `AppBar.kt` |
+| Contained full-screen поиск | `M3SearchBar` | `SearchBar.kt` |
+| Segmented list с морфингом формы | `SegmentedList`, `M3ListItem` | `ListItem.kt` |
+| Модальный нижний лист на пружинах, predictive back | `showM3ModalBottomSheet` | `ModalBottomSheet.kt`, `BottomSheet.kt` |
+| Loading indicator (indeterminate и determinate) | `M3LoadingIndicator` | `LoadingIndicator.kt` |
+| Волнистый прогресс | `M3WavyLinearProgress` | `WavyProgressIndicator.kt` |
+| Pull-to-refresh | `M3PullToRefresh` | `PullToRefresh.kt` |
+| Снекбар | `M3SnackbarHost` | `SnackbarHost.kt` |
+| Pager (lateral) | `ExpandablePageView`, `M3Pager` | `Pager.kt`, `PagerState.kt` |
+| Динамические цвета Android 14+ | `SystemColorRoles` + `MainActivity.kt` | MDC `values-v34/tokens.xml` |
 
-### Движение
-
-Ничего не подбиралось на глаз — источники:
-
-- **Пружины** (`AppMotion`) — значения `ExpressiveMotionTokens.kt` из Compose Material3:
-  FastSpatial 800 / 0.6, DefaultSpatial 380 / 0.8, SlowSpatial 200 / 0.8, FastEffects 3800 / 1,
-  DefaultEffects 1600 / 1, SlowEffects 800 / 1.
-- **Какой токен где** — как у аналогичного компонента в исходниках Compose Material3:
-
-  | Где | Свойство | Токен | Образец |
-  |---|---|---|---|
-  | День в ленте | форма | FastSpatial | `ToggleButton.kt` — форма при выборе |
-  | День в ленте | цвет | DefaultEffects | `ToggleButton.kt` — цвет обводки |
-  | Connected button group | ширина и форма / цвет | FastSpatial / DefaultEffects | `ButtonGroup.kt`, `ToggleButton.kt` |
-  | Кнопки, icon buttons | форма при нажатии | DefaultEffects — намеренно без отскока | `Button.kt`, `IconButton.kt` |
-  | Pull-to-refresh | откат, прозрачность | DefaultEffects | `PullToRefresh.kt` |
-
-- **Переходы** — паттерны из MDC `docs/theming/Motion.md`, числа из исходников
-  `com.google.android.material.transition` и M3-темы (таблицы в самом Motion.md остались от M2):
-
-  | Паттерн | Где | Параметры |
-  |---|---|---|
-  | Fade through (`MaterialFadeThrough`) | вкладки navigation bar, загрузка → главный экран, загрузка → список | 450 мс (`motionDurationLong1`), emphasized; уход до 35% прогресса, появление после, масштаб 92% → 100% |
-  | Shared axis X (`MaterialSharedAxis`) | смена дня (кнопкой, свайпом, из поиска), шаги выбора группы | 450 мс, emphasized, сдвиг 30dp, прозрачность как у fade through; назад — зеркально |
-  | Container transform (`MaterialContainerTransform`) | карточка пары → подробности | 500 мс (`motionDurationLong2`), `OpenContainer` из `package:animations` |
-
-  Fade through и shared axis портированы в `lib/theme/app_transitions.dart`, переключением
-  детей управляет `PageTransitionSwitcher` из `package:animations`.
+**Движение.** Смена раздела — fade through; смена дня — lateral (страницы едут за пальцем, без
+затухания); шаги выбора группы — shared axis X; подробности пары — платформенный
+forward/backward с predictive back. Какой токен пружины у какого свойства — как у аналогичного
+компонента Compose.
 
 ---
 
 ## Сознательные отступления от спеки
 
-1. **`DynamicSchemeVariant.expressive` заметно поворачивает оттенок сида.**
-   Фактические значения: violet `#6B3FD4` → primary `#006B5A`, blue `#1F5FD0` → `#306A39`,
-   green `#1E6B4E` → `#914C24`, coral `#A93B4F` → `#286294`. Вариант оставлен по §4.1,
-   поэтому палитры подписаны по итоговому цвету («Бирюзовая», «Зелёная», «Терракотовая»,
-   «Синяя»), а кружок в выборе палитры показывает итоговый `primary`, а не сид.
-   Имена элементов `AppPalette` при этом остались как в макете. Переключается одной
-   константой `AppColorSchemes.variant`.
+Подробности каждого пункта — в разделе «Реализация во Flutter» файла компонента в `docs/m3/`.
 
-2. **Радиусы карточек 28dp / 32dp вместо `medium` (12dp).**
-   Согласовано как expressive-решение; закреплено в `AppShapes.card` и `AppShapes.cardEmphasized`.
-
-3. **Статусные цвета справок — `ThemeExtension<StatusColors>`.**
-   В M3 нет ролей `warning` / `success`. Значения взяты из макета; контраст текста к контейнеру
-   ≥ 4.5:1 в обеих темах — проверяется в `test/status_contrast_test.dart`.
-
-4. **Три компонента написаны вручную, потому что Flutter 3.44 их не поставляет.**
-   Проверено по исходникам SDK:
-   - `LoadingIndicator` в `packages/flutter/lib/src/material/` отсутствует → `M3LoadingIndicator`;
-   - `LinearProgressIndicator` умеет `year2023: false`, `trackGap`, `stopIndicator*`, но не волнистый
-     вариант → `M3WavyLinearProgress`;
-   - `RefreshIndicator` рисует собственную шкалу и не даёт её заменить → `M3PullToRefresh`.
-
-5. **Пружины заданы вручную.**
-   `MotionScheme` / `MotionTheme` в 3.44 ещё нет (`motion.dart` содержит только `Durations` и
-   `Easing`), поэтому `AppMotion` строит `SpringDescription.withDampingRatio` и оборачивает
-   симуляцию в `SpringCurve`, чтобы пружины работали и в неявных анимациях.
-
-6. **Индикаторы и pull-to-refresh перенесены с Compose, но с поправками на Flutter.**
-   `M3PullToRefresh` заменяет вложенную прокрутку на `ScrollPhysics.applyPhysicsToUserOffset`.
-   Поэтому физика списка должна передавать вызов родителю (не `BouncingScrollPhysics`), а
-   короткий список должен быть `AlwaysScrollable`. `M3WavyLinearProgress` сам анимирует
-   `value` за 500 мс (`ProgressAnimationSpec`) и занимает всю ширину родителя. Подробности —
-   в `docs/m3/components/loading-indicator.md`, `progress-indicators.md`, `pull-to-refresh.md`
-   (раздел «Реализация во Flutter»).
-
-7. **Emphasized-начертание — вес w700 системного Roboto.**
-   Шрифт не скачивается и не лежит в ассетах, поэтому осей Roboto Flex нет — остаётся вес.
-
-8. **Тумблер «Тёмная тема» трёхсостоянчатый внутри.**
-   `null` — следовать системной (подпись из макета «Следовать системной»), иначе явный выбор
-   пользователя. Иначе подпись макета противоречила бы поведению.
-
-9. **Выбор палитры добавлен на вкладку «Профиль».**
-   В макете палитра — параметр design-time. Без переключателя три из четырёх палитр в приложении
-   недостижимы и непроверяемы.
-
-10. **Строка поиска прокручивается вместе с контентом**, а не залипает вверху, как в макете.
-
-11. **`dynamic_color` закреплён на 1.8.x.**
-    Версия 2.1.0 собрана против пакета `material_ui`, её `ColorScheme` и `Widget` — другие типы,
-    несовместимые с `package:flutter/material.dart`.
-
-12. **Navigation bar и фильтр задач отличаются от §7.3 / §7.5 промта.**
-    Промт описывал baseline M3 (навбар 80dp с индикатором 64×32, segmented button). По
-    документации MDC Expressive навбар стал 64dp с индикатором 56×32, а segmented button
-    устарел и заменён connected button group.
-
-13. **Индикатор navigation bar сужен формой, а не шириной.**
-    Flutter рисует индикатор в фиксированной рамке 64×32 (`_kIndicatorWidth`) и ширину не
-    настраивает. `NavigationIndicatorBorder` сужает таблетку до 56dp внутри рамки — фон и
-    ripple рисуются по этой форме, стандартная доступность `NavigationBar` сохраняется.
-
-14. **Контейнер segmented-списка — `surfaceContainer`, а не `surface`.**
-    По токену пункт `surface`, а в каталоге MDC список лежит на подложке
-    `surfaceContainerHigh`. Фон вкладок здесь сам `surface`, поэтому пункт на тон темнее —
-    иначе сегменты сливались бы с фоном.
-
-15. **Container transform — на кривой M2 и с одной длительностью.**
-    `OpenContainer` внутри использует `Curves.fastOutSlowIn` и одну `transitionDuration` на оба
-    направления; в MDC M3 — emphasized, 500 мс на открытие и 400 мс на возврат. Взята
-    длительность открытия.
-
-16. **`package:animations` закреплён на 2.x.**
-    3.0.0 собран на `material_ui` вместо `package:flutter/material.dart` (как `dynamic_color` 2.x):
-    с Flutter 3.44 он не компилируется, а его `Material` не видел бы тему приложения.
-
-17. **Пульсирующая точка «Сейчас идёт» — элемент макета, а не спеки.**
-    Для бесконечной пульсации токена движения нет; анимируется только прозрачность, без перелёта.
-
-18. **Открытый поиск: поля 12dp, а не 8dp как в Compose; результаты озвучивает контент.**
-    Поля — по токену `md.comp.search-view.contained.leading-margin` (Compose:
-    `FullScreenExpandedHorizontalPadding` = 8dp). Доступное имя поля — подсказка, появление
-    результатов объявляет контент через `M3SearchScope.announce`. Подробности —
-    `docs/m3/components/search.md`, «Реализация во Flutter».
-
-19. **Нижний лист — свой маршрут вместо `showModalBottomSheet`; тень level1; ручка закрывает лист из
-    полного положения.** Flutter-лист анимируется кривой по времени маршрута, а `DraggableScrollableSheet`
-    доводит линейно, поэтому движение портировано с якорей Compose. Тень 1dp — по токену и MDC
-    (Compose-модальный лист тени не рисует). Нажатие на ручку — как `BottomSheetImpl`. Подробности —
-    `docs/m3/components/bottom-sheets.md`.
-
-20. **Пункт списка: эвристика многострочного supporting и цвета в sRGB.**
-    У `RenderBox` нет последней базовой линии, поэтому три строки определяются эвристикой Compose
-    (supporting выше 30sp); цвета интерполируются `Color.lerp`, а не в Oklab. Подробности —
-    `docs/m3/components/lists.md`.
-
-21. **Predictive back для поиска и листа написан, но на устройство не приходит**, пока в
-    `AndroidManifest.xml` нет `android:enableOnBackInvokedCallback="true"`: без флага Android шлёт
-    обычный «назад», и компоненты закрываются без жестовой анимации.
+1. **Палитры из макета выводятся вариантом `DynamicSchemeVariant.expressive`.** Гайдлайны вариант
+   не предписывают; он поворачивает оттенок сида, поэтому палитры подписаны по итоговому цвету.
+   По умолчанию — эталонная схема M3 `#6750A4`.
+2. **Динамические цвета на Android 12–13** — схема tonal spot из акцента обоев: системных ролей
+   там нет. На Android 14+ роли берутся из системы.
+3. **Лента дней** — группа toggle-кнопок на неделю: в кнопке две строки (день недели и число),
+   хотя кнопкам положена однострочная подпись. На 360dp неделя с воскресеньем даёт кнопки ~40dp.
+4. **Статусы справок** — дополнительные цвета (custom colors) из оттенков макета: гармонизация с
+   primary и тона акцентных ролей; «Отклонено» — роли error.
+5. **Шрифт — системный Roboto.** Emphasized-стили — по весам `TypeScaleTokens`; осей Roboto Flex
+   нет, шрифт не скачивается.
+6. **Заголовок раздела** (`SectionHeader`) — `titleSmall`, `onSurfaceVariant`: токена у M3 нет.
+7. **Кольцевая диаграмма пропусков** — визуализация данных, не компонент M3; дуги tertiary и
+   primary на треке secondaryContainer.
+8. **Pull-to-refresh** подключается к прокрутке через `ScrollPhysics`: у Flutter нет nested
+   scroll. Список должен быть `AlwaysScrollable` и не `Bouncing`.
+9. **Волнистый прогресс** сам анимирует значение за 500 мс; без трека не рисует stop indicator.
+10. **Нижний лист** — свой маршрут (Flutter-лист анимируется по времени, не пружиной); тень level1
+    по токену; ручка из полного положения закрывает лист, как `BottomSheetImpl`.
+11. **Открытый поиск** — поля 12dp по токену (Compose — 8dp).
+12. **Пункт списка** — многострочность supporting по эвристике Compose (выше 30sp), цвета
+    интерполируются в sRGB.
+13. **Переключатель и чекбокс** — цвета при нажатии и наведении по токенам m3.material.io (Compose
+    их не меняет); ручку переключателя можно тянуть; неопределённый чекбокс по нажатию становится
+    отмеченным.
+14. **Подсказка** скрывается через 1,5 с после отпускания; задержка long press — 500 мс Flutter.
+15. **Группа кнопок** — без overflow-меню; при уменьшении движения нажатая кнопка не расширяется.
+    Toggle S при нажатии — 8dp по токену (Compose — 6dp).
+16. **App bar** доводится только внутри `M3AppBarSettle`; у пунктов навбара «Вкладка N из M» в
+    озвучке, как у Flutter `NavigationBar`, без кольца фокуса.
+17. **Снекбар** держится 4 с без учёта системной настройки «время на действие».
+18. **Пакеты на `material_ui` не используются**: `dynamic_color` 1.x и `animations` 2.x, потому
+    что 2.x / 3.x не компилируются с Flutter 3.44 и не видят тему `package:flutter/material.dart`.
+19. **Вкладка «Пропуски» — демо-данные**: источника у МИТСО нет.
 
 ---
 
@@ -292,22 +183,13 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 
 ```
 lib/
-  main.dart                  ProviderScope, SharedPreferences, intl
-  app.dart                   MaterialApp, темы, локаль ru_RU, экран загрузки
-  theme/                     цвет, типографика, формы, движение, статусные цвета
+  main.dart, app.dart        запуск, тема, динамические цвета, экран загрузки
+  theme/                     движение, переходы, цвет, типографика, формы, отступы, state layer
   data/                      модели, клиент и разбор apps.mitso.by, демо-данные пропусков
   state/                     Riverpod-контроллеры
-  features/                  boot, home, schedule (+ подробности пары), group_picker,
-                             absences, notes, profile
-  widgets/                   M3LoadingIndicator, M3WavyLinearProgress,
-                             M3PullToRefresh, DaySelector, LessonCard, …
-test/
-  app_test.dart              вкладки, подгруппы, свайп дня, подробности пары,
-                             выбор группы, задачи, справки, тема, шрифт 200%
-  indicators_geometry_test.dart  геометрия форм и волнистой шкалы
-  status_contrast_test.dart  контраст статусных цветов
-  pull_to_refresh_test.dart  протяжка, обновление и откат индикатора покадрово
-  screenshot_generator.dart  генератор PNG в docs/screenshots (не тест)
+  features/                  boot, home, schedule, group_picker, absences, notes, profile
+  widgets/                   порты компонентов M3 Expressive (m3_*.dart), SegmentedList, …
+tool/m3_guidelines.py        выгрузка гайдлайнов m3.material.io в .m3-guidelines/
+docs/m3/                     справочник M3 по компонентам и стилям
+test/                        тесты экранов, компонентов, разбора, контраста; генератор скриншотов
 ```
-
-
