@@ -179,18 +179,20 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      alignment: Alignment.center,
       constraints: const BoxConstraints(minHeight: 32),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),
       ),
-      child: Text(
-        label,
-        style: context.text.bodyMedium!.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w500,
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          label,
+          style: context.text.bodyMedium!.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -341,7 +343,15 @@ class _PalettePicker extends StatelessWidget {
                 label: Text(palette.label),
                 selected: palette == selected,
                 onSelected: enabled ? (_) => onSelected(palette) : null,
-                avatar: CircleAvatar(backgroundColor: palette.seed, radius: 8),
+                // Кружок — итоговый primary, а не сид: вариант expressive
+                // поворачивает оттенок, и сид ввёл бы в заблуждение.
+                avatar: CircleAvatar(
+                  backgroundColor: AppColorSchemes.primaryOf(
+                    palette,
+                    Theme.of(context).brightness,
+                  ),
+                  radius: 8,
+                ),
               ),
           ],
         ),
@@ -387,7 +397,12 @@ class _Section extends StatelessWidget {
           borderRadius: AppShapes.all(AppShapes.card),
           side: BorderSide(color: colors.outlineVariant),
         ),
-        child: Column(children: children),
+        // stretch, иначе строки с Wrap сжимаются по контенту и уезжают
+        // в центр вместо того, чтобы занять всю ширину секции.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
       ),
     );
   }

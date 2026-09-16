@@ -98,6 +98,15 @@ ThemeData buildTheme(ColorScheme scheme) {
       height: 80,
       backgroundColor: scheme.surfaceContainer,
       indicatorShape: AppShapes.stadium,
+      indicatorColor: scheme.primaryContainer,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          size: 24,
+          color: states.contains(WidgetState.selected)
+              ? scheme.onPrimaryContainer
+              : scheme.onSurfaceVariant,
+        ),
+      ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => textTheme.labelMedium!.copyWith(
           color: states.contains(WidgetState.selected)

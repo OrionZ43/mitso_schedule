@@ -185,16 +185,18 @@ class _TaskChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      alignment: Alignment.center,
       constraints: const BoxConstraints(minHeight: 26),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),
       ),
-      child: Text(
-        label,
-        style: context.text.labelMedium!.copyWith(color: foreground),
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          label,
+          style: context.text.labelMedium!.copyWith(color: foreground),
+        ),
       ),
     );
   }

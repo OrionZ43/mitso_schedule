@@ -21,12 +21,20 @@ abstract final class AppTypography {
       double tracking,
       FontWeight weight,
     ) {
-      return GoogleFonts.roboto(
+      final TextStyle base = GoogleFonts.roboto(
         fontSize: size,
         height: height / size,
         letterSpacing: tracking,
         fontWeight: weight,
         color: color,
+      );
+      // Если google_fonts не смог отдать шрифт (нет сети при первом запуске и
+      // нет ассета), он возвращает стиль без семейства. Тогда берём системный
+      // Roboto: на Android он есть всегда, и текст не уезжает на шрифт
+      // по умолчанию.
+      return base.copyWith(
+        fontFamily: base.fontFamily ?? 'Roboto',
+        fontFamilyFallback: const ['Roboto'],
       );
     }
 

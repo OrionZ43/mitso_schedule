@@ -96,14 +96,15 @@ class _Badge extends StatelessWidget {
     // Высота задаётся минимумом, а не фиксируется: при масштабе шрифта
     // до 200% бейдж растёт вместе с текстом и ничего не обрезается.
     return Container(
-      alignment: Alignment.center,
       constraints: BoxConstraints(minHeight: height ?? 0),
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),
       ),
-      child: Text(label, style: style),
+      // widthFactor: 1 — центрировать по вертикали, но по ширине остаться
+      // по размеру текста: Container с alignment занял бы всю ширину.
+      child: Center(widthFactor: 1, child: Text(label, style: style)),
     );
   }
 }
