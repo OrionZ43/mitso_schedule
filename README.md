@@ -42,7 +42,7 @@ flutter run -d emulator-5554
 
 ```bash
 flutter analyze   # без предупреждений
-flutter test      # 22 теста
+flutter test      # 26 тестов
 dart format lib test
 ```
 
@@ -73,7 +73,7 @@ Flutter и сам подгружает Roboto и Material Symbols через `Fo
 | [Типографика](https://m3.material.io/styles/typography/type-scale-tokens) | Полная `TextTheme` по токенам типошкалы на Roboto, emphasized-начертание через `TextStyle.emphasized` |
 | [Форма](https://m3.material.io/styles/shape/corner-radius-scale) | `AppShapes` — вся шкала радиусов M3, никаких «магических» чисел в виджетах |
 | [Движение](https://m3.material.io/styles/motion/overview/specs) | `AppMotion` — шесть пружинных токенов M3 Expressive; позиция/форма идут по *spatial*, цвет/прозрачность — по *effects* |
-| [Loading indicator](https://m3.material.io/components/loading-indicator/guidelines) | `M3LoadingIndicator`: морфинг по официальной последовательности из 7 форм (36 опорных точек каждая) + вращение 45° за шаг |
+| [Loading indicator](https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md) | `M3LoadingIndicator` — порт `LoadingIndicator` из material-components-android: формы `MaterialShapes` и `Morph` из `material_new_shapes` (Dart-порт `androidx.graphics.shapes`), пружина 200 / 0.6 на морфе, поворот 50° + 90° за шаг 650 мс |
 | [Progress indicators](https://m3.material.io/components/progress-indicators/overview) | `M3WavyLinearProgress`: синусоида 40dp × 3dp, толщина 4dp, зазор 4dp, stop indicator 4dp, амплитуда гаснет к 100% |
 | [Navigation bar](https://m3.material.io/components/navigation-bar/specs) | `NavigationBar` 80dp, индикатор-таблетка, filled-иконки у активного пункта |
 | [Search](https://m3.material.io/components/search/overview) | `SearchAnchor.bar` с фильтр-чипами и недавними запросами |
@@ -114,29 +114,24 @@ Flutter и сам подгружает Roboto и Material Symbols через `Fo
    `Easing`), поэтому `AppMotion` строит `SpringDescription.withDampingRatio` и оборачивает
    симуляцию в `SpringCurve`, чтобы пружины работали и в неявных анимациях.
 
-6. **Числа для loading indicator взяты из реализации Compose Material3.**
-   Страницы `specs` на m3.material.io отдаются как SPA и машинно не читаются. Значения
-   (контейнер 48dp, активный индикатор 38dp, шаг морфинга 650 мс, поворот 45° за шаг) вынесены
-   в константы `M3LoadingIndicator` и покрыты тестом, так что правятся в одном месте.
-   Сами формы взяты из макета — это официальная последовательность M3.
+6. **Размер формы индикатора — 34dp, а не 38dp из таблицы в документации MDC.**
+   Таблица берёт `dimens.xml`, но стиль `Widget.Material3.LoadingIndicator`, от которого
+   наследуются оба варианта, задаёт 34dp — взято фактическое значение из кода.
 
-7. **Вращение индикатора: полный оборот за 8 шагов (5200 мс) при цикле морфинга в 7 форм (4550 мс).**
-   Так скорость поворота ровно 45° за шаг морфинга, и при этом оба цикла замыкаются без рывка.
-
-8. **Emphasized-начертание — вес w700 обычного Roboto.**
+7. **Emphasized-начертание — вес w700 обычного Roboto.**
    `google_fonts` не даёт управлять осями Roboto Flex через `variations`.
 
-9. **Тумблер «Тёмная тема» трёхсостоянчатый внутри.**
+8. **Тумблер «Тёмная тема» трёхсостоянчатый внутри.**
    `null` — следовать системной (подпись из макета «Следовать системной»), иначе явный выбор
    пользователя. Иначе подпись макета противоречила бы поведению.
 
-10. **Выбор палитры добавлен на вкладку «Профиль».**
+9. **Выбор палитры добавлен на вкладку «Профиль».**
    В макете палитра — параметр design-time. Без переключателя три из четырёх палитр в приложении
    недостижимы и непроверяемы.
 
-11. **Строка поиска прокручивается вместе с контентом**, а не залипает вверху, как в макете.
+10. **Строка поиска прокручивается вместе с контентом**, а не залипает вверху, как в макете.
 
-12. **`dynamic_color` закреплён на 1.8.x.**
+11. **`dynamic_color` закреплён на 1.8.x.**
     Версия 2.1.0 собрана против пакета `material_ui`, её `ColorScheme` и `Widget` — другие типы,
     несовместимые с `package:flutter/material.dart`.
 
@@ -162,4 +157,4 @@ test/
   screenshot_generator.dart  генератор PNG в docs/screenshots (не тест)
 ```
 
-`lib/widgets/m3_loading_shapes.dart` сгенерирован из `@keyframes m3morph` макета.
+

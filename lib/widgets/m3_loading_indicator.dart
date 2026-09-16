@@ -1,22 +1,20 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-
-import 'm3_loading_shapes.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:material_new_shapes/material_new_shapes.dart';
 
 /// Индикатор загрузки Material 3 Expressive.
 ///
-/// https://m3.material.io/components/loading-indicator/overview
+/// Порт `LoadingIndicator` из material-components-android:
+/// https://github.com/material-components/material-components-android/blob/master/docs/components/LoadingIndicator.md
 ///
-/// Морфится по официальной последовательности из семи форм и одновременно
-/// вращается. Морфинг — линейная интерполяция между наборами из 36 опорных
-/// точек (у всех форм их поровну), см.
-/// https://m3.material.io/styles/shape/shape-morph
-///
-/// Flutter 3.44 не поставляет этот компонент, поэтому он реализован здесь на
-/// [CustomPainter]. Числовые значения ниже — из реализации
-/// `LoadingIndicatorDefaults` в Compose Material3 (страницы `specs` на
-/// m3.material.io отдаются только как SPA и машинно не читаются).
+/// Во Flutter 3.44 этого компонента нет. Формы и морфинг берутся из
+/// `material_new_shapes` — Dart-порта `androidx.graphics.shapes`, на котором
+/// построен и оригинал. Анимация перенесена из
+/// `LoadingIndicatorAnimatorDelegate.java`, отрисовка — из
+/// `LoadingIndicatorDrawingDelegate.java`; числа ниже взяты оттуда же.
 class M3LoadingIndicator extends StatefulWidget {
   const M3LoadingIndicator({
     super.key,
@@ -28,108 +26,91 @@ class M3LoadingIndicator extends StatefulWidget {
     this.semanticsLabel = 'Загрузка',
   });
 
-  /// `true` — активный индикатор внутри круглого контейнера.
+  /// `true` — стиль `Widget.Material3.LoadingIndicator.Contained`:
+  /// форма на круглом контейнере.
   final bool contained;
 
-  /// Размер контейнера (contained) либо активного индикатора (uncontained).
+  /// Сторона всего индикатора. По умолчанию [containerSize]; всё рисуется
+  /// пропорционально, как в MDC с включённым `scaleToFit`.
   final double? size;
 
-  /// Цвет активного индикатора. По умолчанию `colorScheme.primary`.
+  /// Цвет формы. По умолчанию `onPrimaryContainer` для contained и `primary`
+  /// для uncontained — как токены
+  /// `m3_comp_loading_indicator_contained_active_indicator_color` и
+  /// `m3_comp_loading_indicator_active_indicator_color`.
   final Color? color;
 
-  /// Цвет контейнера. По умолчанию `colorScheme.primaryContainer`.
+  /// Цвет контейнера. По умолчанию `primaryContainer`
+  /// (`m3_comp_loading_indicator_contained_container_color`).
   final Color? containerColor;
 
-  /// Масштаб для pull-to-refresh: индикатор «проявляется» по мере протяжки.
+  /// Дополнительный масштаб: в pull-to-refresh индикатор «проявляется»
+  /// по мере протяжки.
   final double scale;
 
   final String? semanticsLabel;
 
-  /// Диаметр контейнера contained-варианта.
+  /// `m3_comp_loading_indicator_container_width` / `_height`.
   static const double containerSize = 48;
 
-  /// Активный индикатор внутри контейнера.
-  static const double containedIndicatorSize = 38;
-
-  /// Активный индикатор без контейнера.
-  static const double uncontainedIndicatorSize = 48;
-
-  /// Время показа одной формы.
-  static const Duration morphInterval = Duration(milliseconds: 650);
-
-  /// Поворот за один шаг морфинга.
-  static const double rotationPerMorph = 45;
-
-  /// Полный цикл морфинга: семь форм.
-  static Duration get morphDuration =>
-      morphInterval * M3LoadingShapes.sequence.length;
-
-  /// Полный оборот на 360 градусов при скорости [rotationPerMorph] за шаг.
-  static Duration get rotationDuration =>
-      morphInterval * (360 / rotationPerMorph);
+  /// `indicatorSize` из стиля `Widget.Material3.LoadingIndicator`.
+  ///
+  /// Таблица в документации MDC называет 38dp (это `dimens.xml`), но стиль,
+  /// от которого наследуются оба варианта, задаёт 34dp — берём фактическое
+  /// значение из кода.
+  static const double indicatorSize = 34;
 
   @override
   State<M3LoadingIndicator> createState() => _M3LoadingIndicatorState();
 }
 
 class _M3LoadingIndicatorState extends State<M3LoadingIndicator>
-    with TickerProviderStateMixin {
-  late final AnimationController _morph = AnimationController(
-    vsync: this,
-    duration: M3LoadingIndicator.morphDuration,
-  )..repeat();
+    with SingleTickerProviderStateMixin {
+  final LoadingIndicatorMotion _motion = LoadingIndicatorMotion();
 
-  late final AnimationController _rotation = AnimationController(
-    vsync: this,
-    duration: M3LoadingIndicator.rotationDuration,
-  )..repeat();
+  // Не ленивое поле: `late final` с инициализатором создал бы тикер только
+  // при первом обращении — то есть в dispose, и индикатор бы не анимировался.
+  late final Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((elapsed) {
+      setState(() => _motion.update(elapsed));
+    })..start();
+  }
 
   @override
   void dispose() {
-    _morph.dispose();
-    _rotation.dispose();
+    _ticker.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final double containerSize =
-        widget.size ??
-        (widget.contained
-            ? M3LoadingIndicator.containerSize
-            : M3LoadingIndicator.uncontainedIndicatorSize);
-
-    // Активный индикатор занимает 38/48 контейнера — пропорция сохраняется
-    // при любом заданном размере.
-    final double indicatorSize = widget.contained
-        ? containerSize *
-              (M3LoadingIndicator.containedIndicatorSize /
-                  M3LoadingIndicator.containerSize)
-        : containerSize;
+    final double side = widget.size ?? M3LoadingIndicator.containerSize;
 
     return Semantics(
       label: widget.semanticsLabel,
       liveRegion: true,
       child: SizedBox.square(
-        dimension: containerSize,
+        dimension: side,
         child: Transform.scale(
           scale: widget.scale,
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_morph, _rotation]),
-            builder: (context, _) {
-              return CustomPaint(
-                painter: _LoadingIndicatorPainter(
-                  morph: _morph.value,
-                  rotation: _rotation.value * 2 * math.pi,
-                  indicatorSize: indicatorSize,
-                  color: widget.color ?? colors.primary,
-                  containerColor: widget.contained
-                      ? (widget.containerColor ?? colors.primaryContainer)
-                      : null,
-                ),
-              );
-            },
+          child: CustomPaint(
+            painter: _LoadingIndicatorPainter(
+              morphFactor: _motion.morphFactor,
+              rotationDegrees: _motion.rotationDegrees,
+              color:
+                  widget.color ??
+                  (widget.contained
+                      ? colors.onPrimaryContainer
+                      : colors.primary),
+              containerColor: widget.contained
+                  ? (widget.containerColor ?? colors.primaryContainer)
+                  : null,
+            ),
           ),
         ),
       ),
@@ -137,87 +118,191 @@ class _M3LoadingIndicatorState extends State<M3LoadingIndicator>
   }
 }
 
+/// Движение индикатора — порт `LoadingIndicatorAnimatorDelegate`.
+///
+/// В оригинале два аниматора:
+/// * линейный `ObjectAnimator` длиной [durationPerShape], повторяющийся
+///   бесконечно; он даёт равномерную часть поворота;
+/// * пружина `SpringAnimation` на `morphFactor`, которую при каждом повторе
+///   линейного аниматора перенацеливают на следующее целое число. Целая
+///   часть `morphFactor` — номер морфа, дробная — прогресс внутри него.
+///   Пружина недодемпфирована, поэтому форма «пролетает» цель и
+///   возвращается.
+///
+/// Вынесено из виджета, чтобы движение проверялось без отрисовки.
+class LoadingIndicatorMotion {
+  /// `DURATION_PER_SHAPE_IN_MS`.
+  static const Duration durationPerShape = Duration(milliseconds: 650);
+
+  /// `CONSTANT_ROTATION_PER_SHAPE_DEGREES` — равномерный поворот за шаг.
+  static const double constantRotationPerShape = 50;
+
+  /// `EXTRA_ROTATION_PER_SHAPE_DEGREES` — поворот, который ведёт пружина.
+  static const double extraRotationPerShape = 90;
+
+  /// `SPRING_STIFFNESS` и `SPRING_DAMPING_RATIO`.
+  static const double springStiffness = 200;
+  static const double springDampingRatio = 0.6;
+
+  static final SpringDescription _spring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: springStiffness,
+    ratio: springDampingRatio,
+  );
+
+  /// `morphFactorTarget`: при старте 1, растёт на каждом повторе.
+  int _morphFactorTarget = 1;
+
+  /// Пружина к текущей цели и момент, когда её запустили.
+  SpringSimulation _springSimulation = SpringSimulation(_spring, 0, 1, 0);
+  double _springStartSeconds = 0;
+
+  double _morphFactor = 0;
+  double _rotationDegrees = 0;
+
+  /// Целая часть — индекс морфа, дробная — прогресс внутри него.
+  double get morphFactor => _morphFactor;
+
+  /// Поворот формы в градусах, 0..360.
+  double get rotationDegrees => _rotationDegrees;
+
+  /// Пересчитывает состояние на момент [elapsed] от старта.
+  void update(Duration elapsed) {
+    final double seconds =
+        elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    final double stepSeconds =
+        durationPerShape.inMicroseconds / Duration.microsecondsPerSecond;
+
+    // onAnimationRepeat: на каждом повторе линейного аниматора пружину
+    // перенацеливают на следующее целое, сохраняя положение и скорость.
+    final int repeats = (seconds / stepSeconds).floor();
+    while (_morphFactorTarget - 1 < repeats) {
+      final double repeatAt = _morphFactorTarget * stepSeconds;
+      final double t = repeatAt - _springStartSeconds;
+      final double position = _springSimulation.x(t);
+      final double velocity = _springSimulation.dx(t);
+      _morphFactorTarget++;
+      _springSimulation = SpringSimulation(
+        _spring,
+        position,
+        _morphFactorTarget.toDouble(),
+        velocity,
+      );
+      _springStartSeconds = repeatAt;
+    }
+
+    final double springTime = seconds - _springStartSeconds;
+    _morphFactor = _springSimulation.isDone(springTime)
+        ? _morphFactorTarget.toDouble()
+        : _springSimulation.x(springTime);
+
+    // updateIndicatorRotation(playtime).
+    final double playtime = seconds - repeats * stepSeconds;
+    double timeFactorPerShape = playtime / stepSeconds;
+    if (timeFactorPerShape >= 1) timeFactorPerShape = 0;
+
+    final int morphFactorBase = _morphFactorTarget - 1;
+    final double morphFactorPerShape = _morphFactor - morphFactorBase;
+
+    _rotationDegrees =
+        ((constantRotationPerShape + extraRotationPerShape) * morphFactorBase +
+            constantRotationPerShape * timeFactorPerShape +
+            extraRotationPerShape * morphFactorPerShape) %
+        360;
+  }
+}
+
+/// Последовательность морфов — `INDETERMINATE_MORPH_SEQUENCE` из
+/// `LoadingIndicatorDrawingDelegate`.
+abstract final class LoadingIndicatorShapes {
+  /// `INDETERMINATE_SHAPES`: формы из `MaterialShapes` в порядке показа.
+  static final List<RoundedPolygon> shapes = [
+    MaterialShapes.softBurst,
+    MaterialShapes.cookie9Sided,
+    MaterialShapes.pentagon,
+    MaterialShapes.pill,
+    MaterialShapes.sunny,
+    MaterialShapes.cookie4Sided,
+    MaterialShapes.oval,
+  ].map(normalizeRadial).toList(growable: false);
+
+  /// Морф каждой формы в следующую, последняя замыкается на первую.
+  static final List<Morph> morphs = [
+    for (int i = 0; i < shapes.length; i++)
+      Morph(shapes[i], shapes[(i + 1) % shapes.length]),
+  ];
+
+  /// `MaterialShapes.normalize(shape, true, new RectF(-1, -1, 1, 1))`.
+  ///
+  /// Масштаб считается по `calculateMaxBounds` — квадрату, в который форма
+  /// помещается при любом повороте, — поэтому вращение ничего не обрезает, а
+  /// все формы визуально одного размера.
+  static RoundedPolygon normalizeRadial(RoundedPolygon shape) {
+    final List<double> bounds = shape.calculateMaxBounds();
+    final double width = bounds[2] - bounds[0];
+    final double height = bounds[3] - bounds[1];
+    final double scale = math.min(2 / width, 2 / height);
+    final double centerX = (bounds[0] + bounds[2]) / 2;
+    final double centerY = (bounds[1] + bounds[3]) / 2;
+    return shape.transformed(
+      (x, y) => ((x - centerX) * scale, (y - centerY) * scale),
+    );
+  }
+}
+
 class _LoadingIndicatorPainter extends CustomPainter {
   _LoadingIndicatorPainter({
-    required this.morph,
-    required this.rotation,
-    required this.indicatorSize,
+    required this.morphFactor,
+    required this.rotationDegrees,
     required this.color,
     required this.containerColor,
   });
 
-  /// Положение внутри цикла морфинга, 0..1.
-  final double morph;
-
-  /// Текущий поворот в радианах.
-  final double rotation;
-
-  final double indicatorSize;
+  final double morphFactor;
+  final double rotationDegrees;
   final Color color;
   final Color? containerColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Offset center = size.center(Offset.zero);
+    // adjustCanvas: начало координат в центре, масштаб под фактический
+    // размер, поворот на -90°, чтобы 0° был сверху.
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.scale(size.shortestSide / M3LoadingIndicator.containerSize);
+    canvas.rotate(-math.pi / 2);
 
+    // drawContainer: скругление в половину стороны — это круг.
     if (containerColor != null) {
       canvas.drawCircle(
-        center,
-        size.shortestSide / 2,
+        Offset.zero,
+        M3LoadingIndicator.containerSize / 2,
         Paint()..color = containerColor!,
       );
     }
 
-    final List<Offset> points = _interpolatedPoints();
+    // drawIndicator.
+    canvas.rotate(rotationDegrees * math.pi / 180);
 
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(rotation);
+    final int shapeMorphFraction = morphFactor.floor();
+    final List<Morph> morphs = LoadingIndicatorShapes.morphs;
+    // floorMod: у Dart остаток с положительным делителем неотрицательный.
+    final Morph morph = morphs[shapeMorphFraction % morphs.length];
+    final double fractionPerShape = morphFactor - shapeMorphFraction;
 
-    final Path path = Path();
-    for (int i = 0; i < points.length; i++) {
-      // Точки заданы в долях 0..1 от габаритного квадрата формы.
-      final Offset p = Offset(
-        (points[i].dx - 0.5) * indicatorSize,
-        (points[i].dy - 0.5) * indicatorSize,
-      );
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-    path.close();
+    // Формы нормированы в [-1, 1], поэтому путь растягивается на половину
+    // размера индикатора.
+    final double half = M3LoadingIndicator.indicatorSize / 2;
+    final Path path = morph
+        .toPath(progress: fractionPerShape)
+        .transform(Matrix4.diagonal3Values(half, half, 1).storage);
 
     canvas.drawPath(path, Paint()..color = color);
-    canvas.restore();
-  }
-
-  /// Форма между двумя соседними ключевыми формами последовательности.
-  List<Offset> _interpolatedPoints() {
-    final List<List<Offset>> shapes = M3LoadingShapes.sequence;
-    final double position = morph * shapes.length;
-    final int index = position.floor() % shapes.length;
-    final int next = (index + 1) % shapes.length;
-
-    // Внутри шага — стандартное easing M3, чтобы форма не «дёргалась»
-    // на стыке ключевых кадров.
-    final double t = Easing.standard.transform(
-      (position - position.floor()).clamp(0.0, 1.0),
-    );
-
-    final List<Offset> from = shapes[index];
-    final List<Offset> to = shapes[next];
-    return <Offset>[
-      for (int i = 0; i < from.length; i++) Offset.lerp(from[i], to[i], t)!,
-    ];
   }
 
   @override
   bool shouldRepaint(_LoadingIndicatorPainter old) {
-    return old.morph != morph ||
-        old.rotation != rotation ||
-        old.indicatorSize != indicatorSize ||
+    return old.morphFactor != morphFactor ||
+        old.rotationDegrees != rotationDegrees ||
         old.color != color ||
         old.containerColor != containerColor;
   }
