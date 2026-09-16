@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_spacing.dart';
 import '../../../theme/app_typography.dart';
 
 /// Кольцевая диаграмма пропусков.
@@ -52,7 +53,8 @@ class AbsenceDonut extends StatelessWidget {
               // Внешняя дуга — весь пропуск, поверх неё дуга без справки.
               totalFraction: missedHours / limitHours,
               unjustifiedFraction: unjustifiedHours / limitHours,
-              trackColor: colors.surfaceContainerHigh,
+              // Трек дуги — роль трека индикаторов прогресса.
+              trackColor: colors.secondaryContainer,
               totalColor: colors.primaryContainer,
               unjustifiedColor: colors.primary,
             ),
@@ -66,13 +68,14 @@ class AbsenceDonut extends StatelessWidget {
                   children: [
                     Text(
                       '$missedHours',
-                      style: context.text.displaySmall!.emphasized.copyWith(
-                        fontSize: 48,
-                        height: 1,
-                        letterSpacing: -1,
+                      // Крупное число — editorial-момент: стиль шкалы
+                      // displayMedium без изменения размера
+                      // (typography → «Avoid changing the type size»).
+                      style: context.text.displayMedium!.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.space75),
                     Text(
                       'часов пропущено',
                       textAlign: TextAlign.center,
@@ -80,12 +83,12 @@ class AbsenceDonut extends StatelessWidget {
                         color: colors.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.space25),
                     Text(
                       'лимит $limitHours ч',
                       textAlign: TextAlign.center,
                       style: context.text.labelMedium!.copyWith(
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
