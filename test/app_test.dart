@@ -98,7 +98,7 @@ void main() {
 
     await openTab(tester, 'Профиль');
     expect(find.text('2423 УИР'), findsOneWidget);
-    expect(find.text('Экономический'), findsOneWidget);
+    expect(find.textContaining('Экономический'), findsOneWidget);
   });
 
   testWidgets('открывается сегодняшний день, идущая пара отмечена', (
@@ -278,19 +278,11 @@ void main() {
     }
   });
 
-  testWidgets('тумблер темы переключает ThemeMode и сохраняется', (
-    tester,
-  ) async {
+  testWidgets('выбор темы переключает ThemeMode и сохраняется', (tester) async {
     await pumpApp(tester);
     await openTab(tester, 'Профиль');
 
-    final Finder darkSwitch = find.widgetWithText(
-      SwitchListTile,
-      'Тёмная тема',
-    );
-    expect(tester.widget<SwitchListTile>(darkSwitch).value, isFalse);
-
-    await tester.tap(darkSwitch);
+    await tester.tap(find.text('Тёмная'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -301,5 +293,10 @@ void main() {
 
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('settings.dark'), isTrue);
+
+    // «Системная» снимает явный выбор.
+    await tester.tap(find.text('Системная'));
+    await tester.pump();
+    expect(preferences.getBool('settings.dark'), isNull);
   });
 }

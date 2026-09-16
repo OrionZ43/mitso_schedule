@@ -6,10 +6,13 @@ import '../../data/models/group_ref.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/settings_controller.dart';
 import '../../theme/app_color_schemes.dart';
-import '../../theme/app_shapes.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/connected_button_group.dart';
+import '../../widgets/m3_filter_chip.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
+import '../../widgets/m3_switch.dart';
+import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
 
@@ -26,19 +29,37 @@ class ProfileScreen extends ConsumerWidget {
     final SettingsController controller = ref.read(
       settingsControllerProvider.notifier,
     );
+    final GroupRef? group = ref.watch(selectedGroupProvider);
+    final double margin = AppSpacing.screenMargin(context);
 
     return M3AppBarSettle(
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
           const SliverMediumFlexibleAppBar(title: 'Профиль'),
-          SliverList.list(
-            children: [
-              _GroupHeader(group: ref.watch(selectedGroupProvider)),
-              _SectionTitle('Подгруппа'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ConnectedButtonGroup<int>(
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: margin),
+            sliver: SliverList.list(
+              children: [
+                // Группа — пункт списка с одним действием: открыть выбор.
+                SegmentedList(
+                  children: [
+                    M3ListItem(
+                      leading: const _Avatar(icon: Symbols.school),
+                      headline: Text(group?.groupName ?? 'Группа не выбрана'),
+                      supporting: Text(
+                        group == null
+                            ? 'Расписание загружается с apps.mitso.by'
+                            : group.details,
+                      ),
+                      trailing: const Icon(Symbols.chevron_right),
+                      onTap: () => showGroupPicker(context),
+                    ),
+                  ],
+                ),
+
+                const SectionHeader('Подгруппа'),
+                ConnectedButtonGroup<int>(
                   values: const [0, 1, 2],
                   labelOf: (value) => switch (value) {
                     1 => '1-я',
@@ -49,176 +70,118 @@ class ProfileScreen extends ConsumerWidget {
                   onSelected: (value) =>
                       controller.setSubgroup(value == 0 ? null : value),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
-                child: Text(
+                _Hint(
                   settings.subgroup == null
                       ? 'Лабораторные и языки показываются для обеих подгрупп.'
                       : 'Занятия другой подгруппы скрыты из расписания.',
-                  style: context.text.bodyMedium!.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
                 ),
-              ),
-              _SectionTitle('Настройки'),
-              _SegmentedSection(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Symbols.dark_mode),
-                    title: const Text('Тёмная тема'),
-                    subtitle: Text(settings.themeSubtitle),
-                    value: Theme.of(context).brightness == Brightness.dark,
-                    onChanged: controller.setDark,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Symbols.palette),
-                    title: const Text('Динамические цвета'),
-                    subtitle: const Text('Material You · из обоев'),
-                    value: settings.dynamicColor,
-                    onChanged: controller.setDynamicColor,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Symbols.notifications),
-                    title: const Text('Напоминать о паре'),
-                    subtitle: const Text('За 15 минут до начала'),
-                    value: settings.lessonReminder,
-                    onChanged: controller.setLessonReminder,
-                  ),
-                ],
-              ),
-              _SectionTitle('Палитра'),
-              _PalettePicker(
-                selected: settings.palette,
-                enabled: !settings.dynamicColor,
-                onSelected: controller.setPalette,
-              ),
-            ],
+
+                // Три взаимоисключающих варианта — connected button group,
+                // а не переключатель (switch → Guidelines → Usage).
+                const SectionHeader('Тема'),
+                ConnectedButtonGroup<ThemeMode>(
+                  values: const [
+                    ThemeMode.system,
+                    ThemeMode.light,
+                    ThemeMode.dark,
+                  ],
+                  labelOf: (mode) => switch (mode) {
+                    ThemeMode.light => 'Светлая',
+                    ThemeMode.dark => 'Тёмная',
+                    ThemeMode.system => 'Системная',
+                  },
+                  selected: settings.themeMode,
+                  onSelected: controller.setThemeMode,
+                ),
+
+                const SectionHeader('Цвета'),
+                SegmentedList(
+                  children: [
+                    // Строка списка с переключателем: нажатие по всей строке
+                    // переключает (lists → selection modes).
+                    M3ListItem(
+                      leading: const Icon(Symbols.palette),
+                      headline: const Text('Динамические цвета'),
+                      supporting: const Text('Цвета из обоев'),
+                      trailing: ExcludeSemantics(
+                        child: M3Switch(
+                          value: settings.dynamicColor,
+                          onChanged: controller.setDynamicColor,
+                        ),
+                      ),
+                      onTap: () =>
+                          controller.setDynamicColor(!settings.dynamicColor),
+                      semanticsLabel:
+                          'Динамические цвета, цвета из обоев, '
+                          '${settings.dynamicColor ? 'включено' : 'выключено'}',
+                    ),
+                  ],
+                ),
+                _PalettePicker(
+                  selected: settings.palette,
+                  enabled: !settings.dynamicColor,
+                  onSelected: controller.setPalette,
+                ),
+                const SizedBox(height: AppSpacing.space800),
+              ],
+            ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
         ],
       ),
     );
   }
 }
 
-/// Выбранная группа: её расписание показывается на главной.
-class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.group});
+/// Аватар пункта списка: `ListTokens.ItemLeadingAvatar*` — 40dp,
+/// primaryContainer / onPrimaryContainer.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.icon});
 
-  final GroupRef? group;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
-
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: AppShapes.all(AppShapes.extraLargeIncreased),
+        color: colors.primaryContainer,
+        shape: BoxShape.circle,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Symbols.school, size: 36, color: colors.onPrimary),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group?.groupName ?? 'Группа не выбрана',
-                      style: context.text.titleLarge!.emphasized.copyWith(
-                        height: 1.25,
-                      ),
-                    ),
-                    if (group != null) ...[
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _InfoChip(
-                            label: group!.courseName,
-                            background: colors.primaryContainer,
-                            foreground: colors.onPrimaryContainer,
-                          ),
-                          _InfoChip(
-                            label: group!.facultyName,
-                            background: colors.surface,
-                            foreground: colors.onSurfaceVariant,
-                          ),
-                          _InfoChip(
-                            label: group!.formName,
-                            background: colors.surface,
-                            foreground: colors.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          FilledButton.tonalIcon(
-            onPressed: () => showGroupPicker(context),
-            icon: const Icon(Symbols.groups),
-            label: Text(group == null ? 'Выбрать группу' : 'Сменить группу'),
-          ),
-        ],
-      ),
+      child: Icon(icon, color: colors.onPrimaryContainer),
     );
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
+class _Hint extends StatelessWidget {
+  const _Hint(this.text);
 
-  final String label;
-  final Color background;
-  final Color foreground;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 32),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: AppShapes.all(AppShapes.chip),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space200,
+        AppSpacing.space100,
+        AppSpacing.space200,
+        0,
       ),
-      child: Center(
-        widthFactor: 1,
-        child: Text(
-          label,
-          style: context.text.bodyMedium!.copyWith(
-            color: foreground,
-            fontWeight: FontWeight.w500,
-          ),
+      child: Text(
+        text,
+        style: context.text.bodyMedium!.copyWith(
+          color: context.colors.onSurfaceVariant,
         ),
       ),
     );
   }
 }
 
+/// Статичная палитра — фильтр-чипы с одиночным выбором (chips → Filter:
+/// «single-select replaces radio buttons»). Образец цвета — ведущая иконка
+/// 18dp. Пока включены динамические цвета, палитра не применяется и чипы
+/// отключены.
 class _PalettePicker extends StatelessWidget {
   const _PalettePicker({
     required this.selected,
@@ -227,71 +190,38 @@ class _PalettePicker extends StatelessWidget {
   });
 
   final AppPalette selected;
-
-  /// Палитра применяется, только когда динамические цвета выключены.
   final bool enabled;
-
   final ValueChanged<AppPalette> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    final Brightness brightness = Theme.of(context).brightness;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Opacity(
-        opacity: enabled ? 1 : 0.4,
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final AppPalette palette in AppPalette.values)
-              ChoiceChip(
-                label: Text(palette.label),
-                selected: palette == selected,
-                onSelected: enabled ? (_) => onSelected(palette) : null,
-                // Кружок — итоговый primary, а не сид: вариант expressive
-                // поворачивает оттенок, и сид ввёл бы в заблуждение.
-                avatar: CircleAvatar(
-                  backgroundColor: AppColorSchemes.primaryOf(
+      padding: const EdgeInsets.only(top: AppSpacing.space150),
+      child: Wrap(
+        spacing: AppSpacing.space100,
+        runSpacing: AppSpacing.space100,
+        children: [
+          for (final AppPalette palette in AppPalette.values)
+            M3FilterChip(
+              label: Text(palette.label),
+              selected: palette == selected,
+              onSelected: enabled ? (_) => onSelected(palette) : null,
+              // Кружок — итоговый primary палитры, а не сид.
+              leading: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppColorSchemes.primaryOf(
                     palette,
-                    Theme.of(context).brightness,
-                  ),
-                  radius: 8,
+                    brightness,
+                  ).withValues(alpha: enabled ? 1 : 0.38),
+                  shape: BoxShape.circle,
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
-      child: Text(
-        title,
-        style: context.text.bodyMedium!.copyWith(fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-}
-
-class _SegmentedSection extends StatelessWidget {
-  const _SegmentedSection({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SegmentedList(children: children),
     );
   }
 }

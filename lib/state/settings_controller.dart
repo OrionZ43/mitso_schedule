@@ -10,7 +10,6 @@ class Settings {
   const Settings({
     this.darkOverride,
     this.dynamicColor = true,
-    this.lessonReminder = true,
     this.palette = AppPalette.baseline,
     this.subgroup,
   });
@@ -20,9 +19,6 @@ class Settings {
 
   /// Динамические цвета Material You.
   final bool dynamicColor;
-
-  /// Напоминание за 15 минут до пары.
-  final bool lessonReminder;
 
   /// Статичная палитра — когда [dynamicColor] выключен или обоев нет.
   final AppPalette palette;
@@ -36,18 +32,10 @@ class Settings {
     false => ThemeMode.light,
   };
 
-  /// Подпись под тумблером «Тёмная тема».
-  String get themeSubtitle => switch (darkOverride) {
-    null => 'Следовать системной',
-    true => 'Включена вручную',
-    false => 'Выключена вручную',
-  };
-
   Settings copyWith({
     bool? darkOverride,
     bool clearDarkOverride = false,
     bool? dynamicColor,
-    bool? lessonReminder,
     AppPalette? palette,
     int? subgroup,
     bool clearSubgroup = false,
@@ -57,7 +45,6 @@ class Settings {
           ? null
           : (darkOverride ?? this.darkOverride),
       dynamicColor: dynamicColor ?? this.dynamicColor,
-      lessonReminder: lessonReminder ?? this.lessonReminder,
       palette: palette ?? this.palette,
       subgroup: clearSubgroup ? null : (subgroup ?? this.subgroup),
     );
@@ -76,7 +63,6 @@ final settingsControllerProvider =
 class SettingsController extends Notifier<Settings> {
   static const String _darkKey = 'settings.dark';
   static const String _dynamicKey = 'settings.dynamicColor';
-  static const String _reminderKey = 'settings.lessonReminder';
   static const String _paletteKey = 'settings.palette';
   static const String _subgroupKey = 'settings.subgroup';
 
@@ -88,31 +74,26 @@ class SettingsController extends Notifier<Settings> {
     return Settings(
       darkOverride: prefs.getBool(_darkKey),
       dynamicColor: prefs.getBool(_dynamicKey) ?? true,
-      lessonReminder: prefs.getBool(_reminderKey) ?? true,
       palette: AppPalette.byName(prefs.getString(_paletteKey)),
       subgroup: prefs.getInt(_subgroupKey),
     );
   }
 
-  void setDark(bool value) {
-    state = state.copyWith(darkOverride: value);
-    _prefs.setBool(_darkKey, value);
-  }
-
-  /// Вернуться к системной теме.
-  void followSystemTheme() {
-    state = state.copyWith(clearDarkOverride: true);
-    _prefs.remove(_darkKey);
+  void setThemeMode(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        state = state.copyWith(clearDarkOverride: true);
+        _prefs.remove(_darkKey);
+      case ThemeMode.light || ThemeMode.dark:
+        final bool dark = mode == ThemeMode.dark;
+        state = state.copyWith(darkOverride: dark);
+        _prefs.setBool(_darkKey, dark);
+    }
   }
 
   void setDynamicColor(bool value) {
     state = state.copyWith(dynamicColor: value);
     _prefs.setBool(_dynamicKey, value);
-  }
-
-  void setLessonReminder(bool value) {
-    state = state.copyWith(lessonReminder: value);
-    _prefs.setBool(_reminderKey, value);
   }
 
   void setPalette(AppPalette palette) {
