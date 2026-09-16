@@ -5,6 +5,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/models/lesson.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/lesson_card.dart';
+import '../../widgets/m3_buttons.dart';
+import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/m3_wavy_linear_progress.dart';
 import '../../widgets/segmented_list.dart';
 import '../../widgets/status_badge.dart';
@@ -50,15 +52,14 @@ class LessonDetailsPage extends StatelessWidget {
     final bool several = slot.lessons.length > 1;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
+      appBar: M3SmallAppBar(
+        title: day.title,
+        subtitle: date,
+        leading: M3IconButton(
           onPressed: close,
           icon: const Icon(Symbols.arrow_back),
+          color: M3IconButtonColor.standard,
           tooltip: 'Назад',
-        ),
-        title: Text('${day.title}, $date'),
-        titleTextStyle: context.text.titleMedium!.copyWith(
-          color: colors.onSurface,
         ),
       ),
       body: ListView(
