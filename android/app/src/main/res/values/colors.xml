@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Сид-палитра violet из макета: primaryContainer / primary. -->
+    <color name="splash_background">#E9DDFF</color>
+    <color name="splash_icon">#6B3FD4</color>
+</resources>

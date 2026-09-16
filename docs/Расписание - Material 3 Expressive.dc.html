@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0&display=swap" rel="stylesheet">
+<style>
+:root{--pri:#6B3FD4;--onpri:#ffffff;--pric:#E9DDFF;--onpric:#250B63;--ter:#7A5260;--terc:#FFD9E4;--onterc:#31101D;--bg:#FBF7FF;--s1:#F6F0FD;--s2:#F0E8FA;--s3:#E8DDF6;--on:#1C1B20;--on2:#5C5567;--out:#D3CADF;--okc:#BFF0D2;--onokc:#0A4B2C;--warnc:#FFE1A6;--onwarnc:#4E3900;--errc:#FFDAD6;--onerrc:#7A1B14;
+--m3-sp-fast:linear(0, 0.0498, 0.1717, 0.3302, 0.4983, 0.657, 0.7948, 0.9057, 0.9884, 1.0446, 1.0778, 1.0927, 1.0939, 1.086, 1.0727, 1.0571, 1.0413, 1.027, 1.0149, 1.0055, 0.9987, 0.9943, 0.9919, 0.991, 0.9913, 0.9923, 0.9937, 0.9952, 0.9967, 0.9979, 0.999, 0.9998, 1.0003, 1.0007, 1);--m3-sp-fast-d:400ms;
+--m3-sp-def:linear(0, 0.0281, 0.0981, 0.1923, 0.2976, 0.4047, 0.5075, 0.6019, 0.6858, 0.7582, 0.8192, 0.8694, 0.9097, 0.9413, 0.9654, 0.9833, 0.9961, 1.0049, 1.0104, 1.0136, 1.015, 1.0151, 1.0144, 1.0132, 1.0116, 1.01, 1.0084, 1.0069, 1.0055, 1.0043, 1.0033, 1.0024, 1.0017, 1.0012, 1);--m3-sp-def-d:450ms;
+--m3-sp-slow-d:610ms;
+--m3-ef:linear(0, 0.021, 0.0729, 0.1426, 0.2211, 0.302, 0.3815, 0.4568, 0.5266, 0.59, 0.6469, 0.6973, 0.7416, 0.7802, 0.8136, 0.8425, 0.8672, 0.8883, 0.9062, 0.9215, 0.9343, 0.9452, 0.9543, 0.962, 0.9684, 0.9738, 0.9782, 0.982, 0.9851, 0.9877, 0.9898, 0.9916, 0.9931, 0.9943, 1);--m3-ef-d:190ms;--m3-ef-fast-d:120ms;
+--m3-emph:cubic-bezier(.2,0,0,1);--m3-emph-dec:cubic-bezier(.05,.7,.1,1);--m3-emph-acc:cubic-bezier(.3,0,.8,.15)}
+body{margin:0;background:#EAE6F0;font-family:Roboto,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--pri);text-decoration:none}a:hover{color:var(--onpric)}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes spOut{to{opacity:0;transform:scale(1.07)}}
+@keyframes m3spin{to{transform:rotate(360deg)}}
+@keyframes m3in{0%{opacity:0;transform:scale(.55)}100%{opacity:1;transform:scale(1)}}
+@keyframes m3morph{0%{clip-path:polygon(100.0% 50.0%,91.9% 57.4%,89.9% 64.5%,93.3% 75.0%,82.6% 77.3%,77.3% 82.6%,75.0% 93.3%,64.5% 89.9%,57.4% 91.9%,50.0% 100.0%,42.6% 91.9%,35.5% 89.9%,25.0% 93.3%,22.7% 82.6%,17.4% 77.3%,6.7% 75.0%,10.1% 64.5%,8.1% 57.4%,0.0% 50.0%,8.1% 42.6%,10.1% 35.5%,6.7% 25.0%,17.4% 22.7%,22.7% 17.4%,25.0% 6.7%,35.5% 10.1%,42.6% 8.1%,50.0% 0.0%,57.4% 8.1%,64.5% 10.1%,75.0% 6.7%,77.3% 17.4%,82.6% 22.7%,93.3% 25.0%,89.9% 35.5%,91.9% 42.6%)}14.29%{clip-path:polygon(100.0% 50.0%,96.7% 58.2%,88.4% 64.0%,79.0% 66.8%,72.0% 68.4%,68.4% 72.0%,66.8% 79.0%,64.0% 88.4%,58.2% 96.7%,50.0% 100.0%,41.8% 96.7%,36.0% 88.4%,33.3% 79.0%,31.6% 72.0%,28.0% 68.4%,21.0% 66.8%,11.6% 64.0%,3.3% 58.2%,0.0% 50.0%,3.3% 41.8%,11.6% 36.0%,21.0% 33.3%,28.0% 31.6%,31.6% 28.0%,33.2% 21.0%,36.0% 11.6%,41.8% 3.3%,50.0% 0.0%,58.2% 3.3%,64.0% 11.6%,66.8% 21.0%,68.4% 28.0%,72.0% 31.6%,79.0% 33.3%,88.4% 36.0%,96.7% 41.8%)}28.57%{clip-path:polygon(94.8% 50.0%,92.9% 57.6%,90.7% 64.8%,88.1% 72.0%,84.9% 79.3%,81.1% 87.1%,73.8% 91.3%,65.4% 92.4%,57.6% 93.1%,50.0% 93.3%,42.4% 93.1%,34.6% 92.4%,26.2% 91.3%,18.9% 87.1%,15.1% 79.3%,11.9% 72.0%,9.3% 64.8%,7.1% 57.6%,5.2% 50.0%,3.6% 41.8%,3.8% 33.2%,10.2% 27.0%,16.2% 21.6%,22.1% 16.8%,28.3% 12.4%,34.8% 8.2%,41.9% 4.2%,50.0% 0.0%,58.1% 4.2%,65.2% 8.2%,71.7% 12.4%,77.9% 16.8%,83.8% 21.6%,89.8% 27.0%,96.2% 33.2%,96.4% 41.8%)}42.86%{clip-path:polygon(87.7% 50.0%,89.3% 56.9%,90.9% 64.9%,93.3% 75.0%,83.4% 78.0%,75.7% 80.6%,68.9% 82.7%,62.5% 84.2%,56.2% 85.2%,50.0% 85.5%,43.8% 85.2%,37.5% 84.2%,31.1% 82.7%,24.3% 80.6%,16.6% 78.0%,6.7% 75.0%,9.1% 64.9%,10.7% 56.9%,12.3% 50.0%,14.1% 43.7%,16.4% 37.8%,19.3% 32.3%,22.6% 27.0%,26.6% 22.1%,31.1% 17.3%,36.3% 12.5%,42.4% 7.1%,50.0% 0.0%,57.6% 7.1%,63.7% 12.5%,68.9% 17.3%,73.4% 22.1%,77.4% 27.0%,80.7% 32.3%,83.6% 37.8%,85.9% 43.7%)}57.14%{clip-path:polygon(99.0% 50.0%,98.8% 58.6%,97.0% 67.1%,90.5% 73.4%,81.2% 76.2%,72.7% 77.1%,65.8% 77.3%,60.0% 77.4%,54.8% 77.4%,50.0% 77.4%,45.2% 77.4%,40.0% 77.4%,34.2% 77.3%,27.3% 77.1%,18.8% 76.2%,9.5% 73.4%,3.0% 67.1%,1.2% 58.6%,1.0% 50.0%,1.2% 41.4%,3.0% 32.9%,9.5% 26.6%,18.8% 23.8%,27.3% 22.9%,34.2% 22.7%,40.0% 22.6%,45.2% 22.6%,50.0% 22.6%,54.8% 22.6%,60.0% 22.6%,65.8% 22.7%,72.7% 22.9%,81.2% 23.8%,90.5% 26.6%,97.0% 32.9%,98.8% 41.4%)}71.43%{clip-path:polygon(92.4% 50.0%,92.3% 57.5%,92.2% 65.4%,91.3% 73.8%,88.3% 82.1%,82.1% 88.3%,73.8% 91.3%,65.4% 92.2%,57.5% 92.3%,50.0% 92.4%,42.5% 92.3%,34.6% 92.2%,26.2% 91.3%,17.9% 88.3%,11.7% 82.1%,8.7% 73.8%,7.8% 65.4%,7.7% 57.5%,7.6% 50.0%,7.7% 42.5%,7.8% 34.6%,8.7% 26.2%,11.7% 17.9%,17.9% 11.7%,26.2% 8.7%,34.6% 7.8%,42.5% 7.7%,50.0% 7.6%,57.5% 7.7%,65.4% 7.8%,73.8% 8.7%,82.1% 11.7%,88.3% 17.9%,91.3% 26.2%,92.2% 34.6%,92.3% 42.5%)}85.71%{clip-path:polygon(100.0% 50.0%,94.4% 57.8%,86.0% 63.1%,85.5% 70.5%,87.2% 81.2%,81.2% 87.2%,70.5% 85.5%,63.1% 86.0%,57.8% 94.4%,50.0% 100.0%,42.2% 94.4%,36.9% 86.0%,29.5% 85.5%,18.8% 87.2%,12.8% 81.2%,14.5% 70.5%,14.0% 63.1%,5.6% 57.8%,0.0% 50.0%,5.6% 42.2%,14.0% 36.9%,14.5% 29.5%,12.8% 18.8%,18.8% 12.8%,29.5% 14.5%,36.9% 14.0%,42.2% 5.6%,50.0% 0.0%,57.8% 5.6%,63.1% 14.0%,70.5% 14.5%,81.2% 12.8%,87.2% 18.8%,85.5% 29.5%,86.0% 36.9%,94.4% 42.2%)}100%{clip-path:polygon(100.0% 50.0%,91.9% 57.4%,89.9% 64.5%,93.3% 75.0%,82.6% 77.3%,77.3% 82.6%,75.0% 93.3%,64.5% 89.9%,57.4% 91.9%,50.0% 100.0%,42.6% 91.9%,35.5% 89.9%,25.0% 93.3%,22.7% 82.6%,17.4% 77.3%,6.7% 75.0%,10.1% 64.5%,8.1% 57.4%,0.0% 50.0%,8.1% 42.6%,10.1% 35.5%,6.7% 25.0%,17.4% 22.7%,22.7% 17.4%,25.0% 6.7%,35.5% 10.1%,42.6% 8.1%,50.0% 0.0%,57.4% 8.1%,64.5% 10.1%,75.0% 6.7%,77.3% 17.4%,82.6% 22.7%,93.3% 25.0%,89.9% 35.5%,91.9% 42.6%)}}
+@keyframes titleIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sheetUp{from{transform:translateY(102%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes nowDot{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes m3wave{to{background-position-x:-40px}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px 16px;box-sizing:border-box;background:#EAE6F0">
+<div style="width:416px;max-width:100%;padding:12px;box-sizing:border-box;background:#141218;border-radius:54px;box-shadow:0 30px 70px -20px rgba(28,20,48,.45),0 0 0 1px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:852px;max-height:82vh;background:var(--bg);border-radius:42px;overflow:hidden;display:flex;flex-direction:column">
+
+<sc-if value="{{ splash }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:spOut .5s 2.4s var(--m3-emph-acc) forwards">
+<div style="display:flex;align-items:center;justify-content:center;width:128px;height:128px;border-radius:50%;background:var(--pric);animation:m3in .5s var(--m3-emph-dec) both">
+<div style="width:96px;height:96px;background:var(--pri);animation:m3morph 3.2s linear infinite,m3spin 4.2s linear infinite"></div>
+</div>
+<div style="font:700 30px/1.15 Roboto,sans-serif;letter-spacing:-.4px;color:var(--on);margin-top:26px;animation:titleIn .6s 1.8s var(--m3-emph-dec) both">Расписание</div>
+<div style="font:500 14px/1.2 Roboto,sans-serif;color:var(--on2);margin-top:8px;letter-spacing:.6px;animation:titleIn .6s 1.95s var(--m3-emph-dec) both">2423 УИР · ИКТиУ</div>
+</div>
+</sc-if>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 26px 2px;flex:none">
+<div style="font:500 14px/1 Roboto,sans-serif;color:var(--on);letter-spacing:.3px">9:41</div>
+<div style="display:flex;align-items:center;gap:6px;color:var(--on)">
+<span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:15px;line-height:1">signal_cellular_alt</span>
+<span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:15px;line-height:1">wifi</span>
+<span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:15px;line-height:1">battery_full</span>
+</div>
+</div>
+
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden">
+
+<sc-if value="{{ isSchedule }}" hint-placeholder-val="{{ true }}">
+<div style="position:sticky;top:0;z-index:6;background:var(--bg);padding:6px 16px 10px">
+<div style="display:flex;align-items:flex-end;gap:12px;padding:6px 6px 14px">
+<div style="flex:1;min-width:0">
+<div style="font:500 13px/1.2 Roboto,sans-serif;color:var(--on2);letter-spacing:.3px">Среда, 16 сентября</div>
+<div style="font:700 28px/1.25 Roboto,sans-serif;color:var(--on);letter-spacing:-.4px;margin-top:4px">Расписание</div>
+</div>
+<div style="width:42px;height:42px;border-radius:50%;background:var(--pric);color:var(--onpric);display:flex;align-items:center;justify-content:center;font:700 15px Roboto,sans-serif;flex:none">АК</div>
+</div>
+<sc-if value="{{ searchClosed }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ openSearch }}" style="display:flex;align-items:center;gap:14px;height:56px;padding:0 18px;background:var(--s3);border-radius:28px;cursor:pointer">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">search</span>
+<div style="flex:1;min-width:0;font:400 16px Roboto,sans-serif;color:var(--on2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Поиск группы, препода, аудитории</div>
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">mic</span>
+</div>
+</sc-if>
+<sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
+<div style="background:var(--s3);border-radius:28px;padding:0 0 16px;animation:fadeIn var(--m3-ef-d) var(--m3-ef) both">
+<div style="display:flex;align-items:center;gap:14px;height:56px;padding:0 18px">
+<span onClick="{{ closeSearch }}" style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on);cursor:pointer">arrow_back</span>
+<div style="flex:1;min-width:0;font:400 16px Roboto,sans-serif;color:var(--on)">Поиск<span style="display:inline-block;width:1.5px;height:17px;background:var(--pri);margin-left:2px;vertical-align:-3px;animation:nowDot 1s steps(1) infinite"></span></div>
+<span onClick="{{ closeSearch }}" style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2);cursor:pointer">close</span>
+</div>
+<div style="display:flex;gap:8px;padding:0 16px;flex-wrap:wrap">
+<sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.pick }}" style="{{ c.style }}">
+<span style="{{ c.iconStyle }}">check</span>{{ c.label }}
+</div>
+</sc-for>
+</div>
+<div style="height:1px;background:var(--out);margin:16px 18px 6px"></div>
+<div style="display:flex;flex-direction:column;padding:0 6px">
+<sc-for list="{{ recent }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:14px;padding:11px 14px;cursor:pointer;border-radius:20px">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">history</span>
+<div style="flex:1;min-width:0;font:400 16px Roboto,sans-serif;color:var(--on)">{{ r.label }}</div>
+<div style="font:500 12px Roboto,sans-serif;color:var(--on2)">{{ r.kind }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div style="display:flex;gap:10px;overflow-x:auto;padding:6px 20px 4px;scrollbar-width:none">
+<sc-for list="{{ days }}" as="d" hint-placeholder-count="6">
+<div onClick="{{ d.pick }}" style="{{ d.style }}">
+<div style="{{ d.nameStyle }}">{{ d.name }}</div>
+<div style="{{ d.numStyle }}">{{ d.num }}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px 8px">
+<div style="font:500 14px Roboto,sans-serif;color:var(--on);letter-spacing:.1px">{{ dayTitle }}</div>
+<div style="font:500 12px Roboto,sans-serif;color:var(--on2);letter-spacing:.5px">{{ daySub }}</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;padding:4px 16px 24px">
+<sc-for list="{{ lessons }}" as="l" hint-placeholder-count="4">
+<div style="{{ l.cardStyle }}">
+<div style="display:flex;gap:16px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;flex:none;width:54px">
+<div style="{{ l.t1Style }}">{{ l.t1 }}</div>
+<div style="{{ l.t2Style }}">{{ l.t2 }}</div>
+</div>
+<div style="flex:1;min-width:0">
+<div style="{{ l.badgeStyle }}">{{ l.type }}</div>
+<div style="{{ l.titleStyle }}">{{ l.title }}</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+<span style="{{ l.iconStyle }}">person</span>
+<div style="{{ l.metaStyle }}">{{ l.teacher }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+<span style="{{ l.iconStyle }}">door_front</span>
+<div style="{{ l.metaStyle }}">{{ l.room }}</div>
+</div>
+</div>
+</div>
+<sc-if value="{{ l.isNow }}" hint-placeholder-val="{{ false }}">
+<div style="margin-top:18px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:7px;height:7px;border-radius:50%;background:var(--onpri);animation:nowDot 1.6s ease-in-out infinite"></div>
+<div style="font:700 12px Roboto,sans-serif;color:var(--onpri);letter-spacing:.5px;text-transform:uppercase">Сейчас идёт</div>
+</div>
+<div style="font:500 12px Roboto,sans-serif;color:var(--onpri);opacity:.85">осталось {{ l.left }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;height:14px">
+<div style="{{ l.waveStyle }}"></div>
+<div style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.32)"></div>
+<div style="flex:none;width:4px;height:4px;border-radius:50%;background:var(--onpri)"></div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ noLessons }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:48px 24px 24px">
+<div style="position:relative;width:120px;height:110px">
+<div style="position:absolute;left:0;top:10px;width:70px;height:70px;border-radius:50%;background:var(--pric)"></div>
+<div style="position:absolute;right:4px;bottom:0;width:56px;height:56px;border-radius:18px;background:var(--terc);transform:rotate(14deg)"></div>
+<div style="position:absolute;right:16px;top:0;width:42px;height:38px;background:var(--s3);clip-path:polygon(50% 0%,100% 100%,0% 100%)"></div>
+</div>
+<div style="font:700 19px/1.3 Roboto,sans-serif;color:var(--on);text-align:center">Занятий нет.<br>Отдыхай!</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAbsence }}" hint-placeholder-val="{{ false }}">
+<div style="padding:8px 22px 0">
+<div style="font:700 28px/1.25 Roboto,sans-serif;color:var(--on);letter-spacing:-.4px">Пропуски</div>
+<div style="display:flex;align-items:center;gap:7px;margin-top:8px">
+<span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;color:var(--on2)">sync</span>
+<div style="font:500 12.5px Roboto,sans-serif;color:var(--on2)">Синхронизировано с ботом · 2 мин назад</div>
+</div>
+</div>
+<div style="margin:18px 16px 0;padding:26px 20px 22px;background:var(--s2);border-radius:32px;display:flex;flex-direction:column;align-items:center">
+<div style="position:relative;width:212px;height:212px">
+<svg viewBox="0 0 212 212" style="width:212px;height:212px;transform:rotate(-90deg)">
+<circle cx="106" cy="106" r="86" fill="none" stroke="var(--s3)" stroke-width="18"></circle>
+<circle cx="106" cy="106" r="86" fill="none" stroke="var(--pric)" stroke-width="18" stroke-linecap="round" stroke-dasharray="189 541"></circle>
+<circle cx="106" cy="106" r="86" fill="none" stroke="var(--pri)" stroke-width="18" stroke-linecap="round" stroke-dasharray="81 541"></circle>
+</svg>
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div style="font:700 48px/1 Roboto,sans-serif;color:var(--on);letter-spacing:-1px">14</div>
+<div style="font:400 14px Roboto,sans-serif;color:var(--on2);margin-top:6px">часов пропущено</div>
+<div style="font:500 12px Roboto,sans-serif;color:var(--on2);opacity:.7;margin-top:2px">лимит 40 ч</div>
+</div>
+</div>
+<div style="display:flex;gap:10px;margin-top:20px;width:100%">
+<div style="flex:1;display:flex;align-items:center;gap:9px;padding:12px 14px;background:var(--bg);border-radius:20px">
+<div style="width:10px;height:10px;border-radius:50%;background:var(--pric);flex:none"></div>
+<div style="min-width:0"><div style="font:700 15px Roboto,sans-serif;color:var(--on)">8 ч</div><div style="font:400 11.5px Roboto,sans-serif;color:var(--on2)">оправдано</div></div>
+</div>
+<div style="flex:1;display:flex;align-items:center;gap:9px;padding:12px 14px;background:var(--bg);border-radius:20px">
+<div style="width:10px;height:10px;border-radius:50%;background:var(--pri);flex:none"></div>
+<div style="min-width:0"><div style="font:700 15px Roboto,sans-serif;color:var(--on)">6 ч</div><div style="font:400 11.5px Roboto,sans-serif;color:var(--on2)">без справки</div></div>
+</div>
+</div>
+</div>
+<div style="font:500 14px Roboto,sans-serif;color:var(--on);padding:26px 26px 12px;letter-spacing:.1px">Мои справки</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:0 16px 130px">
+<sc-for list="{{ certs }}" as="c" hint-placeholder-count="3">
+<div style="background:var(--s1);border:1px solid var(--out);border-radius:28px;padding:18px 20px">
+<div style="display:flex;align-items:flex-start;gap:12px">
+<div style="flex:1;min-width:0">
+<div style="font:700 16px/1.3 Roboto,sans-serif;color:var(--on)">{{ c.title }}</div>
+<div style="font:400 14px Roboto,sans-serif;color:var(--on2);margin-top:5px">{{ c.sub }}</div>
+</div>
+<div style="{{ c.badgeStyle }}">{{ c.status }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+<span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;color:var(--on2)">{{ c.icon }}</span>
+<div style="font:400 12px Roboto,sans-serif;color:var(--on2);letter-spacing:.5px">{{ c.note }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isNotes }}" hint-placeholder-val="{{ false }}">
+<div style="padding:8px 22px 0">
+<div style="font:700 28px/1.25 Roboto,sans-serif;color:var(--on);letter-spacing:-.4px">Заметки</div>
+<div style="font:500 13px Roboto,sans-serif;color:var(--on2);margin-top:8px">{{ tasksSummary }}</div>
+</div>
+<div style="display:flex;padding:20px 20px 6px">
+<div style="display:flex;border:1px solid var(--out);border-radius:20px;overflow:hidden;width:100%">
+<sc-for list="{{ filters }}" as="f" hint-placeholder-count="2">
+<div onClick="{{ f.pick }}" style="{{ f.style }}"><span style="{{ f.iconStyle }}">check</span>{{ f.label }}</div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px 130px">
+<sc-for list="{{ visibleTasks }}" as="t" hint-placeholder-count="3">
+<div style="{{ t.cardStyle }}">
+<div onClick="{{ t.toggle }}" style="{{ t.hitStyle }}">
+<div style="{{ t.boxStyle }}"><span style="{{ t.checkStyle }}">check</span></div>
+</div>
+<div style="flex:1;min-width:0">
+<div style="{{ t.textStyle }}">{{ t.text }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center">
+<div style="{{ t.subjStyle }}">{{ t.subject }}</div>
+<div style="{{ t.dueStyle }}">{{ t.due }}</div>
+</div>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{ tasksEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:22px;padding:56px 24px 24px;animation:fadeIn var(--m3-ef-d) var(--m3-ef) both">
+<div style="position:relative;width:148px;height:132px">
+<div style="position:absolute;left:6px;top:16px;width:84px;height:84px;border-radius:50%;background:var(--pric)"></div>
+<div style="position:absolute;right:2px;bottom:0;width:64px;height:64px;border-radius:22px;background:var(--terc);transform:rotate(14deg)"></div>
+<div style="position:absolute;right:22px;top:0;width:48px;height:44px;background:var(--s3);clip-path:polygon(50% 0%,100% 100%,0% 100%)"></div>
+<div style="position:absolute;left:44px;bottom:22px;width:22px;height:22px;border-radius:50%;background:var(--pri)"></div>
+</div>
+<div style="font:700 20px/1.35 Roboto,sans-serif;color:var(--on);text-align:center;letter-spacing:-.3px">Дедлайнов пока нет,<br>можно отдыхать!</div>
+<div style="font:400 14px/1.4 Roboto,sans-serif;color:var(--on2);text-align:center;max-width:250px">Новая задача добавится сюда — или прилетит из бота вместе с расписанием.</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+<div style="padding:8px 22px 0">
+<div style="font:700 28px/1.25 Roboto,sans-serif;color:var(--on);letter-spacing:-.4px">Профиль</div>
+</div>
+<div style="margin:18px 16px 0;padding:24px 20px;background:var(--s2);border-radius:32px;display:flex;align-items:center;gap:18px">
+<div style="width:72px;height:72px;border-radius:50%;background:var(--pri);color:var(--onpri);display:flex;align-items:center;justify-content:center;font:700 26px Roboto,sans-serif;flex:none;letter-spacing:.5px">АК</div>
+<div style="flex:1;min-width:0">
+<div style="font:700 22px/1.25 Roboto,sans-serif;color:var(--on);letter-spacing:0">Артём Кузнецов</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+<div style="display:flex;align-items:center;height:32px;padding:0 14px;border-radius:8px;background:var(--pric);color:var(--onpric);font:500 14px Roboto,sans-serif">2423 УИР</div>
+<div style="display:flex;align-items:center;height:32px;padding:0 14px;border-radius:8px;background:var(--bg);color:var(--on2);font:500 14px Roboto,sans-serif">3 курс · ИКТиУ</div>
+</div>
+</div>
+</div>
+<div style="font:500 14px Roboto,sans-serif;color:var(--on);padding:26px 26px 12px;letter-spacing:.1px">LMS Moodle</div>
+<div style="margin:0 16px;background:var(--s1);border:1px solid var(--out);border-radius:28px;padding:6px 20px">
+<div style="display:flex;align-items:center;gap:14px;padding:14px 0">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">badge</span>
+<div style="flex:1;min-width:0">
+<div style="font:400 12px Roboto,sans-serif;color:var(--on2)">Логин</div>
+<div style="font:500 16px Roboto,sans-serif;color:var(--on);margin-top:2px;letter-spacing:.4px">000000</div>
+</div>
+<div onClick="{{ copyLogin }}" style="{{ copyLoginStyle }}">{{ copyLoginLabel }}</div>
+</div>
+<div style="height:1px;background:var(--out)"></div>
+<div style="display:flex;align-items:center;gap:14px;padding:14px 0">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">key</span>
+<div style="flex:1;min-width:0">
+<div style="font:400 12px Roboto,sans-serif;color:var(--on2)">Пароль</div>
+<div style="font:500 16px Roboto,sans-serif;color:var(--on);margin-top:2px;letter-spacing:.8px">{{ pwText }}</div>
+</div>
+<span onClick="{{ togglePw }}" style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2);cursor:pointer;padding:12px">{{ pwIcon }}</span>
+<div onClick="{{ copyPw }}" style="{{ copyPwStyle }}">{{ copyPwLabel }}</div>
+</div>
+</div>
+<div style="font:500 14px Roboto,sans-serif;color:var(--on);padding:26px 26px 12px;letter-spacing:.1px">Настройки</div>
+<div style="margin:0 16px 130px;background:var(--s1);border:1px solid var(--out);border-radius:28px;padding:6px 20px">
+<div style="display:flex;align-items:center;gap:16px;padding:16px 0">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">dark_mode</span>
+<div style="flex:1;min-width:0">
+<div style="font:400 16px Roboto,sans-serif;color:var(--on)">Тёмная тема</div>
+<div style="font:400 14px Roboto,sans-serif;color:var(--on2);margin-top:2px">Следовать системной</div>
+</div>
+<div onClick="{{ toggleDark }}" style="{{ darkTrack }}"><div style="{{ darkThumb }}"></div></div>
+</div>
+<div style="height:1px;background:var(--out)"></div>
+<div style="display:flex;align-items:center;gap:16px;padding:16px 0">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">palette</span>
+<div style="flex:1;min-width:0">
+<div style="font:400 16px Roboto,sans-serif;color:var(--on)">Динамические цвета</div>
+<div style="font:400 14px Roboto,sans-serif;color:var(--on2);margin-top:2px">Material You · из обоев</div>
+</div>
+<div onClick="{{ toggleDyn }}" style="{{ dynTrack }}"><div style="{{ dynThumb }}"></div></div>
+</div>
+<div style="height:1px;background:var(--out)"></div>
+<div style="display:flex;align-items:center;gap:16px;padding:16px 0">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;color:var(--on2)">notifications</span>
+<div style="flex:1;min-width:0">
+<div style="font:400 16px Roboto,sans-serif;color:var(--on)">Напоминать о паре</div>
+<div style="font:400 14px Roboto,sans-serif;color:var(--on2);margin-top:2px">За 15 минут до начала</div>
+</div>
+<div onClick="{{ toggleNotif }}" style="{{ notifTrack }}"><div style="{{ notifThumb }}"></div></div>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ isAbsence }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ openSheet }}" style="position:absolute;right:18px;bottom:104px;z-index:15;display:flex;align-items:center;gap:12px;height:56px;padding:0 20px 0 16px;background:var(--pri);color:var(--onpri);border-radius:16px;box-shadow:0 6px 10px -2px rgba(40,16,90,.34);cursor:pointer;font:500 16px Roboto,sans-serif">
+<span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:24px;line-height:1">document_scanner</span>Оправдать пропуск
+</div>
+</sc-if>
+<sc-if value="{{ isNotes }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ addTask }}" style="position:absolute;right:18px;bottom:104px;z-index:15;display:flex;align-items:center;justify-content:center;width:56px;height:56px;background:var(--pric);color:var(--onpric);border-radius:16px;box-shadow:0 6px 10px -2px rgba(40,16,90,.28);cursor:pointer">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1">add</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:30;background:rgba(20,12,36,.36);animation:fadeIn var(--m3-ef-d) var(--m3-ef) both"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:31;background:var(--s2);border-radius:28px 28px 0 0;padding:10px 20px 26px;animation:sheetUp var(--m3-sp-def-d) var(--m3-sp-def) both">
+<div style="width:34px;height:4px;border-radius:2px;background:var(--out);margin:0 auto 18px"></div>
+<div style="font:700 24px/1.33 Roboto,sans-serif;color:var(--on);letter-spacing:0">Оправдать пропуск</div>
+<div style="font:400 14px/1.43 Roboto,sans-serif;color:var(--on2);margin-top:8px">Прикрепи фото справки — бот отправит её куратору и обновит статистику.</div>
+<div style="margin-top:18px;height:148px;border-radius:24px;border:2px dashed var(--out);background:repeating-linear-gradient(135deg,var(--s3) 0 10px,var(--s1) 10px 20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+<span style="font-family:'Material Symbols Rounded';font-size:28px;line-height:1;color:var(--on2)">add_a_photo</span>
+<div style="font:500 12px Roboto,sans-serif;color:var(--on2);font-family:ui-monospace,Menlo,monospace">фото справки</div>
+</div>
+<div style="display:flex;gap:12px;margin-top:20px">
+<div onClick="{{ closeSheet }}" style="flex:1;height:56px;border-radius:28px;border:1px solid var(--out);color:var(--on);display:flex;align-items:center;justify-content:center;font:500 16px Roboto,sans-serif;cursor:pointer">Отмена</div>
+<div onClick="{{ submitCert }}" style="flex:1.4;height:56px;border-radius:28px;background:var(--pri);color:var(--onpri);display:flex;align-items:center;justify-content:center;font:500 16px Roboto,sans-serif;cursor:pointer">Отправить</div>
+</div>
+</div>
+</sc-if>
+
+<div style="flex:none;display:flex;align-items:flex-start;background:var(--s2);border-top:1px solid var(--out);padding:12px 6px 18px;z-index:10">
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+<div onClick="{{ n.go }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer">
+<div style="{{ n.pillStyle }}"><span style="{{ n.iconStyle }}">{{ n.icon }}</span></div>
+<div style="{{ n.labelStyle }}">{{ n.label }}</div>
+</div>
+</sc-for>
+</div>
+
+</div>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:940},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;violet&quot;,&quot;tsType&quot;:&quot;'violet'|'blue'|'green'|'coral'&quot;,&quot;options&quot;:[&quot;violet&quot;,&quot;blue&quot;,&quot;green&quot;,&quot;coral&quot;],&quot;section&quot;:&quot;Тема&quot;},&quot;darkTheme&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Тема&quot;},&quot;initialTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Расписание&quot;,&quot;options&quot;:[&quot;Расписание&quot;,&quot;Пропуски&quot;,&quot;Заметки&quot;,&quot;Профиль&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Экран&quot;},&quot;playSplash&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Экран&quot;}}">
+const STATUS = {
+  l:{okc:'#BFF0D2',onokc:'#0A4B2C',warnc:'#FFE1A6',onwarnc:'#4E3900',errc:'#FFDAD6',onerrc:'#7A1B14'},
+  d:{okc:'#0D4E2E',onokc:'#A9E9C5',warnc:'#5A4200',onwarnc:'#FFE1A6',errc:'#6E1710',onerrc:'#FFB4AB'}
+};
+const PAL = {
+  violet:{
+    l:{pri:'#6B3FD4',onpri:'#FFFFFF',pric:'#E9DDFF',onpric:'#250B63',ter:'#7A5260',terc:'#FFD9E4',onterc:'#31101D',bg:'#FBF7FF',s1:'#F7F2FD',s2:'#F0E8FA',s3:'#E8DDF6',on:'#1C1B20',on2:'#5C5567',out:'#D5CCE1'},
+    d:{pri:'#CFBCFF',onpri:'#37127C',pric:'#4E2FA0',onpric:'#EADDFF',ter:'#EFB8C8',terc:'#5C3542',onterc:'#FFD9E4',bg:'#141218',s1:'#1B181F',s2:'#211E27',s3:'#2C2833',on:'#E8E1EC',on2:'#CAC2D4',out:'#3E3948'}
+  },
+  blue:{
+    l:{pri:'#1F5FD0',onpri:'#FFFFFF',pric:'#DAE2FF',onpric:'#00164E',ter:'#5A5C71',terc:'#DFE1F9',onterc:'#171A2C',bg:'#F9F9FF',s1:'#F2F4FD',s2:'#E9EDFA',s3:'#DFE5F6',on:'#1A1B20',on2:'#545765',out:'#C7CDDD'},
+    d:{pri:'#B3C5FF',onpri:'#002B76',pric:'#0B449F',onpric:'#DAE2FF',ter:'#C3C5DD',terc:'#424659',onterc:'#DFE1F9',bg:'#111318',s1:'#181B20',s2:'#1E2128',s3:'#282C34',on:'#E2E2E9',on2:'#C4C6D0',out:'#3A3E48'}
+  },
+  green:{
+    l:{pri:'#1E6B4E',onpri:'#FFFFFF',pric:'#B8F1D3',onpric:'#002114',ter:'#3D6373',terc:'#C1E8FB',onterc:'#001F29',bg:'#F6FBF7',s1:'#EFF7F1',s2:'#E6F2E9',s3:'#DAEBDF',on:'#171D19',on2:'#4F5A53',out:'#C3D5C8'},
+    d:{pri:'#9DD5B4',onpri:'#003825',pric:'#005236',onpric:'#B8F1D3',ter:'#A5CCDF',terc:'#244C5B',onterc:'#C1E8FB',bg:'#101512',s1:'#161C18',s2:'#1C221E',s3:'#262D28',on:'#DFE4DE',on2:'#BEC9C1',out:'#38403A'}
+  },
+  coral:{
+    l:{pri:'#A93B4F',onpri:'#FFFFFF',pric:'#FFD9DE',onpric:'#400013',ter:'#7A5732',terc:'#FFDDB2',onterc:'#2A1800',bg:'#FFF8F7',s1:'#FDF1F1',s2:'#FAE8E9',s3:'#F5DCDE',on:'#201A1B',on2:'#5F5457',out:'#DCC7CA'},
+    d:{pri:'#FFB2BC',onpri:'#5F1124',pric:'#8A2739',onpric:'#FFD9DE',ter:'#ECBE8B',terc:'#5E401C',onterc:'#FFDDB2',bg:'#181114',s1:'#1F181A',s2:'#251E20',s3:'#30282A',on:'#EDE0E1',on2:'#D6C2C5',out:'#4A4042'}
+  }
+};
+const BASELINE = {
+  l:{pri:'#6750A4',onpri:'#FFFFFF',pric:'#EADDFF',onpric:'#21005D',ter:'#7D5260',terc:'#FFD8E4',onterc:'#31111D',bg:'#FEF7FF',s1:'#F7F2FA',s2:'#F3EDF7',s3:'#ECE6F0',on:'#1D1B20',on2:'#49454F',out:'#CAC4D0'},
+  d:{pri:'#D0BCFF',onpri:'#381E72',pric:'#4F378B',onpric:'#EADDFF',ter:'#EFB8C8',terc:'#633B48',onterc:'#FFD8E4',bg:'#141218',s1:'#1D1B20',s2:'#211F26',s3:'#2B2930',on:'#E6E0E9',on2:'#CAC4D0',out:'#49454F'}
+};
+const DAYS = [
+  {name:'Пн',num:'14',key:'mon'},{name:'Вт',num:'15',key:'tue'},{name:'Ср',num:'16',key:'wed'},
+  {name:'Чт',num:'17',key:'thu'},{name:'Пт',num:'18',key:'fri'},{name:'Сб',num:'19',key:'sat'}
+];
+const SCHEDULE = {
+  mon:{title:'Понедельник', lessons:[
+    {t1:'10:20',t2:'11:55',title:'Теория вероятностей',type:'Лекция',teacher:'Соколова А. В.',room:'ауд. 312'},
+    {t1:'12:25',t2:'14:00',title:'Операционные системы',type:'Практика',teacher:'Гаврилов Р. О.',room:'ауд. 407'},
+    {t1:'14:10',t2:'15:45',title:'Философия',type:'Лекция',teacher:'Белова Н. К.',room:'ауд. 118'}
+  ]},
+  tue:{title:'Вторник', lessons:[
+    {t1:'08:30',t2:'10:05',title:'Дискретная математика',type:'Лекция',teacher:'Соколова А. В.',room:'ауд. 312'},
+    {t1:'10:20',t2:'11:55',title:'Сети и телекоммуникации',type:'Лаб',teacher:'Ким А. С.',room:'ауд. 503'},
+    {t1:'12:25',t2:'14:00',title:'Английский язык',type:'Практика',teacher:'Литвинова Е. Н.',room:'ауд. 108'},
+    {t1:'14:10',t2:'15:45',title:'Физическая культура',type:'Практика',teacher:'Орлов П. В.',room:'Спортзал'}
+  ]},
+  wed:{title:'Среда', lessons:[
+    {t1:'08:30',t2:'10:05',title:'Математический анализ',type:'Лекция',teacher:'Соколова А. В.',room:'ауд. 312'},
+    {t1:'10:20',t2:'11:55',title:'Базы данных',type:'Практика',teacher:'Иванов Д. С.',room:'ауд. 415',now:true,left:'32 мин',progress:66},
+    {t1:'12:25',t2:'14:00',title:'Архитектура ЭВМ',type:'Лекция',teacher:'Мельников И. П.',room:'ауд. 201'},
+    {t1:'14:10',t2:'15:45',title:'Английский язык',type:'Практика',teacher:'Литвинова Е. Н.',room:'ауд. 108'}
+  ]},
+  thu:{title:'Четверг', lessons:[
+    {t1:'10:20',t2:'11:55',title:'Базы данных',type:'Лаб',teacher:'Иванов Д. С.',room:'ауд. 415'},
+    {t1:'12:25',t2:'14:00',title:'Web-технологии',type:'Практика',teacher:'Ким А. С.',room:'ауд. 503'},
+    {t1:'14:10',t2:'15:45',title:'Экономика',type:'Лекция',teacher:'Белова Н. К.',room:'ауд. 118'}
+  ]},
+  fri:{title:'Пятница', lessons:[
+    {t1:'08:30',t2:'10:05',title:'Архитектура ЭВМ',type:'Лаб',teacher:'Мельников И. П.',room:'ауд. 201'},
+    {t1:'10:20',t2:'11:55',title:'Математический анализ',type:'Практика',teacher:'Соколова А. В.',room:'ауд. 312'}
+  ]},
+  sat:{title:'Суббота', lessons:[]}
+};
+
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    const tabs = ['Расписание','Пропуски','Заметки','Профиль'];
+    this.state = {
+      tab: Math.max(0, tabs.indexOf(props.initialTab || 'Расписание')),
+      splash: props.playSplash !== false,
+      searchOpen:false, chip:'Группы', day:2, filter:0, sheet:false,
+      dark: !!props.darkTheme, dyn:true, notif:true, showPw:false, copied:'',
+      tasks:[
+        {id:1,text:'Сдать лабораторную №3',subject:'Базы данных',due:'Завтра, 18:00',hot:true,done:false},
+        {id:2,text:'Подготовить доклад по архитектуре ЭВМ',subject:'Архитектура ЭВМ',due:'22 сентября',hot:false,done:false},
+        {id:3,text:'Эссе на английском, 250 слов',subject:'Английский язык',due:'25 сентября',hot:false,done:false},
+        {id:4,text:'Закрыть тест в Moodle',subject:'Мат. анализ',due:'Сегодня, 23:59',hot:true,done:true}
+      ],
+      certs:[
+        {id:1,title:'ОРВИ, справка №1042',sub:'12 — 15 сентября · 8 ч',status:'В обработке',kind:'warn',icon:'schedule',note:'Отправлено 15 сент, 18:24'},
+        {id:2,title:'Соревнования по волейболу',sub:'2 — 4 сентября · 6 ч',status:'Одобрено',kind:'ok',icon:'check_circle',note:'Проверено куратором'},
+        {id:3,title:'Фото справки от 28 августа',sub:'28 августа · 4 ч',status:'Отклонено',kind:'err',icon:'error',note:'Причина: нечитаемое фото'}
+      ]
+    };
+  }
+  componentDidMount(){
+    this.applyTheme();
+    if(this.state.splash) this.timer = setTimeout(()=>this.setState({splash:false}), 2880);
+  }
+  componentWillUnmount(){ clearTimeout(this.timer); clearTimeout(this.copyTimer); }
+  componentDidUpdate(prevProps){
+    const p = prevProps || {};
+    if(p.palette !== this.props.palette) this.applyTheme();
+    if(p.darkTheme !== this.props.darkTheme) this.setState({dark:!!this.props.darkTheme}, () => this.applyTheme());
+  }
+  applyTheme(){
+    const mode = this.state.dark ? 'd' : 'l';
+    const src = this.state.dyn ? (PAL[this.props.palette] || PAL.violet) : BASELINE;
+    const vars = Object.assign({}, src[mode], STATUS[mode]);
+    const root = document.documentElement;
+    Object.keys(vars).forEach(k => root.style.setProperty('--'+k, vars[k]));
+    document.body.style.background = this.state.dark ? '#0C0A10' : '#EAE6F0';
+  }
+  set(k,v){ return () => this.setState({[k]:v}); }
+  copy(field, value){
+    return () => {
+      try { navigator.clipboard && navigator.clipboard.writeText(value); } catch(e){}
+      this.setState({copied:field});
+      clearTimeout(this.copyTimer);
+      this.copyTimer = setTimeout(()=>this.setState({copied:''}), 1600);
+    };
+  }
+  renderVals(){
+    const s = this.state;
+    const icon = (size, fill, color) => "font-family:'Material Symbols Rounded';font-variation-settings:'FILL' "+fill+";font-size:"+size+"px;line-height:1;color:"+color;
+    const dayKey = DAYS[s.day].key;
+    const data = SCHEDULE[dayKey];
+    const lessons = data.lessons.map((l,i) => {
+      const now = !!l.now;
+      const typeColor = l.type==='Лекция' ? ['var(--pric)','var(--onpric)'] : l.type==='Практика' ? ['var(--okc)','var(--onokc)'] : ['var(--terc)','var(--onterc)'];
+      return {
+        t1:l.t1, t2:l.t2, title:l.title, type:l.type, teacher:l.teacher, room:l.room,
+        isNow:now, left:l.left||'', 
+        waveStyle:'flex:none;width:'+(l.progress||0)+'%;height:14px;background-repeat:repeat-x;background-position:0 50%;animation:m3wave 2s linear infinite;transition:width var(--m3-sp-def-d) var(--m3-sp-def);background-image:url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2740%27%20height=%2714%27%20viewBox=%270%200%2040%2014%27%3E%3Cpath%20d=%27M0%207%20Q10%201%2020%207%20T40%207%27%20fill=%27none%27%20stroke=%27%23ffffff%27%20stroke-width=%274%27%20stroke-linecap=%27round%27/%3E%3C/svg%3E")',
+        cardStyle: 'transition:background var(--m3-ef-d) var(--m3-ef);'+(now
+          ? 'background:var(--pri);border-radius:32px;padding:22px 20px;box-shadow:0 4px 8px -2px rgba(50,20,110,.32)'
+          : 'background:var(--s1);border:1px solid var(--out);border-radius:28px;padding:20px'),
+        t1Style: 'font:500 16px Roboto,sans-serif;letter-spacing:.15px;color:'+(now?'var(--onpri)':'var(--on)'),
+        t2Style: 'font:400 12px Roboto,sans-serif;letter-spacing:.5px;color:'+(now?'rgba(255,255,255,.78)':'var(--on2)'),
+        titleStyle: 'font:700 16px/1.5 Roboto,sans-serif;letter-spacing:.15px;margin-top:9px;color:'+(now?'var(--onpri)':'var(--on)'),
+        metaStyle: 'font:400 14px Roboto,sans-serif;letter-spacing:.25px;color:'+(now?'rgba(255,255,255,.86)':'var(--on2)'),
+        iconStyle: icon(18, 0, now?'rgba(255,255,255,.86)':'var(--on2)'),
+        badgeStyle: now
+          ? 'display:inline-block;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.22);color:var(--onpri);font:500 11px Roboto,sans-serif;letter-spacing:.5px'
+          : 'display:inline-block;padding:4px 10px;border-radius:8px;background:'+typeColor[0]+';color:'+typeColor[1]+';font:500 11px Roboto,sans-serif;letter-spacing:.5px'
+      };
+    });
+    const visibleTasks = s.tasks.filter(t => s.filter===0 ? !t.done : t.done).map(t => ({
+      text:t.text, subject:t.subject, due:t.due,
+      toggle: () => this.setState(st => ({tasks: st.tasks.map(x => x.id===t.id ? Object.assign({},x,{done:!x.done}) : x)})),
+      cardStyle:'display:flex;gap:8px;padding:18px;background:var(--s1);border:1px solid var(--out);border-radius:28px;align-items:flex-start;transition:opacity var(--m3-ef-d) var(--m3-ef)'+(t.done?';opacity:.6':''),
+      hitStyle:'flex:none;width:48px;height:48px;margin:-11px 0 -11px -12px;display:flex;align-items:center;justify-content:center;cursor:pointer',
+      boxStyle:'width:18px;height:18px;border-radius:2px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;transition:background var(--m3-ef-fast-d) var(--m3-ef),border-color var(--m3-ef-fast-d) var(--m3-ef);'+(t.done?'background:var(--pri);border:2px solid var(--pri)':'background:transparent;border:2px solid var(--on2)'),
+      checkStyle: icon(16, 0, 'var(--onpri)')+';opacity:'+(t.done?1:0),
+      textStyle:'font:500 16px/1.5 Roboto,sans-serif;color:var(--on);letter-spacing:.15px'+(t.done?';text-decoration:line-through':''),
+      subjStyle:'display:flex;align-items:center;height:26px;padding:0 10px;border-radius:8px;background:var(--pric);color:var(--onpric);font:500 12px Roboto,sans-serif;letter-spacing:.5px',
+      dueStyle:'display:flex;align-items:center;height:26px;padding:0 10px;border-radius:8px;font:500 12px Roboto,sans-serif;letter-spacing:.5px;'+(t.hot&&!t.done?'background:var(--errc);color:var(--onerrc)':'background:var(--s3);color:var(--on2)')
+    }));
+    const kindMap = {warn:['var(--warnc)','var(--onwarnc)'], ok:['var(--okc)','var(--onokc)'], err:['var(--errc)','var(--onerrc)']};
+    const certs = s.certs.map(c => ({
+      title:c.title, sub:c.sub, status:c.status, note:c.note, icon:c.icon,
+      badgeStyle:'flex:none;display:flex;align-items:center;height:28px;padding:0 12px;border-radius:8px;background:'+kindMap[c.kind][0]+';color:'+kindMap[c.kind][1]+';font:500 12px Roboto,sans-serif;letter-spacing:.5px;white-space:nowrap'
+    }));
+    const sw = (on) => ({
+      track:'flex:none;width:52px;height:32px;border-radius:16px;padding:2px;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;transition:background var(--m3-ef-d) var(--m3-ef),border-color var(--m3-ef-d) var(--m3-ef);'+(on?'background:var(--pri);border:2px solid var(--pri);justify-content:flex-end':'background:var(--s3);border:2px solid var(--on2);justify-content:flex-start'),
+      thumb:'border-radius:50%;transition:width var(--m3-sp-fast-d) var(--m3-sp-fast),height var(--m3-sp-fast-d) var(--m3-sp-fast),background var(--m3-ef-d) var(--m3-ef);'+(on?'width:24px;height:24px;background:var(--onpri)':'width:16px;height:16px;margin:0 4px;background:var(--on2)')
+    });
+    const d = sw(s.dark), dy = sw(s.dyn), nt = sw(s.notif);
+    const btn = (active) => 'flex:none;display:flex;align-items:center;height:40px;padding:0 16px;border-radius:20px;box-sizing:border-box;cursor:pointer;font:500 14px Roboto,sans-serif;letter-spacing:.1px;transition:background var(--m3-ef-d) var(--m3-ef),color var(--m3-ef-d) var(--m3-ef);'+(active?'background:var(--pri);color:var(--onpri);border:1px solid var(--pri)':'background:transparent;color:var(--pri);border:1px solid var(--out)');
+    const activeCount = s.tasks.filter(t=>!t.done).length;
+    const navDef = [['calendar_month','Расписание'],['event_busy','Пропуски'],['checklist','Заметки'],['person','Профиль']];
+    return {
+      splash:s.splash,
+      isSchedule:s.tab===0, isAbsence:s.tab===1, isNotes:s.tab===2, isProfile:s.tab===3,
+      searchOpen:s.searchOpen, searchClosed:!s.searchOpen,
+      openSearch:this.set('searchOpen',true), closeSearch:this.set('searchOpen',false),
+      chips:['Группы','Преподаватели','Аудитории'].map(c => ({
+        label:c, pick:()=>this.setState({chip: s.chip===c ? null : c}),
+        style:'display:flex;align-items:center;gap:8px;height:32px;box-sizing:border-box;border-radius:8px;cursor:pointer;font:500 14px Roboto,sans-serif;letter-spacing:.1px;transition:background var(--m3-ef-d) var(--m3-ef),color var(--m3-ef-d) var(--m3-ef);'+(s.chip===c?'background:var(--pric);color:var(--onpric);padding:0 16px 0 8px':'background:transparent;color:var(--on);border:1px solid var(--out);padding:0 16px'),
+        iconStyle: icon(18,0,'var(--onpric)')+';display:'+(s.chip===c?'inline':'none')
+      })),
+      recent:[{label:'2423 УИР',kind:'Группа'},{label:'Соколова А. В.',kind:'Преподаватель'},{label:'ауд. 415',kind:'Аудитория'}],
+      days: DAYS.map((d2,i) => ({
+        name:d2.name, num:d2.num, pick:()=>this.setState({day:i}),
+        style:'flex:none;width:56px;padding:12px 0 14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:background var(--m3-ef-d) var(--m3-ef),border-radius var(--m3-sp-def-d) var(--m3-sp-def);'+(s.day===i?'background:var(--pri);border-radius:28px':'background:var(--s2);border-radius:16px'),
+        nameStyle:'font:500 12px Roboto,sans-serif;letter-spacing:.5px;color:'+(s.day===i?'rgba(255,255,255,.82)':'var(--on2)'),
+        numStyle:'font:700 18px Roboto,sans-serif;letter-spacing:.15px;color:'+(s.day===i?'var(--onpri)':'var(--on)')
+      })),
+      dayTitle:data.title,
+      daySub: data.lessons.length ? data.lessons.length+' пары · '+data.lessons[0].t1+'—'+data.lessons[data.lessons.length-1].t2 : 'Выходной',
+      lessons, noLessons: data.lessons.length===0,
+      certs, sheet:s.sheet,
+      openSheet:this.set('sheet',true), closeSheet:this.set('sheet',false),
+      submitCert: () => this.setState(st => ({sheet:false, certs:[{id:Date.now(),title:'Новая справка',sub:'16 сентября · 2 ч',status:'В обработке',kind:'warn',icon:'schedule',note:'Отправлено только что'}].concat(st.certs)})),
+      visibleTasks, tasksEmpty: visibleTasks.length===0,
+      tasksSummary: activeCount ? activeCount+' активных дедлайна · '+(s.tasks.length-activeCount)+' закрыто' : 'Все задачи закрыты',
+      filters:['Активные','Выполненные'].map((f,i)=>({
+        label:f, pick:()=>this.setState({filter:i}),
+        iconStyle: icon(18,0,'var(--onpric)')+';display:'+(s.filter===i?'inline':'none'),
+        style:'flex:1;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font:500 14px Roboto,sans-serif;letter-spacing:.1px;transition:background var(--m3-ef-d) var(--m3-ef),color var(--m3-ef-d) var(--m3-ef);'+(i>0?'border-left:1px solid var(--out);':'')+(s.filter===i?'background:var(--pric);color:var(--onpric)':'background:transparent;color:var(--on)')
+      })),
+      addTask: () => this.setState(st => ({filter:0, tasks:[{id:Date.now(),text:'Новая задача',subject:'Без предмета',due:'Без срока',hot:false,done:false}].concat(st.tasks)})),
+      pwText: s.showPw ? 'пароль-скрыт' : '••••••••••',
+      pwIcon: s.showPw ? 'visibility_off' : 'visibility',
+      togglePw: () => this.setState(st=>({showPw:!st.showPw})),
+      copyLogin: this.copy('login','000000'), copyPw: this.copy('pw','пароль-скрыт'),
+      copyLoginLabel: s.copied==='login' ? 'Скопировано' : 'Копировать',
+      copyPwLabel: s.copied==='pw' ? 'Скопировано' : 'Копировать',
+      copyLoginStyle: btn(s.copied==='login'), copyPwStyle: btn(s.copied==='pw'),
+      toggleDark: () => this.setState(st=>({dark:!st.dark}), () => this.applyTheme()),
+      toggleDyn: () => this.setState(st=>({dyn:!st.dyn}), () => this.applyTheme()),
+      toggleNotif: () => this.setState(st=>({notif:!st.notif})),
+      darkTrack:d.track, darkThumb:d.thumb, dynTrack:dy.track, dynThumb:dy.thumb, notifTrack:nt.track, notifThumb:nt.thumb,
+      nav: navDef.map((n,i) => ({
+        icon:n[0], label:n[1], go:()=>this.setState({tab:i, searchOpen:false}),
+        pillStyle:'width:64px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:background var(--m3-ef-d) var(--m3-ef);background:'+(s.tab===i?'var(--pric)':'transparent'),
+        iconStyle: icon(24, s.tab===i?1:0, s.tab===i?'var(--onpric)':'var(--on2)'),
+        labelStyle:'font:500 12px Roboto,sans-serif;letter-spacing:.5px;color:'+(s.tab===i?'var(--on)':'var(--on2)')
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+
+import '../data/models/certificate.dart';
+import '../data/models/lesson.dart';
+import '../theme/app_shapes.dart';
+import '../theme/app_typography.dart';
+import '../theme/status_colors.dart';
+
+/// Бейдж типа занятия на карточке пары.
+class LessonTypeBadge extends StatelessWidget {
+  const LessonTypeBadge({
+    super.key,
+    required this.type,
+    this.onPrimarySurface = false,
+  });
+
+  final LessonType type;
+
+  /// Карточка текущей пары залита `primary` — бейдж становится полупрозрачным.
+  final bool onPrimarySurface;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    final StatusColors status = StatusColors.of(context);
+
+    final (Color background, Color foreground) = onPrimarySurface
+        ? (colors.onPrimary.withValues(alpha: 0.22), colors.onPrimary)
+        : switch (type) {
+            LessonType.lecture => (
+              colors.primaryContainer,
+              colors.onPrimaryContainer,
+            ),
+            LessonType.practice => (status.approved, status.onApproved),
+            LessonType.lab => (
+              colors.tertiaryContainer,
+              colors.onTertiaryContainer,
+            ),
+          };
+
+    return _Badge(
+      background: background,
+      foreground: foreground,
+      label: type.label,
+    );
+  }
+}
+
+/// Бейдж статуса справки.
+class CertificateStatusBadge extends StatelessWidget {
+  const CertificateStatusBadge({super.key, required this.status});
+
+  final CertificateStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final StatusColors colors = StatusColors.of(context);
+
+    final (Color background, Color foreground) = switch (status) {
+      CertificateStatus.pending => (colors.pending, colors.onPending),
+      CertificateStatus.approved => (colors.approved, colors.onApproved),
+      CertificateStatus.rejected => (colors.rejected, colors.onRejected),
+    };
+
+    return _Badge(
+      background: background,
+      foreground: foreground,
+      label: status.label,
+      height: 28,
+      horizontalPadding: 12,
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({
+    required this.background,
+    required this.foreground,
+    required this.label,
+    this.height,
+    this.horizontalPadding = 10,
+  });
+
+  final Color background;
+  final Color foreground;
+  final String label;
+  final double? height;
+  final double horizontalPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle style =
+        (height == null ? context.text.labelSmall : context.text.labelMedium)!
+            .copyWith(color: foreground);
+
+    return Container(
+      height: height,
+      alignment: height == null ? null : Alignment.center,
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: height == null ? 4 : 0,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: AppShapes.all(AppShapes.chip),
+      ),
+      child: Text(label, style: style),
+    );
+  }
+}
