@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_motion.dart';
+import 'm3_tooltip.dart';
 
 // Константы `AppBar.kt` (Compose Material3).
 
@@ -706,7 +707,8 @@ class _NavigationIconSlot extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsetsDirectional.only(start: _kHorizontalPadding),
-      child: child,
+      // Подсказки кнопок app bar — под кнопкой (tooltips → Placement).
+      child: child == null ? null : M3TooltipBelowScope(child: child),
     );
   }
 }
@@ -735,7 +737,7 @@ class _ActionsSlot extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: _kHorizontalPadding),
-      child: child,
+      child: child == null ? null : M3TooltipBelowScope(child: child),
     );
   }
 }

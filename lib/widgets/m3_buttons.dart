@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_state_layer.dart';
+import 'm3_tooltip.dart';
 
 // Кнопки Material 3 Expressive: общие кнопки (`Button`), icon buttons и общее
 // ядро (форма с пружинным морфом, тень, state layer, зона нажатия 48dp), на
@@ -699,7 +700,7 @@ class M3ButtonContainer extends StatefulWidget {
   final M3ButtonElevation elevation;
   final M3ButtonSemantics semantics;
 
-  /// Пока обычный Flutter [Tooltip].
+  /// Plain tooltip M3 ([M3PlainTooltip]) над видимой границей кнопки.
   final String? tooltip;
 
   /// Состояния нажатия/наведения/фокуса — аналог `interactionSource`.
@@ -942,7 +943,10 @@ class _M3ButtonContainerState extends State<M3ButtonContainer>
               child: child,
             );
             if (widget.tooltip != null) {
-              inkWell = Tooltip(message: widget.tooltip, child: inkWell);
+              inkWell = M3PlainTooltip(
+                message: widget.tooltip!,
+                child: inkWell,
+              );
             }
             return Material(
               type: MaterialType.button,
@@ -1283,7 +1287,7 @@ class M3IconButton extends StatelessWidget {
   final M3IconButtonWidth width;
   final M3ButtonShape shape;
 
-  /// Метка действия; показывается обычным [Tooltip].
+  /// Метка действия; показывается [M3PlainTooltip].
   final String? tooltip;
   final WidgetStatesController? statesController;
   final FocusNode? focusNode;

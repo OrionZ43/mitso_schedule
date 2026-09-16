@@ -3,9 +3,10 @@
          было только в debug/profile, и release-сборка не смогла бы выйти в сеть. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="mitso_schedule"
+        android:label="Расписание"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

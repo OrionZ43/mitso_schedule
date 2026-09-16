@@ -40,7 +40,7 @@ class M3PlainTooltip extends StatefulWidget {
     super.key,
     required this.message,
     required this.child,
-    this.preferBelow = false,
+    this.preferBelow,
     this.anchorPadding = EdgeInsets.zero,
   });
 
@@ -48,7 +48,7 @@ class M3PlainTooltip extends StatefulWidget {
   final Widget child;
 
   /// Под элементом — для кнопок в app bar (Guidelines → Placement).
-  final bool preferBelow;
+  final bool? preferBelow;
 
   /// Расстояние от границы [child] до его видимой границы. Зазор 4dp
   /// отсчитывается от видимой границы («If there's a visual boundary, like a
@@ -131,7 +131,7 @@ class _M3PlainTooltipState extends State<M3PlainTooltip> {
     );
 
     double y;
-    if (widget.preferBelow) {
+    if (widget.preferBelow ?? M3TooltipBelowScope.of(this.context)) {
       y = anchor.bottom + spacing;
       if (y + tooltip.height > window.height) {
         y = anchor.top - tooltip.height - spacing;
@@ -311,4 +311,17 @@ class _TooltipTransitionState extends State<_TooltipTransition>
       child: widget.child,
     );
   }
+}
+
+/// Подсказки внутри — под элементом (plain tooltip → Guidelines → Placement:
+/// «If the element is in an app bar, place the tooltip below it»). App bars
+/// оборачивают свои кнопки в эту область.
+class M3TooltipBelowScope extends InheritedWidget {
+  const M3TooltipBelowScope({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<M3TooltipBelowScope>() != null;
+
+  @override
+  bool updateShouldNotify(M3TooltipBelowScope oldWidget) => false;
 }
