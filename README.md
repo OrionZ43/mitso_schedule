@@ -88,7 +88,7 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 - **Выбор группы** — цепочка виджета Krajee DepDrop:
   `schedule/education` → `schedule/course` → `schedule/group`, ответы JSON
   `{"output":[{"id","name"}]}`. Факультеты лежат прямо в разметке формы.
-  Идентификаторы — транслит: `E\`konomicheskij`, `Dnevnaya`, `3 kurs`, `2423 UIR`.
+  Идентификаторы — транслит: ``E`konomicheskij``, `Dnevnaya`, `3 kurs`, `2423 UIR`.
 - **Расписание** — один POST на `schedule/group-schedule` возвращает сразу
   текущую и следующую неделю. Параметр недели сервер проверяет только на
   непустоту.
