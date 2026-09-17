@@ -160,13 +160,15 @@ void main() {
     expect(_page(tester), 1);
   });
 
-  testWidgets('неделя листается пальцем', (tester) async {
+  testWidgets('пальцем лента не листается — неделю выбирает переключатель', (
+    tester,
+  ) async {
     await _pump(tester, selected: 0);
     await tester.fling(find.text('17'), const Offset(-300, 0), 1000);
     for (int i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
-    expect(_page(tester), 1);
+    expect(_page(tester), 0);
   });
 
   testWidgets('семантика: кнопка, одиночный выбор, полная дата', (

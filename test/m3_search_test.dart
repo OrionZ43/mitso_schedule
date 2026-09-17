@@ -314,4 +314,149 @@ void main() {
       expect(find.text(_hint), findsOneWidget);
     }
   });
+
+  group('showM3Search — из кнопки-иконки', () {
+    Future<void> pumpButton(
+      WidgetTester tester, {
+      bool reduceMotion = false,
+      TextEditingController? controller,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: _scheme),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(disableAnimations: reduceMotion),
+            child: child!,
+          ),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: IconButton(
+                  tooltip: 'Поиск',
+                  icon: const Icon(Icons.search),
+                  onPressed: () => showM3Search(
+                    context: context,
+                    hintText: _hint,
+                    controller: controller,
+                    contentBuilder: (context, query) => Column(
+                      children: [
+                        Text('Запрос: $query'),
+                        TextButton(
+                          onPressed: () => M3SearchScope.of(context).close(),
+                          child: const Text('Закрыть'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    double slideOf(WidgetTester tester) => tester
+        .widget<SlideTransition>(
+          find
+              .ancestor(of: _field, matching: find.byType(SlideTransition))
+              .first,
+        )
+        .position
+        .value
+        .dy;
+
+    testWidgets('выезжает снизу за 350 мс, фокус — после появления', (
+      tester,
+    ) async {
+      await pumpButton(tester);
+      await tester.tap(find.byTooltip('Поиск'));
+      await tester.pump();
+
+      expect(slideOf(tester), 1);
+      await tester.pump(const Duration(milliseconds: 175));
+      final double half = slideOf(tester);
+      // FAST_OUT_SLOW_IN к середине проходит больше половины пути.
+      expect(half, lessThan(0.5));
+      expect(half, greaterThan(0));
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText))
+            .focusNode
+            .hasFocus,
+        isFalse,
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(slideOf(tester), 0);
+      await tester.pump();
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText))
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
+      expect(find.text('Запрос: '), findsOneWidget);
+    });
+
+    testWidgets('ввод перестраивает контент, «Закрыть» уводит вниз за 300 мс', (
+      tester,
+    ) async {
+      final TextEditingController controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpButton(tester, controller: controller);
+      await tester.tap(find.byTooltip('Поиск'));
+      await _frames(tester, 30);
+
+      await tester.enterText(_field, 'сети');
+      await tester.pump();
+      expect(find.text('Запрос: сети'), findsOneWidget);
+
+      await tester.tap(find.text('Закрыть'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      // Обращённая кривая: сдвиг = FAST_OUT_SLOW_IN(t), к середине закрытия
+      // экран прошёл больше половины пути вниз.
+      expect(
+        slideOf(tester),
+        closeTo(Curves.fastOutSlowIn.transform(0.5), 0.02),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(_field, findsNothing);
+      // Запрос сохранён в контроллере кнопки.
+      expect(controller.text, 'сети');
+    });
+
+    testWidgets('кнопка «Назад» в поле и системный «назад» закрывают', (
+      tester,
+    ) async {
+      await pumpButton(tester);
+      await tester.tap(find.byTooltip('Поиск'));
+      await _frames(tester, 30);
+      await tester.tap(find.byTooltip('Назад'));
+      await _frames(tester, 30);
+      expect(_field, findsNothing);
+
+      await tester.tap(find.byTooltip('Поиск'));
+      await _frames(tester, 30);
+      await tester.binding.handlePopRoute();
+      await _frames(tester, 30);
+      expect(_field, findsNothing);
+    });
+
+    testWidgets('уменьшение движения — без сдвига', (tester) async {
+      await pumpButton(tester, reduceMotion: true);
+      await tester.tap(find.byTooltip('Поиск'));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.ancestor(of: _field, matching: find.byType(SlideTransition)),
+        findsNothing,
+      );
+      expect(_field, findsOneWidget);
+    });
+  });
 }

@@ -96,9 +96,9 @@ Future<void> _capture(WidgetTester tester, String name) async {
     image.dispose();
     if (data == null) return;
 
-    final Directory dir = Directory(_outputDir);
-    if (!dir.existsSync()) dir.createSync(recursive: true);
-    File('$_outputDir/$name.png').writeAsBytesSync(data.buffer.asUint8List());
+    final File file = File('$_outputDir/$name.png');
+    file.parent.createSync(recursive: true);
+    file.writeAsBytesSync(data.buffer.asUint8List());
   });
 }
 
@@ -361,7 +361,10 @@ void main() {
 
   _shot('скриншот подробностей пары', (tester) async {
     await _pumpApp(tester, dark: false);
-    await tester.tap(find.text('Идёт сейчас · осталось 35 мин'));
+    final ScrollableState list = tester.state(find.byType(Scrollable).first);
+    list.position.jumpTo(300);
+    await _frames(tester, 300);
+    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
     await tester.pump();
     await _frames(tester, 700);
     await _capture(tester, '8-lesson-details-light');

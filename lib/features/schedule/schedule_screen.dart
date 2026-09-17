@@ -22,10 +22,11 @@ import '../../widgets/m3_pager.dart';
 import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
+import 'lesson_card.dart';
 import 'lesson_details_page.dart';
-import 'lesson_slot_item.dart';
 import 'lesson_timing.dart';
 import 'schedule_search.dart';
+import 'week_switcher.dart';
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key, this.scrollController});
@@ -154,6 +155,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   ? null
                   : '${group.groupName} · ${group.courseName}',
               actions: [
+                if (data != null && data.days.isNotEmpty)
+                  ScheduleSearchButton(days: data.days),
                 // Альтернатива жесту pull-to-refresh — гайдлайн loading
                 // indicator, Accessibility.
                 if (group != null)
@@ -192,8 +195,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       now,
     );
 
+    void selectDay(int index) =>
+        ref.read(selectedDateProvider.notifier).select(days[index].date);
+
+    // Порядок сверху вниз — от крупного к мелкому: неделя, день недели,
+    // пары выбранного дня.
     return [
-      SliverToBoxAdapter(child: ScheduleSearchBar(days: days)),
       if (day == null)
         const SliverFillRemaining(
           hasScrollBody: false,
@@ -203,12 +210,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(top: AppSpacing.space100),
+            child: WeekSwitcher(
+              days: days,
+              selectedIndex: days.indexOf(day),
+              now: now,
+              onSelected: selectDay,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space150),
             child: DaySelector(
               days: days,
               selectedIndex: days.indexOf(day),
-              onSelected: (index) => ref
-                  .read(selectedDateProvider.notifier)
-                  .select(days[index].date),
+              onSelected: selectDay,
             ),
           ),
         ),
@@ -219,9 +235,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               days: days,
               selectedIndex: days.indexOf(day),
               now: now,
-              onPageChanged: (index) => ref
-                  .read(selectedDateProvider.notifier)
-                  .select(days[index].date),
+              onPageChanged: selectDay,
             ),
           ),
         ),
@@ -271,14 +285,32 @@ class _DayPagerState extends State<_DayPager> {
       _pages.clear();
     }
     if (!_controller.hasClients) return;
+    if (_target == widget.selectedIndex) return;
     final double page = _controller.page ?? widget.selectedIndex.toDouble();
     // Страница уже сменилась жестом — pager сам на месте.
-    if (page.round() == widget.selectedIndex) return;
-    M3Pager.animateToPage(
+    if (_target == null && page.round() == widget.selectedIndex) return;
+    _animateTo(widget.selectedIndex);
+  }
+
+  /// Страница, к которой pager едет по выбору дня. Промежуточные страницы по
+  /// пути не выбираются: иначе выбор откатывался бы назад и останавливал
+  /// переход.
+  int? _target;
+
+  Future<void> _animateTo(int index) async {
+    _target = index;
+    await M3Pager.animateToPage(
       _controller,
-      widget.selectedIndex,
+      index,
       reduceMotion: reduceMotionOf(context),
     );
+    // Жест пальцем прерывает переход — дальше страницы снова выбираются.
+    if (_target == index) _target = null;
+  }
+
+  void _onPageChanged(int index) {
+    if (_target != null) return;
+    widget.onPageChanged(index);
   }
 
   @override
@@ -293,7 +325,7 @@ class _DayPagerState extends State<_DayPager> {
       controller: _controller,
       itemCount: widget.days.length,
       minHeight: 240,
-      onPageChanged: widget.onPageChanged,
+      onPageChanged: _onPageChanged,
       itemBuilder: (context, index) => _pages.putIfAbsent(
         index,
         () => _DayContent(
@@ -329,34 +361,38 @@ class _DayContent extends ConsumerWidget {
         if (slots.isEmpty)
           const EmptyState(title: 'Занятий нет.\nОтдыхай!')
         else
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin(context),
-            ),
-            child: LessonSlotList(
-              slots: slots,
-              statuses: statuses,
-              // Подробности — следующий уровень иерархии: платформенный
-              // переход forward/backward (styles/motion/transitions).
-              onOpen: (slot, status) async {
-                final DateTime? date = await Navigator.of(context)
-                    .push<DateTime>(
-                      MaterialPageRoute(
-                        builder: (context) => LessonDetailsPage(
-                          slot: slot,
-                          day: day,
-                          days: days,
-                          status: status,
-                          subgroup: subgroup,
+          for (int i = 0; i < slots.length; i++)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.screenMargin(context),
+                i == 0 ? 0 : LessonCard.gap,
+                AppSpacing.screenMargin(context),
+                0,
+              ),
+              child: LessonCard(
+                slot: slots[i],
+                status: statuses[i],
+                // Подробности — следующий уровень иерархии: платформенный
+                // переход forward/backward (styles/motion/transitions).
+                onTap: () async {
+                  final DateTime? date = await Navigator.of(context)
+                      .push<DateTime>(
+                        MaterialPageRoute(
+                          builder: (context) => LessonDetailsPage(
+                            slot: slots[i],
+                            day: day,
+                            days: days,
+                            status: statuses[i],
+                            subgroup: subgroup,
+                          ),
                         ),
-                      ),
-                    );
-                if (date != null) {
-                  ref.read(selectedDateProvider.notifier).select(date);
-                }
-              },
+                      );
+                  if (date != null) {
+                    ref.read(selectedDateProvider.notifier).select(date);
+                  }
+                },
+              ),
             ),
-          ),
       ],
     );
   }

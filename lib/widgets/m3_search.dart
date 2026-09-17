@@ -332,14 +332,17 @@ class M3SearchScope extends InheritedWidget {
   /// Текущий запрос.
   final String query;
 
-  final _SearchOverlayState _state;
+  final _SearchScopeActions _state;
 
   static M3SearchScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<M3SearchScope>();
 
   static M3SearchScope of(BuildContext context) {
     final M3SearchScope? scope = maybeOf(context);
-    assert(scope != null, 'M3SearchScope есть только внутри M3SearchBar');
+    assert(
+      scope != null,
+      'M3SearchScope есть только внутри M3SearchBar и showM3Search',
+    );
     return scope!;
   }
 
@@ -355,6 +358,274 @@ class M3SearchScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(M3SearchScope oldWidget) => query != oldWidget.query;
+}
+
+/// Что открытый поиск умеет по просьбе контента.
+abstract interface class _SearchScopeActions {
+  void close();
+  void setQuery(String query);
+  Future<void> announce(String message);
+}
+
+/// Открывает полноэкранный поиск стиля contained без свёрнутой строки —
+/// например, из кнопки-иконки в app bar.
+///
+/// Порт MDC `SearchView` без привязанного `SearchBar`
+/// (`SearchViewAnimationHelper.startShowAnimationTranslate` /
+/// `startHideAnimationTranslate`): экран поиска выезжает снизу на свою
+/// высоту за 350 мс (`SHOW_TRANSLATE_DURATION_MS`) с `FAST_OUT_SLOW_IN` и
+/// уезжает обратно за 300 мс (`HIDE_TRANSLATE_DURATION_MS`) с той же кривой
+/// во времени (`ReversableAnimatedValueInterpolator`). Клавиатура — после
+/// появления; жест «Назад» без строки не анимируется (`startBackProgress`
+/// выходит при `searchBar == null`) и просто закрывает поиск.
+///
+/// Вид открытого поиска — как у [M3SearchBar] в раскрытом состоянии:
+/// подложка `surfaceContainerLow`, поле-таблетка у верхнего края, контент
+/// на 8dp ниже; [contentBuilder] и [M3SearchScope] — те же.
+Future<void> showM3Search({
+  required BuildContext context,
+  required String hintText,
+  required Widget Function(BuildContext context, String query) contentBuilder,
+  TextEditingController? controller,
+  ValueChanged<String>? onSearch,
+}) {
+  final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
+  return navigator.push(
+    _M3TranslatedSearchRoute(
+      hintText: hintText,
+      contentBuilder: contentBuilder,
+      queryController: controller,
+      onSearch: onSearch,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+    ),
+  );
+}
+
+class _M3TranslatedSearchRoute extends PopupRoute<void> {
+  _M3TranslatedSearchRoute({
+    required this.hintText,
+    required this.contentBuilder,
+    required this.queryController,
+    required this.onSearch,
+    required this.capturedThemes,
+  });
+
+  final String hintText;
+  final Widget Function(BuildContext context, String query) contentBuilder;
+  final TextEditingController? queryController;
+  final ValueChanged<String>? onSearch;
+  final CapturedThemes capturedThemes;
+
+  /// `SHOW_TRANSLATE_DURATION_MS`.
+  static const Duration showDuration = Duration(milliseconds: 350);
+
+  /// `HIDE_TRANSLATE_DURATION_MS`.
+  static const Duration hideDuration = Duration(milliseconds: 300);
+
+  @override
+  Duration get transitionDuration => showDuration;
+
+  @override
+  Duration get reverseTransitionDuration => hideDuration;
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  bool get barrierDismissible => false;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return capturedThemes.wrap(_TranslatedSearchPage(route: this));
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    // translationY: высота экрана → 0. При закрытии кривая обращена
+    // (`1 - interpolator(t)`), поэтому в обратном ходе — `flipped`.
+    return SlideTransition(
+      position: CurvedAnimation(
+        parent: animation,
+        curve: Curves.fastOutSlowIn,
+        reverseCurve: Curves.fastOutSlowIn.flipped,
+      ).drive(Tween(begin: const Offset(0, 1), end: Offset.zero)),
+      child: child,
+    );
+  }
+}
+
+class _TranslatedSearchPage extends StatefulWidget {
+  const _TranslatedSearchPage({required this.route});
+
+  final _M3TranslatedSearchRoute route;
+
+  @override
+  State<_TranslatedSearchPage> createState() => _TranslatedSearchPageState();
+}
+
+class _TranslatedSearchPageState extends State<_TranslatedSearchPage>
+    implements _SearchScopeActions {
+  final FocusNode _focusNode = FocusNode();
+  TextEditingController? _ownController;
+
+  TextEditingController get _controller =>
+      widget.route.queryController ??
+      (_ownController ??= TextEditingController());
+
+  @override
+  void initState() {
+    super.initState();
+    final Animation<double> animation = widget.route.animation!;
+    if (animation.isCompleted) {
+      _focusNode.requestFocus();
+    } else {
+      animation.addStatusListener(_focusWhenShown);
+    }
+  }
+
+  /// `requestFocusAndShowKeyboardIfNeeded` в `onAnimationEnd`.
+  void _focusWhenShown(AnimationStatus status) {
+    if (!status.isCompleted) return;
+    widget.route.animation?.removeStatusListener(_focusWhenShown);
+    if (mounted) _focusNode.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    widget.route.animation?.removeStatusListener(_focusWhenShown);
+    _focusNode.dispose();
+    _ownController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void close() {
+    if (!mounted) return;
+    _focusNode.unfocus();
+    final NavigatorState? navigator = widget.route.navigator;
+    if (navigator == null || !widget.route.isCurrent) return;
+    navigator.pop();
+  }
+
+  @override
+  void setQuery(String query) {
+    _controller.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+  }
+
+  @override
+  Future<void> announce(String message) {
+    return SemanticsService.sendAnnouncement(
+      View.of(context),
+      message,
+      Directionality.of(context),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final MediaQueryData media = MediaQuery.of(context);
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final EdgeInsets padding = media.padding;
+    final double bottomInset = math.max(
+      media.viewPadding.bottom,
+      media.viewInsets.bottom,
+    );
+
+    return PopScope<void>(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _focusNode.unfocus();
+      },
+      child: Semantics(
+        scopesRoute: true,
+        explicitChildNodes: true,
+        child: ColoredBox(
+          // `fullScreenContainedSearchBarColor`.
+          color: scheme.surfaceContainerLow,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: padding.top + M3SearchBar.expandedTopPadding,
+              left: padding.left,
+              right: padding.right,
+              bottom: bottomInset,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: M3SearchBar.expandedHorizontalMargin,
+                  ),
+                  child: SizedBox(
+                    height: M3SearchBar.height,
+                    child: _SearchFieldContainer(
+                      child: _ExpandedField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        hintText: widget.route.hintText,
+                        autofocus: false,
+                        onBack: close,
+                        onSubmitted: (value) =>
+                            widget.route.onSearch?.call(value),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: M3SearchBar.contentGap),
+                Expanded(
+                  child: MediaQuery.removeViewInsets(
+                    context: context,
+                    removeBottom: true,
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: true,
+                      removeBottom: true,
+                      removeLeft: true,
+                      removeRight: true,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListenableBuilder(
+                          listenable: _controller,
+                          builder: (context, _) => M3SearchScope._(
+                            query: _controller.text,
+                            state: this,
+                            child: Builder(
+                              builder: (context) => widget.route.contentBuilder(
+                                context,
+                                _controller.text,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _M3SearchRoute extends PopupRoute<void> {
@@ -454,7 +725,8 @@ class _BackGesture extends ChangeNotifier {
 }
 
 class _SearchOverlayState extends State<_SearchOverlay>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver
+    implements _SearchScopeActions {
   /// `SearchBarState.animatable`: без ограничения 0..1 — у FastSpatial перелёт.
   late final AnimationController _progress = AnimationController.unbounded(
     vsync: this,
@@ -540,6 +812,7 @@ class _SearchOverlayState extends State<_SearchOverlay>
 
   /// `SearchBarState.animateToCollapsed`; клавиатура прячется сразу
   /// (`ExpandedFullScreenSearchBarImpl`).
+  @override
   void close() {
     if (_closing || !mounted) return;
     _closing = true;
@@ -588,6 +861,7 @@ class _SearchOverlayState extends State<_SearchOverlay>
     if (status == AnimationStatus.reverse) close();
   }
 
+  @override
   void setQuery(String query) {
     _controller.value = TextEditingValue(
       text: query,
@@ -595,6 +869,7 @@ class _SearchOverlayState extends State<_SearchOverlay>
     );
   }
 
+  @override
   Future<void> announce(String message) {
     return SemanticsService.sendAnnouncement(
       View.of(context),
@@ -745,6 +1020,7 @@ class _ExpandedField extends StatelessWidget {
     required this.hintText,
     required this.onBack,
     required this.onSubmitted,
+    this.autofocus = true,
   });
 
   final TextEditingController controller;
@@ -752,6 +1028,9 @@ class _ExpandedField extends StatelessWidget {
   final String hintText;
   final VoidCallback onBack;
   final ValueChanged<String> onSubmitted;
+
+  /// Фокус сразу при появлении; из кнопки-иконки — после анимации.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -774,7 +1053,7 @@ class _ExpandedField extends StatelessWidget {
             controller: controller,
             focusNode: focusNode,
             // `LaunchedEffect(Unit) { focusRequester.requestFocus() }`.
-            autofocus: true,
+            autofocus: autofocus,
             textInputAction: TextInputAction.search,
             onSubmitted: onSubmitted,
             maxLines: 1,

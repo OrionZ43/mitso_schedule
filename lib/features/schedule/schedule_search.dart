@@ -7,38 +7,51 @@ import '../../data/models/lesson.dart';
 import '../../state/schedule_controller.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_filter_chip.dart';
 import '../../widgets/m3_search.dart';
 import '../../widgets/segmented_list.dart';
 import 'lesson_timing.dart';
 
-/// Поиск по загруженному расписанию — строка поиска под заголовком экрана.
+/// Поиск по загруженному расписанию — кнопка-иконка в app bar.
 ///
 /// https://m3.material.io/components/search — поиск по содержимому одного
-/// экрана: строка под app bar, в фокусе — contained full-screen. Фильтр-чипы
-/// сужают поиск (Guidelines → Search suggestions & results), результаты —
-/// пункты списка, группы разделены зазорами, без разделителей.
-class ScheduleSearchBar extends StatelessWidget {
-  const ScheduleSearchBar({super.key, required this.days});
+/// экрана: по нажатию открывается contained full-screen поиск
+/// ([showM3Search]). Фильтр-чипы сужают поиск (Guidelines → Search
+/// suggestions & results), результаты — пункты списка, группы разделены
+/// зазорами, без разделителей. Запрос сохраняется между открытиями.
+class ScheduleSearchButton extends StatefulWidget {
+  const ScheduleSearchButton({super.key, required this.days});
 
   final List<ScheduleDay> days;
 
   @override
+  State<ScheduleSearchButton> createState() => _ScheduleSearchButtonState();
+}
+
+class _ScheduleSearchButtonState extends State<ScheduleSearchButton> {
+  final TextEditingController _query = TextEditingController();
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // `md.comp.search-bar.contained.leading-margin` — 24dp без фокуса.
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space300,
-        AppSpacing.space100,
-        AppSpacing.space300,
-        AppSpacing.space100,
-      ),
-      child: M3SearchBar(
+    return M3IconButton(
+      onPressed: () => showM3Search(
+        context: context,
         // Короткая подсказка: гайдлайн — «Search your messages».
         hintText: 'Поиск по расписанию',
+        controller: _query,
         contentBuilder: (context, query) =>
-            _SearchContent(days: days, query: query),
+            _SearchContent(days: widget.days, query: query),
       ),
+      icon: const Icon(Symbols.search),
+      color: M3IconButtonColor.standard,
+      tooltip: 'Поиск по расписанию',
     );
   }
 }

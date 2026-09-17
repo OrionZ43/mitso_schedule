@@ -45,6 +45,10 @@
 - Морфинг — для состояний взаимодействия (например, выбранная кнопка), действий в процессе (загрузка), изменений окружения. Компоненты с морфингом: standard button group и loading indicator. Морф по умолчанию использует expressive motion scheme.
 - Loading indicator (Compose): неопределённый — SoftBurst → Cookie9Sided → Pentagon → Pill → Sunny → Cookie4Sided → Oval; определённый — Circle → SoftBurst.
 - «Tension»: сочетать круглые и квадратные формы, «Break from the surrounding shape style to draw attention».
+- В приложении: пустые состояния (Circle, Square, Triangle) и номер аудитории на карточке пары
+  (Cookie9Sided из правого верхнего угла, выбор заказчика 17.09.2026). Гайд советует абстрактные
+  формы для декора, а не для текстовых контейнеров; здесь форма несёт короткий номер и
+  обрезана краем карточки — записано в README, п. 21.
 
 ### Формы компонентов (для сверки)
 

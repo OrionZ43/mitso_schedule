@@ -11,11 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:mitso_schedule/features/schedule/lesson_card.dart';
 import 'package:mitso_schedule/widgets/day_selector.dart';
 import 'package:mitso_schedule/widgets/m3_fab.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/widgets/m3_switch.dart';
-import 'package:mitso_schedule/widgets/segmented_list.dart';
 
 import 'app_test.dart' show pumpApp;
 
@@ -73,7 +73,7 @@ class _Probe {
       '=== $name: кадров $_frames, '
       'перестроек ${total(_builds)} (${total(_builds) ~/ frames}/кадр), '
       'отрисовок ${total(_paints)} (${total(_paints) ~/ frames}/кадр)\n'
-      '${top(_builds)}',
+      '  перестройки:\n${top(_builds)}\n  отрисовки:\n${top(_paints)}',
     );
   }
 }
@@ -122,10 +122,10 @@ void main() {
 
     probe.start();
     final TestGesture press = await tester.startGesture(
-      tester.getCenter(find.byType(M3ListItem).first),
+      tester.getCenter(find.byType(LessonCard).first),
     );
     await probe.frames(tester, 30);
-    probe.report('удержание пункта списка');
+    probe.report('удержание карточки пары');
     await press.cancel();
     await tester.pump(const Duration(seconds: 1));
 

@@ -1,6 +1,6 @@
 # Поиск (Search)
 
-Статус в приложении: ✅ соответствует — contained full-screen `M3SearchBar` (отступления — README, п. 11)
+Статус в приложении: ✅ соответствует — contained full-screen поиск из кнопки-иконки в app bar расписания (`showM3Search`); `M3SearchBar` готов для строки (отступления — README, п. 11)
 
 > Разделы «В приложении → Расхождения» ниже описывают состояние до порта (16.09.2026); что сделано и что осталось — в «Реализация во Flutter» и в README.
 
@@ -170,6 +170,21 @@ Compose, contained full-screen (`SearchBar.kt`):
     `flutter/backgesture`;
   - доступность: свёрнутая строка — `Semantics(textField, label: подсказка, value: запрос)`, у поля
     в открытом поиске подсказка — `hintText`.
+- Поиск из кнопки-иконки — `showM3Search(context:, hintText:, contentBuilder:, controller:, onSearch:)`
+  (с 17.09.2026 на расписании вместо строки: `ScheduleSearchButton` в app bar, запрос хранится в
+  кнопке между открытиями). Порт MDC `SearchView` без привязанного `SearchBar`
+  (`SearchViewAnimationHelper.startShowAnimationTranslate` / `startHideAnimationTranslate`):
+  - экран поиска выезжает снизу на свою высоту: 350 мс (`SHOW_TRANSLATE_DURATION_MS`),
+    `FAST_OUT_SLOW_IN`; закрытие — 300 мс (`HIDE_TRANSLATE_DURATION_MS`) с обращённой кривой
+    (`ReversableAnimatedValueInterpolator`: сдвиг = `FAST_OUT_SLOW_IN(t)`, во Flutter —
+    `reverseCurve: Curves.fastOutSlowIn.flipped`);
+  - фокус и клавиатура — после появления (`requestFocusAndShowKeyboardIfNeeded` в
+    `onAnimationEnd`), при закрытии фокус снимается сразу;
+  - жест «назад» без строки не анимируется (`startBackProgress` выходит при `searchBar == null`),
+    поиск просто закрывается;
+  - вид — раскрытое состояние contained: подложка `surfaceContainerLow`, поле-таблетка на
+    `inset.top + 4dp` с полями 12dp, контент на 8dp ниже; тот же `M3SearchScope`;
+  - «Удалить анимации» — без сдвига.
 - Отступления:
   1. Поля строки в фокусе 12dp по токену `md.comp.search-view.contained.leading-margin`; Compose
      берёт 8dp (`FullScreenExpandedHorizontalPadding`).

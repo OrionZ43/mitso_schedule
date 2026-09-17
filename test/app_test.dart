@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/data/certificate_photos.dart';
 import 'package:mitso_schedule/features/absences/widgets/absence_donut.dart';
+import 'package:mitso_schedule/features/schedule/lesson_card.dart';
 import 'package:mitso_schedule/state/absences_controller.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
@@ -14,7 +15,6 @@ import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:mitso_schedule/widgets/m3_buttons.dart';
 import 'package:mitso_schedule/widgets/m3_checkbox.dart';
 import 'package:mitso_schedule/widgets/m3_fab.dart';
-import 'package:mitso_schedule/widgets/segmented_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_certificate_photos.dart';
@@ -125,36 +125,38 @@ void main() {
     // Лаба подгрупп в 11:15 — одна пара, а не две.
     expect(find.text('4 пары'), findsOneWidget);
     // 10:30 — идёт вторая пара, 09:45–11:05.
-    expect(find.text('Идёт сейчас · осталось 35 мин'), findsOneWidget);
+    expect(find.text('СЕЙЧАС ИДЁТ'), findsOneWidget);
+    expect(find.text('осталось 35 мин'), findsOneWidget);
     // Следующая — в 11:15.
     expect(find.text('Начнётся через 45 мин'), findsOneWidget);
   });
 
-  testWidgets('подгруппы в одно время — одна пара', (tester) async {
+  testWidgets('подгруппы в одно время — одна карточка', (tester) async {
     await pumpApp(tester);
 
     // Вертикальный список дня; внутри есть и горизонтальная лента дней.
     await tester.scrollUntilVisible(
-      find.textContaining('Пархимович А. В.'),
+      find.text('Пархимович А. В.'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    final Finder item = find.ancestor(
-      of: find.textContaining('Пархимович А. В.'),
-      matching: find.byType(M3ListItem),
+    final Finder card = find.ancestor(
+      of: find.text('Пархимович А. В.'),
+      matching: find.byType(LessonCard),
     );
-    expect(item, findsOneWidget);
+    expect(card, findsOneWidget);
+    for (final String text in ['Калинин М. А.', '62 (к)', '63 (к)']) {
+      expect(
+        find.descendant(of: card, matching: find.text(text)),
+        findsOneWidget,
+      );
+    }
     expect(
       find.descendant(
-        of: item,
-        matching: find.text('1 подгруппа · Калинин М. А. · ауд. 62 (к)'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: item,
-        matching: find.text('2 подгруппа · Пархимович А. В. · ауд. 63 (к)'),
+        of: card,
+        matching: find.bySemanticsLabel(
+          '2 подгруппа · Пархимович А. В. · ауд. 63 (к)',
+        ),
       ),
       findsOneWidget,
     );
@@ -164,7 +166,7 @@ void main() {
     await pumpApp(tester, preferences: {'settings.subgroup': 1});
 
     await tester.scrollUntilVisible(
-      find.text('Лаб · 1 подгруппа'),
+      find.text('1 подгруппа'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
@@ -185,10 +187,73 @@ void main() {
     expect(find.text('Сегодня'), findsOneWidget);
   });
 
+  testWidgets('переключатель недель открывает тот же день следующей недели', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    expect(find.text('Эта неделя'), findsOneWidget);
+    expect(find.text('14–19 сентября'), findsOneWidget);
+
+    await tester.tap(find.text('Следующая'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('21–26 сентября'), findsOneWidget);
+    expect(find.text('23 сентября'), findsOneWidget);
+
+    // Обратно — сегодняшний день.
+    await tester.tap(find.text('Эта неделя'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Сегодня'), findsOneWidget);
+  });
+
+  testWidgets('свайп с субботы на понедельник переключает неделю', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Сб'));
+    await settle(tester);
+    await settle(tester);
+    await tester.fling(find.text('19 сентября'), const Offset(-300, 0), 1200);
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.text('21–26 сентября'), findsOneWidget);
+    expect(find.text('21 сентября'), findsOneWidget);
+  });
+
+  testWidgets('поиск из app bar находит пару и открывает её день', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Поиск по расписанию'));
+    await settle(tester);
+    await tester.tap(find.text('Преподаватели'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'Лукашевич');
+    await settle(tester);
+
+    // Эконометрика — пятница 18 и 25 сентября.
+    final Finder result = find.textContaining('Пт, 25 сентября');
+    expect(result, findsWidgets);
+    await tester.tap(result.first);
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('21–26 сентября'), findsOneWidget);
+    expect(find.text('25 сентября'), findsOneWidget);
+  });
+
   testWidgets('пара открывает страницу подробностей', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Идёт сейчас · осталось 35 мин'));
+    await tester.ensureVisible(find.text('СЕЙЧАС ИДЁТ'));
+    await settle(tester);
+    await tester.tap(find.text('СЕЙЧАС ИДЁТ'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 

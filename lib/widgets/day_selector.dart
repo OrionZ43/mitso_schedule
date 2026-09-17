@@ -12,7 +12,11 @@ import 'm3_buttons.dart';
 import 'm3_toggle_button.dart';
 
 /// Селектор дней: по standard button group из toggle-кнопок на каждую
-/// календарную неделю, недели листаются.
+/// календарную неделю.
+///
+/// Неделю выбирает переключатель над лентой (`WeekSwitcher`), поэтому пальцем
+/// лента не листается: при выборе дня другой недели она сама переезжает к
+/// ней.
 ///
 /// Какой компонент и почему — `docs/m3/components/button-groups.md`
 /// («Селектор дней»): выбор одного дня из связанного набора, где соседи
@@ -173,6 +177,7 @@ class _DaySelectorState extends State<DaySelector> {
       height: math.max(buttonHeight, kMinInteractiveDimension),
       child: PageView.builder(
         controller: _pages,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: _weeks.length,
         itemBuilder: (context, week) => Padding(
           padding: const EdgeInsets.symmetric(

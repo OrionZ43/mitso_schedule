@@ -39,7 +39,7 @@ flutter build apk --debug -t lib/main.dart    # -t обязателен, см. �
 ```bash
 dart format lib test
 flutter analyze        # без замечаний
-flutter test           # 207 тестов
+flutter test           # 214 тестов
 ```
 
 ### Производительность
@@ -52,13 +52,15 @@ flutter test test/perf_probe.dart
 парой, свайп и выбор дня, нажатия, прокрутка, смена вкладок, лист. Правила, которые он помог
 найти:
 
-- то, что меняется каждый кадр (волна прогресса, масштаб при fade through, высота pager'а), —
-  в своём слое (`RepaintBoundary`), иначе перерисовывается весь список;
+- то, что меняется каждый кадр (волна прогресса, масштаб при fade through, высота pager'а,
+  морфинг кнопки, рябь на карточке), — в своём слое (`RepaintBoundary`), иначе
+  перерисовывается весь список;
 - на кадре анимации перестраивается только анимируемое: `AnimatedBuilder` / `ListenableBuilder`
   получает готовое содержимое через `child`;
 - `Material`, форму которого ведёт пружина, — с `animationDuration: Duration.zero`, иначе
   поверх пружины идёт ещё и неявный твин;
-- страницы pager'а кэшируются, пока не поменялись дни.
+- страницы pager'а кэшируются, пока не поменялись дни; при программном перелистывании
+  промежуточные страницы не выбираются.
 
 **Плавность проверять на release-сборке.** Debug-сборка работает в JIT с проверками и на
 телефоне заметно тормозит; `flutter build apk --release -t lib/main.dart` подписывается
@@ -152,7 +154,7 @@ Compose:
 | Чекбокс, filter chip, plain tooltip | `M3Checkbox`, `M3FilterChip`, `M3PlainTooltip` | `Checkbox.kt`, `Chip.kt`, `Tooltip.kt` |
 | Flexible navigation bar | `M3NavigationBar` | `ShortNavigationBar.kt`, `NavigationItem.kt` |
 | Medium flexible и small app bar, доводка | `SliverMediumFlexibleAppBar`, `M3SmallAppBar`, `M3AppBarSettle` | `AppBar.kt` |
-| Contained full-screen поиск | `M3SearchBar` | `SearchBar.kt` |
+| Contained full-screen поиск: из строки и из кнопки-иконки | `M3SearchBar`, `showM3Search` | `SearchBar.kt`, MDC `SearchViewAnimationHelper` |
 | Segmented list с морфингом формы | `SegmentedList`, `M3ListItem` | `ListItem.kt` |
 | Модальный нижний лист на пружинах, predictive back | `showM3ModalBottomSheet` | `ModalBottomSheet.kt`, `BottomSheet.kt` |
 | Loading indicator (indeterminate и determinate) | `M3LoadingIndicator` | `LoadingIndicator.kt` |
@@ -162,9 +164,9 @@ Compose:
 | Pager (lateral) | `ExpandablePageView`, `M3Pager` | `Pager.kt`, `PagerState.kt` |
 | Динамические цвета Android 14+ | `SystemColorRoles` + `MainActivity.kt` | MDC `values-v34/tokens.xml` |
 
-**Движение.** Смена раздела — fade through; смена дня — lateral (страницы едут за пальцем, без
-затухания); шаги выбора группы — shared axis X; подробности пары — платформенный
-forward/backward с predictive back. Какой токен пружины у какого свойства — как у аналогичного
+**Движение.** Смена раздела — fade through; смена дня и недели — lateral (страницы едут за
+пальцем, без затухания); шаги выбора группы — shared axis X; подробности пары — платформенный
+forward/backward с predictive back; поиск из кнопки выезжает снизу, как `SearchView` MDC. Какой токен пружины у какого свойства — как у аналогичного
 компонента Compose.
 
 ---
@@ -180,6 +182,7 @@ forward/backward с predictive back. Какой токен пружины у к�
    там нет. На Android 14+ роли берутся из системы.
 3. **Лента дней** — группа toggle-кнопок на неделю: в кнопке две строки (день недели и число),
    хотя кнопкам положена однострочная подпись. На 360dp неделя с воскресеньем даёт кнопки ~40dp.
+   Неделю выбирает connected group «Эта неделя / Следующая» над лентой.
 4. **Статусы справок** — дополнительные цвета (custom colors) из оттенков макета: гармонизация с
    primary и тона акцентных ролей; «Отклонено» — роли error.
 5. **Шрифт — системный Roboto.** Emphasized-стили — по весам `TypeScaleTokens`; осей Roboto Flex
@@ -210,6 +213,10 @@ forward/backward с predictive back. Какой токен пружины у к�
     только сохраняются в приложении.
 20. **Тема меняется без анимации** (`themeAnimationDuration: Duration.zero`), как `MaterialTheme`
     в Compose: твин темы Flutter перестраивал бы всё приложение на каждом кадре.
+21. **Пары — карточками, а не списком** (решение заказчика): гайд cards → Adaptive советует
+    список на compact-экранах. Радиусы 28 / 32dp вместо 12dp; метки типа занятия — подписи на
+    контейнерных ролях, не чипы; номер аудитории — `displaySmall` жирным в форме Cookie9Sided из
+    угла карточки (гайд shape: абстрактные формы — для декора, не для текста).
 
 ---
 
@@ -221,7 +228,8 @@ lib/
   theme/                     движение, переходы, цвет, типографика, формы, отступы, state layer
   data/                      модели, клиент и разбор apps.mitso.by, фото справок
   state/                     Riverpod-контроллеры
-  features/                  boot, home, schedule, group_picker, absences, notes, profile
+  features/                  boot, home, schedule (карточки пар, неделя, поиск), group_picker,
+                             absences, notes, profile
   widgets/                   порты компонентов M3 Expressive (m3_*.dart), SegmentedList, …
 tool/m3_guidelines.py        выгрузка гайдлайнов m3.material.io в .m3-guidelines/
 docs/m3/                     справочник M3 по компонентам и стилям

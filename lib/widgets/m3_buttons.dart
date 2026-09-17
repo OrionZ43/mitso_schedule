@@ -936,32 +936,37 @@ class _M3ButtonContainerState extends State<M3ButtonContainer>
       child: M3TouchTarget(
         minSize: widget.minTouchTargetSize,
         // На кадрах морфинга, тени и обводки меняется только контейнер:
-        // InkWell, подсказка и содержимое передаются в него готовыми.
-        child: AnimatedBuilder(
-          animation: Listenable.merge([
-            _morph.progress,
-            _elevation.listenable,
-            ?_border?.listenable,
-          ]),
-          child: inkWell,
-          builder: (context, child) {
-            final BorderSide side = widget.animateBorder
-                ? (_border?.side ?? BorderSide.none)
-                : (widget.border ?? BorderSide.none);
-            return Material(
-              type: MaterialType.button,
-              color: widget.color,
-              shadowColor: colors.shadow,
-              surfaceTintColor: Colors.transparent,
-              elevation: _elevation.value,
-              shape: M3CornerShape(corners: _morph.value, side: side),
-              clipBehavior: Clip.antiAlias,
-              borderOnForeground: false,
-              animationDuration: Duration.zero,
-              textStyle: widget.textStyle.copyWith(color: widget.contentColor),
-              child: child,
-            );
-          },
+        // InkWell, подсказка и содержимое передаются в него готовыми, а сама
+        // кнопка — в своём слое, чтобы не перерисовывать соседей.
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: Listenable.merge([
+              _morph.progress,
+              _elevation.listenable,
+              ?_border?.listenable,
+            ]),
+            child: inkWell,
+            builder: (context, child) {
+              final BorderSide side = widget.animateBorder
+                  ? (_border?.side ?? BorderSide.none)
+                  : (widget.border ?? BorderSide.none);
+              return Material(
+                type: MaterialType.button,
+                color: widget.color,
+                shadowColor: colors.shadow,
+                surfaceTintColor: Colors.transparent,
+                elevation: _elevation.value,
+                shape: M3CornerShape(corners: _morph.value, side: side),
+                clipBehavior: Clip.antiAlias,
+                borderOnForeground: false,
+                animationDuration: Duration.zero,
+                textStyle: widget.textStyle.copyWith(
+                  color: widget.contentColor,
+                ),
+                child: child,
+              );
+            },
+          ),
         ),
       ),
     );
