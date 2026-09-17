@@ -644,7 +644,7 @@ void main() {
       Widget build(bool expanded) => Center(
         child: M3ExtendedFab(
           onPressed: _noop,
-          label: 'Оправдать',
+          label: 'Зарегистрировать',
           icon: const Icon(Icons.add),
           expanded: expanded,
         ),
@@ -652,18 +652,20 @@ void main() {
       await _pumpApp(tester, build(true));
       final Finder fab = find.byType(M3ExtendedFab);
       // Small: отступы 16, иконка 24, промежуток 8.
-      final double labelWidth = tester.getSize(find.text('Оправдать')).width;
+      final double labelWidth = tester
+          .getSize(find.text('Зарегистрировать'))
+          .width;
       expect(tester.getSize(fab).height, 56);
       expect(
         tester.getSize(fab).width,
         closeTo(16 + 24 + 8 + labelWidth + 16, 0.01),
       );
-      expect(find.text('Оправдать'), findsOneWidget);
+      expect(find.text('Зарегистрировать'), findsOneWidget);
 
       await _pumpApp(tester, build(false));
       await _frames(tester, const Duration(milliseconds: 800));
       expect(tester.getSize(fab), const Size(56, 56));
-      expect(find.text('Оправдать'), findsNothing);
+      expect(find.text('Зарегистрировать'), findsNothing);
     });
   });
 }

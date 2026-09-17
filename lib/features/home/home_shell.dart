@@ -88,7 +88,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       fab: M3ExtendedFab(
         onPressed: () => showCertificateSheet(context),
         icon: const Icon(Symbols.document_scanner, fill: 1),
-        label: 'Оправдать пропуск',
+        label: 'Зарегистрировать пропуск',
         color: M3FabColor.primary,
       ),
       height: 56,

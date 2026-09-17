@@ -67,5 +67,7 @@
 ### Реализация во Flutter
 - Виджет: `M3ExtendedFab` (`lib/widgets/m3_fab.dart`) — размеры `M3ExtendedFabSize.small` (56dp / 16dp / иконка 24dp / отступы 16dp / промежуток 8dp / titleMedium), `medium` (80 / 20 / 28 / 26 / 12dp / titleLarge), `large` (96 / 28 / 36 / 28 / 16dp / headlineSmall); цвета — те же `M3FabColor`, что у FAB, state layer цветом подписи (закрывает расхождение 1 при переходе). Показ/скрытие — `M3AnimatedFabVisibility` (см. `floating-action-button.md`).
 - Точно: минимальная ширина = высота; форма статичная; тень level3 / hover level4 с `animateElevation`; `expanded` (только с иконкой) — ширина `lerp(minWidth, maxIntrinsicWidth, p)` пружиной FastSpatial, прозрачность подписи FastEffects, полностью свёрнутая кнопка убирает подпись из раскладки (`fullyCollapsed`); подпись в одну строку без переноса.
+- В приложении: «Зарегистрировать пропуск» на «Пропусках» (`home_shell.dart`), small, primary,
+  иконка `document_scanner` с заливкой.
 - Отступления: (1) метка доступности — `label` всегда, в том числе у свёрнутой кнопки; в Compose подпись под `clearAndSetSemantics {}`, метку даёт иконка; (2) большая иконка 36dp по m3 (`ExtendedFabLargeTokens.IconSize` 32dp); (3) baseline extended FAB не портирован (не рекомендуется).
 - Экран «Пропуски» пока на `FloatingActionButton.extended`; перевод на `M3ExtendedFab` — отдельный шаг.

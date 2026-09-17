@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/data/certificate_photos.dart';
+import 'package:mitso_schedule/features/absences/widgets/absence_donut.dart';
+import 'package:mitso_schedule/state/absences_controller.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
@@ -14,6 +17,7 @@ import 'package:mitso_schedule/widgets/m3_fab.dart';
 import 'package:mitso_schedule/widgets/segmented_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/fake_certificate_photos.dart';
 import 'support/fake_mitso_api.dart';
 
 /// Поднимает приложение целиком.
@@ -26,6 +30,7 @@ Future<FakeMitsoApi> pumpApp(
   WidgetTester tester, {
   bool withGroup = true,
   FakeMitsoApi? api,
+  CertificatePhotos? photos,
   Map<String, Object> preferences = const {},
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
@@ -51,6 +56,9 @@ Future<FakeMitsoApi> pumpApp(
         appBootProvider.overrideWith((ref) async {}),
         mitsoApiProvider.overrideWith((ref) async => fake),
         clockProvider.overrideWithValue(() => fakeNow),
+        certificatePhotosProvider.overrideWithValue(
+          photos ?? FakeCertificatePhotos(),
+        ),
       ],
       child: const ScheduleApp(),
     ),
@@ -97,7 +105,7 @@ void main() {
     expect(find.text('Веб-дизайн и шаблоны проектирования'), findsWidgets);
 
     await openTab(tester, 'Пропуски');
-    expect(find.text('часов пропущено'), findsOneWidget);
+    expect(find.text('Справок пока нет'), findsOneWidget);
 
     await openTab(tester, 'Заметки');
     expect(find.textContaining('Дедлайнов пока нет'), findsOneWidget);
@@ -262,30 +270,118 @@ void main() {
     expect(find.text('Новая задача'), findsOneWidget);
   });
 
-  testWidgets('отправка справки добавляет её в начало списка', (tester) async {
-    await pumpApp(tester);
+  /// Открывает лист регистрации пропуска на вкладке «Пропуски».
+  Future<void> openCertificateSheet(WidgetTester tester) async {
     await openTab(tester, 'Пропуски');
-
-    expect(find.text('Новая справка'), findsNothing);
-
-    await tester.tap(find.text('Оправдать пропуск'));
+    await tester.tap(find.text('Зарегистрировать пропуск'));
     await tester.pump();
     // Анимация листа стартует после первой раскладки — кадры по 100 мс.
     for (int i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.widgetWithText(M3Button, 'Отправить'), findsOneWidget);
+  }
 
-    await tester.tap(find.widgetWithText(M3Button, 'Отправить'));
-    await tester.pump();
-    // Отправка занимает 900 мс, всё это время в кнопке крутится индикатор.
-    await tester.pump(const Duration(milliseconds: 1000));
-    for (int i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+  testWidgets('снятая справка сохраняется в список и в настройки', (
+    tester,
+  ) async {
+    final FakeCertificatePhotos photos = FakeCertificatePhotos();
+    await pumpApp(tester, photos: photos);
+    await openCertificateSheet(tester);
 
-    expect(find.text('Новая справка'), findsOneWidget);
-    expect(find.textContaining('Отправлено только что'), findsOneWidget);
+    // Без фото сохранять нечего.
+    final Finder save = find.widgetWithText(M3Button, 'Сохранить');
+    expect(tester.widget<M3Button>(save).onPressed, isNull);
+
+    await tester.tap(find.text('Сфотографировать'));
+    await settle(tester);
+    expect(photos.captures, [CertificatePhotoSource.camera]);
+    expect(find.text('Переснять'), findsOneWidget);
+    expect(tester.widget<M3Button>(save).onPressed, isNotNull);
+
+    await tester.tap(save);
+    await settle(tester);
+
+    expect(find.text('Справок пока нет'), findsNothing);
+    expect(find.text('Не отправлено'), findsOneWidget);
+    expect(find.text('Сохранена 16 сентября, 10:30'), findsOneWidget);
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final List<Object?> saved =
+        jsonDecode(prefs.getString('absences.certificates')!) as List<Object?>;
+    expect(saved, hasLength(1));
+    expect(
+      (saved.single! as Map<String, Object?>)['photoPath'],
+      '/fake/certificate.jpg',
+    );
+  });
+
+  testWidgets('сохранённые справки показываются после перезапуска', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      preferences: {
+        'absences.certificates': jsonEncode([
+          {
+            'id': '1',
+            'photoPath': '/fake/old.jpg',
+            'createdAt': DateTime(2026, 9, 12, 18, 24).toIso8601String(),
+            'status': 'notSent',
+          },
+        ]),
+      },
+    );
+    await openTab(tester, 'Пропуски');
+
+    expect(find.text('Мои справки'), findsOneWidget);
+    expect(find.text('Сохранена 12 сентября, 18:24'), findsOneWidget);
+  });
+
+  testWidgets('недоступная камера — сообщение в листе', (tester) async {
+    await pumpApp(tester, photos: FakeCertificatePhotos(failCapture: true));
+    await openCertificateSheet(tester);
+
+    await tester.tap(find.text('Сфотографировать'));
+    await settle(tester);
+
+    expect(find.text('Не удалось открыть камеру.'), findsOneWidget);
+    expect(find.text('Сфотографировать'), findsOneWidget);
+  });
+
+  testWidgets('отказ от снимка оставляет лист без фото', (tester) async {
+    await pumpApp(tester, photos: FakeCertificatePhotos(photoPath: null));
+    await openCertificateSheet(tester);
+
+    await tester.tap(find.text('Выбрать из галереи'));
+    await settle(tester);
+
+    expect(find.text('Выбрать из галереи'), findsOneWidget);
+    expect(
+      tester
+          .widget<M3Button>(find.widgetWithText(M3Button, 'Сохранить'))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('диаграмма пропусков — без лимита', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: AbsenceDonut(justifiedHours: 8, unjustifiedHours: 6),
+        ),
+      ),
+    );
+
+    expect(find.text('14'), findsOneWidget);
+    expect(find.text('часов пропущено'), findsOneWidget);
+    expect(find.textContaining('лимит'), findsNothing);
+    expect(
+      find.bySemanticsLabel(
+        'Пропущено 14 часов. По справке 8 часов, без справки 6 часов.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('интерфейс переживает масштаб шрифта 200%', (tester) async {

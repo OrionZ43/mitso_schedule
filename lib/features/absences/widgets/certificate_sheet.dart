@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../data/certificate_photos.dart';
 import '../../../state/absences_controller.dart';
+import '../../../theme/app_shapes.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_typography.dart';
 import '../../../widgets/m3_bottom_sheet.dart';
@@ -11,7 +16,7 @@ import '../../../widgets/m3_loading_indicator.dart';
 import '../../../widgets/segmented_list.dart';
 import '../../home/home_shell.dart';
 
-/// Нижний лист отправки справки.
+/// Нижний лист регистрации пропуска: фото справки с камеры или из галереи.
 ///
 /// https://m3.material.io/components/bottom-sheets — модальный лист для
 /// короткого дополнительного действия; закрыть можно кнопкой, свайпом или
@@ -34,20 +39,61 @@ class _CertificateSheet extends ConsumerStatefulWidget {
 }
 
 class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
-  bool _submitting = false;
+  String? _photoPath;
+  String? _error;
+  bool _capturing = false;
+  bool _saving = false;
 
-  Future<void> _submit() async {
-    if (_submitting) return;
-    setState(() => _submitting = true);
-    await ref.read(absencesControllerProvider.notifier).submit();
+  /// Высота превью снимка.
+  static const double previewHeight = 240;
+
+  Future<void> _capture(CertificatePhotoSource source) async {
+    if (_capturing || _saving) return;
+    setState(() {
+      _capturing = true;
+      _error = null;
+    });
+    try {
+      final String? path = await ref
+          .read(certificatePhotosProvider)
+          .capture(source);
+      if (!mounted) return;
+      setState(() => _photoPath = path ?? _photoPath);
+    } on PlatformException {
+      if (!mounted) return;
+      setState(
+        () => _error = source == CertificatePhotoSource.camera
+            ? 'Не удалось открыть камеру.'
+            : 'Не удалось открыть галерею.',
+      );
+    } finally {
+      if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  Future<void> _save() async {
+    final String? path = _photoPath;
+    if (path == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(absencesControllerProvider.notifier).register(path);
+    } on FileSystemException {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = 'Не удалось сохранить фото.';
+      });
+      return;
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
-    appSnackbarHost.currentState?.show('Справка отправлена куратору');
+    appSnackbarHost.currentState?.show('Справка сохранена');
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
+    final String? photo = _photoPath;
 
     return ListView(
       controller: widget.scrollController,
@@ -61,37 +107,91 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
       children: [
         Semantics(
           header: true,
-          child: Text('Оправдать пропуск', style: context.text.headlineSmall),
+          child: Text(
+            'Зарегистрировать пропуск',
+            style: context.text.headlineSmall,
+          ),
         ),
         const SizedBox(height: AppSpacing.space100),
         Text(
-          'Прикрепи фото справки — бот отправит её куратору и обновит '
-          'статистику.',
+          'Сфотографируй справку или выбери фото из галереи. Пока '
+          'Telegram-бот не подключён, справка сохранится в приложении.',
           style: context.text.bodyMedium!.copyWith(
             color: colors.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: AppSpacing.space200),
+        if (photo != null) ...[
+          Semantics(
+            image: true,
+            label: 'Фото справки',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppShapes.large),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SizedBox(
+                  height: previewHeight,
+                  child: Image.file(
+                    File(photo),
+                    fit: BoxFit.cover,
+                    // Декодируем под ширину превью: портретный снимок в
+                    // широкой рамке упирается в ширину.
+                    cacheWidth:
+                        (constraints.maxWidth *
+                                MediaQuery.devicePixelRatioOf(context))
+                            .round(),
+                    errorBuilder: (context, error, stackTrace) => ColoredBox(
+                      color: colors.surfaceContainerHighest,
+                      child: Center(
+                        child: Icon(
+                          Symbols.image,
+                          size: 40,
+                          opticalSize: 40,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space100),
+        ],
         SegmentedList(
           children: [
             M3ListItem(
-              leading: const Icon(Symbols.add_a_photo),
-              headline: const Text('Фото справки'),
-              supporting: const Text('Сфотографировать или выбрать из галереи'),
-              trailing: const Icon(Symbols.chevron_right),
-              onTap: () {},
+              leading: const Icon(Symbols.photo_camera),
+              headline: Text(photo == null ? 'Сфотографировать' : 'Переснять'),
+              onTap: () => _capture(CertificatePhotoSource.camera),
+              enabled: !_saving,
+            ),
+            M3ListItem(
+              leading: const Icon(Symbols.photo_library),
+              headline: Text(
+                photo == null ? 'Выбрать из галереи' : 'Выбрать другое фото',
+              ),
+              onTap: () => _capture(CertificatePhotoSource.gallery),
+              enabled: !_saving,
             ),
           ],
         ),
+        if (_error != null) ...[
+          const SizedBox(height: AppSpacing.space100),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _error!,
+              style: context.text.bodyMedium!.copyWith(color: colors.error),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space300),
         // Отменяющее действие слева от подтверждающего; размер Medium.
         Row(
           children: [
             Expanded(
               child: M3Button(
-                onPressed: _submitting
-                    ? null
-                    : () => Navigator.of(context).pop(),
+                onPressed: _saving ? null : () => Navigator.of(context).pop(),
                 color: M3ButtonColor.outlined,
                 size: M3ButtonSize.medium,
                 child: const Text('Отмена'),
@@ -100,20 +200,21 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
             const SizedBox(width: AppSpacing.space150),
             Expanded(
               child: Semantics(
-                // Пока идёт отправка, кнопка не принимает нажатий, но не
+                // Пока идёт сохранение, кнопка не принимает нажатий, но не
                 // выглядит отключённой: индикатор внутри должен иметь
                 // контраст ≥ 3:1 к кнопке (loading indicator → Accessibility).
-                enabled: !_submitting,
+                enabled: photo != null && !_saving,
                 child: M3Button(
-                  onPressed: _submit,
+                  // Без фото сохранять нечего — кнопка отключена.
+                  onPressed: photo == null ? null : _save,
                   size: M3ButtonSize.medium,
-                  child: _submitting
+                  child: _saving
                       ? M3LoadingIndicator(
                           size: 24,
                           color: colors.onPrimary,
-                          semanticsLabel: 'Отправка справки',
+                          semanticsLabel: 'Сохранение справки',
                         )
-                      : const Text('Отправить'),
+                      : const Text('Сохранить'),
                 ),
               ),
             ),

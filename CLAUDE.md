@@ -53,9 +53,13 @@ dart format lib test
 flutter analyze
 flutter test
 flutter test test/screenshot_generator.dart      # PNG в docs/screenshots — посмотреть глазами
-flutter build apk --debug -t lib/main.dart       # -t обязателен, см. README
-C:/android/sdk/platform-tools/adb.exe install -r build/app/outputs/flutter-apk/app-debug.apk
+flutter build apk --release -t lib/main.dart     # -t обязателен, см. README
+C:/android/sdk/platform-tools/adb.exe install -r build/app/outputs/flutter-apk/app-release.apk
 ```
+
+На телефон ставить release: debug-сборка тормозит сама по себе, по ней о плавности не судить.
+После изменений анимаций и списков — `flutter test test/perf_probe.dart` (перестройки и
+отрисовки за кадр, см. README → «Производительность»).
 
 ## Ограничения
 

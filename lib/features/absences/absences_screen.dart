@@ -1,13 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../data/absences_demo_data.dart';
 import '../../data/models/certificate.dart';
 import '../../state/absences_controller.dart';
+import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
-import '../../theme/status_colors.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
@@ -20,86 +23,113 @@ class AbsencesScreen extends ConsumerWidget {
   /// выборе раздела в navigation bar.
   final ScrollController? scrollController;
 
+  /// Место под extended FAB, чтобы он не закрывал последний пункт.
+  static const double fabClearance = AppSpacing.space900 + AppSpacing.space300;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Certificate> certificates = ref.watch(
       absencesControllerProvider,
     );
+    final AbsenceSummary? summary = ref.watch(absenceSummaryProvider);
     final double margin = AppSpacing.screenMargin(context);
 
     return M3AppBarSettle(
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
-          const SliverMediumFlexibleAppBar(
+          SliverMediumFlexibleAppBar(
             title: 'Пропуски',
-            subtitle: AbsencesDemoData.syncStatus,
+            // Статус источника: сводку будет присылать Telegram-бот.
+            subtitle: summary == null ? 'Telegram-бот не подключён' : null,
           ),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: margin),
-            sliver: SliverList.list(
-              children: [
-                const _SummaryCard(),
-                const SectionHeader('Мои справки'),
-                SegmentedList(
-                  children: [
-                    for (final Certificate certificate in certificates)
-                      _certificateItem(context, certificate),
+          if (summary == null && certificates.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: fabClearance),
+                child: EmptyState(
+                  title: 'Справок пока нет',
+                  description:
+                      'Сфотографируй справку — она сохранится здесь. '
+                      'Статистика пропусков появится, когда подключится '
+                      'Telegram-бот.',
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: margin),
+              sliver: SliverList.list(
+                children: [
+                  if (summary != null) _SummaryCard(summary: summary),
+                  if (certificates.isNotEmpty) ...[
+                    const SectionHeader('Мои справки'),
+                    SegmentedList(
+                      children: [
+                        for (final Certificate certificate in certificates)
+                          _certificateItem(context, certificate),
+                      ],
+                    ),
                   ],
-                ),
-                // Место под extended FAB, чтобы он не закрывал последний пункт.
-                const SizedBox(
-                  height: AppSpacing.space900 + AppSpacing.space300,
-                ),
-              ],
+                  const SizedBox(height: fabClearance),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  /// Справка — пункт списка. Статус передаётся и цветом аватара, и текстом
-  /// (lists → Accessibility: «Indicate selection with more than color»).
+  /// Справка — пункт списка с фото и статусом текстом.
   M3ListItem _certificateItem(BuildContext context, Certificate certificate) {
-    final StatusColors status = StatusColors.of(context);
-    final (
-      Color container,
-      Color content,
-      IconData icon,
-    ) = switch (certificate.status) {
-      CertificateStatus.pending => (
-        status.pending,
-        status.onPending,
-        Symbols.schedule,
-      ),
-      CertificateStatus.approved => (
-        status.approved,
-        status.onApproved,
-        Symbols.check,
-      ),
-      CertificateStatus.rejected => (
-        status.rejected,
-        status.onRejected,
-        Symbols.close,
-      ),
-    };
+    final String saved = DateFormat(
+      "d MMMM, HH:mm",
+      'ru',
+    ).format(certificate.createdAt);
 
     return M3ListItem(
-      // Аватар пункта: 40dp, пара «контейнер / on-контейнер»
-      // (`ListTokens.ItemLeadingAvatar*`).
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(color: container, shape: BoxShape.circle),
-        child: Icon(icon, color: content),
-      ),
+      leading: CertificateThumbnail(path: certificate.photoPath),
       overline: Text(certificate.status.label),
-      headline: Text(certificate.title),
-      supporting: Text('${certificate.period}\n${certificate.note}'),
-      semanticsLabel:
-          '${certificate.title}. ${certificate.status.label}. '
-          '${certificate.period}. ${certificate.note}',
+      headline: const Text('Справка'),
+      supporting: Text('Сохранена $saved'),
+      semanticsLabel: 'Справка. ${certificate.status.label}. Сохранена $saved',
+    );
+  }
+}
+
+/// Миниатюра фото справки — leading image пункта списка
+/// (`md.comp.list.list-item.leading-image`: 56dp, expressive-форма
+/// `corner.small`).
+class CertificateThumbnail extends StatelessWidget {
+  const CertificateThumbnail({super.key, required this.path});
+
+  final String path;
+
+  static const double size = 56;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    // Декодируем сразу в размер миниатюры, а не в полный снимок.
+    final int cacheSize = (size * MediaQuery.devicePixelRatioOf(context))
+        .round();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppShapes.small),
+      child: SizedBox.square(
+        dimension: size,
+        child: Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          cacheWidth: cacheSize,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) => ColoredBox(
+            color: colors.surfaceContainerHighest,
+            child: Icon(Symbols.image, color: colors.onSurfaceVariant),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -107,7 +137,9 @@ class AbsencesScreen extends ConsumerWidget {
 /// Сводка: кольцевая диаграмма и легенда в filled card
 /// (`FilledCardTokens`: surfaceContainerHighest, 12dp, без тени).
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard();
+  const _SummaryCard({required this.summary});
+
+  final AbsenceSummary summary;
 
   @override
   Widget build(BuildContext context) {
@@ -118,11 +150,9 @@ class _SummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.space200),
         child: Column(
           children: [
-            const AbsenceDonut(
-              missedHours: AbsencesDemoData.missedHours,
-              justifiedHours: AbsencesDemoData.justifiedHours,
-              unjustifiedHours: AbsencesDemoData.unjustifiedHours,
-              limitHours: AbsencesDemoData.missedLimitHours,
+            AbsenceDonut(
+              justifiedHours: summary.justifiedHours,
+              unjustifiedHours: summary.unjustifiedHours,
             ),
             const SizedBox(height: AppSpacing.space200),
             Row(
@@ -130,15 +160,15 @@ class _SummaryCard extends StatelessWidget {
                 Expanded(
                   child: _Legend(
                     color: colors.tertiary,
-                    value: '${AbsencesDemoData.justifiedHours} ч',
-                    label: 'оправдано',
+                    value: '${summary.justifiedHours} ч',
+                    label: 'по справке',
                   ),
                 ),
                 const SizedBox(width: AppSpacing.space150),
                 Expanded(
                   child: _Legend(
                     color: colors.primary,
-                    value: '${AbsencesDemoData.unjustifiedHours} ч',
+                    value: '${summary.unjustifiedHours} ч',
                     label: 'без справки',
                   ),
                 ),

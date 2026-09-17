@@ -45,6 +45,10 @@ dependencies:
   html: ^0.15.7
   animations: ^2.2.0
   material_color_utilities: ^0.13.0
+  image_picker: ^1.2.3
+  path_provider: ^2.1.6
+  image_picker_android: ^0.8.13+23
+  image_picker_platform_interface: ^2.11.1
 
 dev_dependencies:
   flutter_test:
