@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -258,9 +259,17 @@ class _DayPagerState extends State<_DayPager> {
     initialPage: widget.selectedIndex,
   );
 
+  /// Готовые страницы: при смене дня меняется только номер страницы, и
+  /// Flutter не перестраивает те же экземпляры виджетов.
+  final Map<int, Widget> _pages = {};
+
   @override
   void didUpdateWidget(_DayPager oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.days, widget.days) ||
+        oldWidget.now != widget.now) {
+      _pages.clear();
+    }
     if (!_controller.hasClients) return;
     final double page = _controller.page ?? widget.selectedIndex.toDouble();
     // Страница уже сменилась жестом — pager сам на месте.
@@ -285,10 +294,13 @@ class _DayPagerState extends State<_DayPager> {
       itemCount: widget.days.length,
       minHeight: 240,
       onPageChanged: widget.onPageChanged,
-      itemBuilder: (context, index) => _DayContent(
-        day: widget.days[index],
-        days: widget.days,
-        now: widget.now,
+      itemBuilder: (context, index) => _pages.putIfAbsent(
+        index,
+        () => _DayContent(
+          day: widget.days[index],
+          days: widget.days,
+          now: widget.now,
+        ),
       ),
     );
   }

@@ -101,6 +101,9 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
       title: 'Расписание',
       debugShowCheckedModeBanner: false,
       themeMode: settings.themeMode,
+      // Compose `MaterialTheme` меняет схему сразу, без анимации. Твин темы
+      // Flutter перестраивал бы на каждом кадре всё приложение.
+      themeAnimationDuration: Duration.zero,
       theme: buildTheme(scheme(Brightness.light)),
       darkTheme: buildTheme(scheme(Brightness.dark)),
       locale: ScheduleApp.locale,

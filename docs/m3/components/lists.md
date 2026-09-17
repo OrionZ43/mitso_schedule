@@ -127,7 +127,13 @@ Segmented-список собран верно: зазор 2dp, крайние �
     (разворот с сохранением скорости, от видимой формы к новой цели) на пружине FastSpatial;
     смена позиции применяется без морфинга, как `key(shapes)` в Compose;
   - цвета — пружина DefaultEffects;
-  - ripple обрезан текущей формой, state layer — `AppStateLayer` цветом содержимого;
+  - ripple обрезан текущей формой (`clipBehavior` контейнера), state layer — `AppStateLayer`
+    цветом содержимого;
+  - производительность: на кадрах морфинга перестраивается только контейнер (`Material` с
+    `animationDuration: Duration.zero` — без собственного твина формы поверх пружины), содержимое
+    и `InkWell` передаются в него готовыми; при смене цветов перестраивается содержимое;
+  - leading image — справки на «Пропусках»: 56×56dp, форма `corner.small`
+    (`md.comp.list.list-item.leading-image` и `.expressive.shape`);
   - семантика: `MergeSemantics`, button у нажимаемого пункта, флаг selected, enabled;
     `semanticsLabel` заменяет текст слотов.
 - Отступления:

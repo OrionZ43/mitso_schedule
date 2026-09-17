@@ -528,13 +528,13 @@ class _M3ListItemState extends State<M3ListItem> with TickerProviderStateMixin {
     final TextTheme text = Theme.of(context).textTheme;
     final bool interactive = _interactive;
 
+    // Цвета меняются редко (выбор, отключение) — тогда перестраивается
+    // содержимое. Морфинг формы при нажатии меняет только контейнер:
+    // содержимое и InkWell передаются в него готовыми.
     final Widget item = AnimatedBuilder(
-      animation: Listenable.merge([_shapeProgress, _colorProgress]),
+      animation: _colorProgress,
       builder: (context, _) {
         final _ItemColors colors = _currentColors;
-        final ShapeBorder shape = RoundedRectangleBorder(
-          borderRadius: _currentRadius,
-        );
 
         Widget content = Padding(
           padding: const EdgeInsets.symmetric(
@@ -571,21 +571,27 @@ class _M3ListItemState extends State<M3ListItem> with TickerProviderStateMixin {
         );
 
         if (interactive) {
+          // Ripple обрезается формой контейнера (clipBehavior у Material).
           content = InkWell(
             statesController: _states,
             onTap: widget.enabled ? widget.onTap : null,
             onLongPress: widget.enabled ? widget.onLongPress : null,
-            customBorder: shape,
             // Ripple цветом содержимого: `ripple()` берёт LocalContentColor.
             overlayColor: AppStateLayer.overlay(colors.content),
             child: content,
           );
         }
 
-        return Material(
-          color: colors.container,
-          shape: shape,
-          clipBehavior: Clip.antiAlias,
+        return AnimatedBuilder(
+          animation: _shapeProgress,
+          builder: (context, content) => Material(
+            color: colors.container,
+            shape: RoundedRectangleBorder(borderRadius: _currentRadius),
+            clipBehavior: Clip.antiAlias,
+            // Форма уже анимирована пружиной — без неявного твина Material.
+            animationDuration: Duration.zero,
+            child: content,
+          ),
           child: content,
         );
       },

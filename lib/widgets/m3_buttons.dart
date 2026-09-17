@@ -912,6 +912,20 @@ class _M3ButtonContainerState extends State<M3ButtonContainer>
       ),
     );
 
+    Widget inkWell = InkWell(
+      onTap: widget.onPressed,
+      statesController: _states,
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
+      canRequestFocus: _enabled,
+      overlayColor: AppStateLayer.overlay(widget.contentColor),
+      highlightColor: Colors.transparent,
+      child: content,
+    );
+    if (widget.tooltip != null) {
+      inkWell = M3PlainTooltip(message: widget.tooltip!, child: inkWell);
+    }
+
     return Semantics(
       container: true,
       button: role == M3ButtonSemantics.checkbox ? null : true,
@@ -921,33 +935,19 @@ class _M3ButtonContainerState extends State<M3ButtonContainer>
       enabled: _enabled,
       child: M3TouchTarget(
         minSize: widget.minTouchTargetSize,
+        // На кадрах морфинга, тени и обводки меняется только контейнер:
+        // InkWell, подсказка и содержимое передаются в него готовыми.
         child: AnimatedBuilder(
           animation: Listenable.merge([
             _morph.progress,
             _elevation.listenable,
             ?_border?.listenable,
           ]),
-          child: content,
+          child: inkWell,
           builder: (context, child) {
             final BorderSide side = widget.animateBorder
                 ? (_border?.side ?? BorderSide.none)
                 : (widget.border ?? BorderSide.none);
-            Widget inkWell = InkWell(
-              onTap: widget.onPressed,
-              statesController: _states,
-              focusNode: widget.focusNode,
-              autofocus: widget.autofocus,
-              canRequestFocus: _enabled,
-              overlayColor: AppStateLayer.overlay(widget.contentColor),
-              highlightColor: Colors.transparent,
-              child: child,
-            );
-            if (widget.tooltip != null) {
-              inkWell = M3PlainTooltip(
-                message: widget.tooltip!,
-                child: inkWell,
-              );
-            }
             return Material(
               type: MaterialType.button,
               color: widget.color,
@@ -959,7 +959,7 @@ class _M3ButtonContainerState extends State<M3ButtonContainer>
               borderOnForeground: false,
               animationDuration: Duration.zero,
               textStyle: widget.textStyle.copyWith(color: widget.contentColor),
-              child: inkWell,
+              child: child,
             );
           },
         ),

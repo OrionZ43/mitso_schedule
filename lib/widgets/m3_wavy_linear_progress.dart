@@ -263,17 +263,21 @@ class _M3WavyLinearProgressState extends State<M3WavyLinearProgress>
               ? double.infinity
               : M3WavyLinearProgress.containerWidth,
           height: M3WavyLinearProgress.height,
-          child: ClipRect(
-            child: CustomPaint(
-              painter: WavyLinearProgressPainter(
-                progress: _progress,
-                amplitude: _amplitude,
-                waveOffset: _waveOffset,
-                color: widget.color ?? colors.primary,
-                trackColor: widget.showTrack
-                    ? (widget.trackColor ?? colors.secondaryContainer)
-                    : null,
-                textDirection: Directionality.of(context),
+          // Волна перерисовывается каждый кадр — в своём слое, чтобы не
+          // перерисовывать вместе с ней весь список.
+          child: RepaintBoundary(
+            child: ClipRect(
+              child: CustomPaint(
+                painter: WavyLinearProgressPainter(
+                  progress: _progress,
+                  amplitude: _amplitude,
+                  waveOffset: _waveOffset,
+                  color: widget.color ?? colors.primary,
+                  trackColor: widget.showTrack
+                      ? (widget.trackColor ?? colors.secondaryContainer)
+                      : null,
+                  textDirection: Directionality.of(context),
+                ),
               ),
             ),
           ),

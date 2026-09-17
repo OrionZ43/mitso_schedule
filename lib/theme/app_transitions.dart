@@ -135,7 +135,7 @@ class _SharedAxisEnter extends StatelessWidget {
           child: child,
         ),
       ),
-      child: child,
+      child: RepaintBoundary(child: child),
     );
   }
 }
@@ -173,7 +173,7 @@ class _SharedAxisExit extends StatelessWidget {
           ),
         ),
       ),
-      child: child,
+      child: RepaintBoundary(child: child),
     );
   }
 }
@@ -240,7 +240,8 @@ class M3FadeThroughEnter extends StatelessWidget {
           child: child,
         ),
       ),
-      child: child,
+      // Масштаб меняется каждый кадр: экран рисуется один раз в свой слой.
+      child: RepaintBoundary(child: child),
     );
   }
 }

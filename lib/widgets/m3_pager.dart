@@ -93,29 +93,20 @@ class ExpandablePageView extends StatefulWidget {
 class _ExpandablePageViewState extends State<ExpandablePageView> {
   final Map<int, double> _heights = {};
 
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onScroll);
-  }
+  /// Растёт, когда измерена новая высота страницы.
+  final ValueNotifier<int> _heightsVersion = ValueNotifier(0);
 
   @override
   void didUpdateWidget(ExpandablePageView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onScroll);
-      widget.controller.addListener(_onScroll);
-    }
     if (oldWidget.itemCount != widget.itemCount) _heights.clear();
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onScroll);
+    _heightsVersion.dispose();
     super.dispose();
   }
-
-  void _onScroll() => setState(() {});
 
   double get _height {
     final PageController c = widget.controller;
@@ -138,15 +129,19 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
     // Размер известен только после раскладки — обновляемся в следующем кадре.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _heights[index] != height) {
-        setState(() => _heights[index] = height);
+        _heights[index] = height;
+        _heightsVersion.value++;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: _height,
+    // На каждом кадре перелистывания меняется только высота: страницы
+    // передаются в builder готовыми и не перестраиваются.
+    return ListenableBuilder(
+      listenable: Listenable.merge([widget.controller, _heightsVersion]),
+      builder: (context, pages) => SizedBox(height: _height, child: pages),
       child: PageView.builder(
         controller: widget.controller,
         physics: const M3PageScrollPhysics(),
@@ -160,7 +155,9 @@ class _ExpandablePageViewState extends State<ExpandablePageView> {
           maxHeight: double.infinity,
           child: _MeasureHeight(
             onHeight: (h) => _report(index, h),
-            child: widget.itemBuilder(context, index),
+            // Высота pager'а меняется на каждом кадре перелистывания, и
+            // OverflowBox перерисовывается — страница остаётся в своём слое.
+            child: RepaintBoundary(child: widget.itemBuilder(context, index)),
           ),
         ),
       ),
