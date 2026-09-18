@@ -32,8 +32,9 @@ abstract final class BalanceAlerts {
       'Сообщения о задолженности по лицевому счёту';
 
   /// Белый значок для статус-бара: цветной значок приложения Android
-  /// превращает в белое пятно.
-  static const String smallIcon = '@drawable/ic_stat_balance';
+  /// превращает в белое пятно. Имя ресурса — без `@drawable/`: плагин ищет
+  /// его через `getIdentifier(name, "drawable", ...)`.
+  static const String smallIcon = 'ic_stat_balance';
 
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();

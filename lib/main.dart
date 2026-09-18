@@ -24,11 +24,24 @@ Future<void> main() async {
   final SharedPreferences preferences = await SharedPreferences.getInstance();
 
   // Уведомление о долге и фоновая проверка баланса раз в шесть часов.
-  await BalanceAlerts.init();
-  await BalanceBackground.initialize();
-  await BalanceBackground.sync(
-    enabled: preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
-  );
+  // Сбой плагина не должен мешать запуску: без уведомлений приложение
+  // работает, а вот застрять на сплэше из-за них недопустимо.
+  try {
+    await BalanceAlerts.init();
+    await BalanceBackground.initialize();
+    await BalanceBackground.sync(
+      enabled: preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
+    );
+  } catch (error, stack) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stack,
+        library: 'mitso_schedule',
+        context: ErrorDescription('настройка уведомлений о балансе'),
+      ),
+    );
+  }
 
   runApp(
     ProviderScope(

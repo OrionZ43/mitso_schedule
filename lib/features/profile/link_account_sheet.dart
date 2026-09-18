@@ -104,7 +104,7 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
           onSubmitted: (_) => _link(),
           decoration: InputDecoration(
             labelText: 'Номер лицевого счёта',
-            hintText: '000000',
+            helperText: 'Шесть цифр из договора',
             errorText: _error,
             border: const OutlineInputBorder(),
           ),
