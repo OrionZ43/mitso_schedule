@@ -104,12 +104,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (account == null)
                   _LinkCard(loading: student.isLoading, error: student.error)
                 else ...[
-                  _BalanceCard(
-                    account: account,
-                    refreshing: _refreshing,
-                    onRefresh: _refresh,
-                  ),
-                  const SizedBox(height: AppSpacing.space150),
                   SegmentedList(
                     children: [
                       M3ListItem(
@@ -119,6 +113,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         supporting: const Text('Данные с student.mitso.by'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSpacing.space150),
+                  _BalanceCard(
+                    account: account,
+                    refreshing: _refreshing,
+                    onRefresh: _refresh,
                   ),
                 ],
 
@@ -200,10 +200,10 @@ class _BalanceCard extends StatelessWidget {
   final bool refreshing;
   final VoidCallback onRefresh;
 
-  /// «1,61 Br»: на сайте суммы в белорусских рублях.
+  /// «1,61 BYN»: на сайте суммы в белорусских рублях.
   static String money(double value) => NumberFormat.currency(
     locale: 'ru',
-    symbol: 'Br',
+    symbol: 'BYN',
     decimalDigits: 2,
   ).format(value);
 
@@ -211,9 +211,18 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
     final bool debt = account.inDebt;
-    final Color accent = debt ? colors.error : colors.primary;
+    // Долг меняет всю карточку на роли error: цветом и текстом сразу видно,
+    // что что-то не так (color → «Use error roles for critical states»).
+    final Color container = debt
+        ? colors.errorContainer
+        : colors.surfaceContainerHighest;
+    final Color onContainer = debt ? colors.onErrorContainer : colors.onSurface;
+    final Color secondary = debt
+        ? colors.onErrorContainer
+        : colors.onSurfaceVariant;
 
     return Card.filled(
+      color: container,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space200),
         child: Column(
@@ -221,15 +230,13 @@ class _BalanceCard extends StatelessWidget {
           children: [
             Text(
               'Баланс на ${DateFormat('d MMMM', 'ru').format(account.asOf)}',
-              style: context.text.bodyMedium!.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
+              style: context.text.bodyMedium!.copyWith(color: secondary),
             ),
             const SizedBox(height: AppSpacing.space50),
             Text(
               money(account.balance),
               style: context.text.displaySmall!.copyWith(
-                color: accent,
+                color: onContainer,
                 fontWeight: FontWeight.w700,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
@@ -238,13 +245,13 @@ class _BalanceCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.space100),
               Row(
                 children: [
-                  Icon(Symbols.warning, size: 18, color: colors.error),
+                  Icon(Symbols.warning, size: 18, color: onContainer),
                   const SizedBox(width: AppSpacing.space100),
                   Expanded(
                     child: Text(
                       'Есть задолженность',
                       style: context.text.labelLarge!.copyWith(
-                        color: colors.error,
+                        color: onContainer,
                       ),
                     ),
                   ),
@@ -253,8 +260,18 @@ class _BalanceCard extends StatelessWidget {
             ],
             if (account.debt != 0 || account.penalty != 0) ...[
               const SizedBox(height: AppSpacing.space150),
-              _Amount(label: 'Основной долг', value: account.debt),
-              _Amount(label: 'Пеня и проценты', value: account.penalty),
+              _Amount(
+                label: 'Основной долг',
+                value: account.debt,
+                color: onContainer,
+                labelColor: secondary,
+              ),
+              _Amount(
+                label: 'Пеня и проценты',
+                value: account.penalty,
+                color: onContainer,
+                labelColor: secondary,
+              ),
             ],
             const SizedBox(height: AppSpacing.space150),
             Row(
@@ -262,20 +279,21 @@ class _BalanceCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Сайт обновляет счёт раз в сутки в 13:00',
-                    style: context.text.bodySmall!.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: context.text.bodySmall!.copyWith(color: secondary),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.space100),
                 M3Button(
                   onPressed: refreshing ? null : onRefresh,
-                  color: M3ButtonColor.tonal,
+                  // На красной карточке tonal-кнопка спорила бы с фоном.
+                  color: debt ? M3ButtonColor.outlined : M3ButtonColor.tonal,
                   size: M3ButtonSize.small,
                   child: refreshing
                       ? M3LoadingIndicator(
                           size: 18,
-                          color: colors.onSecondaryContainer,
+                          color: debt
+                              ? onContainer
+                              : colors.onSecondaryContainer,
                           semanticsLabel: 'Обновление баланса',
                         )
                       : const Text('Обновить'),
@@ -290,10 +308,17 @@ class _BalanceCard extends StatelessWidget {
 }
 
 class _Amount extends StatelessWidget {
-  const _Amount({required this.label, required this.value});
+  const _Amount({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.labelColor,
+  });
 
   final String label;
   final double value;
+  final Color color;
+  final Color labelColor;
 
   @override
   Widget build(BuildContext context) {
@@ -304,14 +329,13 @@ class _Amount extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: context.text.bodyMedium!.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
+              style: context.text.bodyMedium!.copyWith(color: labelColor),
             ),
           ),
           Text(
             _BalanceCard.money(value),
             style: context.text.bodyMedium!.copyWith(
+              color: color,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

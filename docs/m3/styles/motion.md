@@ -2,6 +2,29 @@
 
 > Разделы «В приложении → Расхождения» описывают состояние на 16.09.2026, до порта компонентов. Исправлено с тех пор: эталонная статичная схема и системные роли Android 14+, emphasized-веса по токенам, opsz и grade иконок, state layer, цвета tooltip, чипов и app bar при прокрутке, scrim 32%, выдуманные альфы, размеры шрифта и радиусы (карточка пары и метки удалены), пустое состояние из `MaterialShapes`, пружины кнопок, листов и снекбара, смена дня — lateral. Остаётся: breakpoints и navigation rail для окон шире 600dp (приложение для телефона), часть отступов вне токенов в старом коде.
 
+## Анимация декора (пустое состояние)
+
+Движение композиции пустого состояния собрано из документированных приёмов, чисел для декора
+гайд не даёт:
+
+| Что | Значение | Источник |
+|---|---|---|
+| Пружина морфа | `slowSpatial` = 0.8 / 200 | `ExpressiveMotionTokens`; «Shape morphing uses the expressive motion scheme by default» + «larger elements may use slow» |
+| Такт морфа | 1000 мс (`extra-long4`) | easing-and-duration: «Extra long durations… ambient transitions that don't involve user input» |
+| Доворот за морф | 90° (`QuarterRotation`) плюс `progress × 90°` | Compose `LoadingIndicator.kt:416, 473` |
+| Полный оборот слоёв | 18 664 / 13 998 / 9332 мс — кратные `GlobalRotationDurationMillis` = 4666 мс | `LoadingIndicator.kt:684` |
+| Перелёт морфа | прогресс не обрезается до 1, допускается −0.15…1.15 | kdoc `Morph.asCubics`: «values close to (but outside) the range can be used to get an exaggerated effect (e.g., for a bounce or overshoot animation)» |
+| Сдвиг тактов слоёв | 0 / 333 / 666 мс | «apply motion and shape differently on each layer» (значения наши) |
+| «Удалить анимации» | ни морфа, ни вращения — статичная композиция | transitions: «Disable decorative effects like parallax or shape morphing» |
+
+Столкновений фигур, отскоков и физики тел в M3 нет ни на одном уровне источников (гайдлайны,
+Compose, MDC): «bounce» в M3 — это перелёт пружины одного свойства. Поэтому фигуры не
+сталкиваются и не летают по холсту.
+
+Производительность: один `Ticker` на композицию, один `CustomPaint` с `repaint`-слушателем,
+слой в `RepaintBoundary`. Вращающаяся форма аудитории на карточке пары — в двух слоях:
+внешний не даёт повороту перерисовывать карточку, внутренний кэширует рисунок формы.
+
 ## Источники
 
 - m3.material.io

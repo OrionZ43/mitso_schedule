@@ -405,14 +405,19 @@ class _RoomShapeState extends State<_RoomShape>
         dimension: _RoomShape.size,
         child: Stack(
           children: [
+            // Два слоя: внешний — чтобы поворот не перерисовывал карточку,
+            // внутренний — чтобы сама форма рисовалась один раз и дальше
+            // только поворачивалась.
             Positioned.fill(
-              child: RotationTransition(
-                turns: _turn,
-                child: RepaintBoundary(
-                  child: CustomPaint(
-                    painter: _ShapePainter(
-                      MaterialShapes.cookie9Sided,
-                      widget.colors.container,
+              child: RepaintBoundary(
+                child: RotationTransition(
+                  turns: _turn,
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _ShapePainter(
+                        MaterialShapes.cookie9Sided,
+                        widget.colors.container,
+                      ),
                     ),
                   ),
                 ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models/task_item.dart';
+import '../../state/mitso_providers.dart';
 import '../../state/tasks_controller.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -10,8 +12,12 @@ import '../../widgets/connected_button_group.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/m3_checkbox.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
+import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
+import 'task_sheet.dart';
 
+/// Задачи с предметом и сроком: разделы от просроченных к дальним, отдельная
+/// вкладка выполненных.
 class NotesScreen extends ConsumerWidget {
   const NotesScreen({super.key, this.scrollController});
 
@@ -21,9 +27,12 @@ class NotesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<TaskItem> tasks = ref.watch(visibleTasksProvider);
+    final Map<TaskGroup, List<TaskItem>> groups = ref.watch(
+      groupedTasksProvider,
+    );
     final TaskFilter filter = ref.watch(taskFilterProvider);
     final String summary = ref.watch(tasksSummaryProvider);
+    final DateTime now = ref.watch(nowProvider);
     final double margin = AppSpacing.screenMargin(context);
 
     return M3AppBarSettle(
@@ -43,29 +52,40 @@ class NotesScreen extends ConsumerWidget {
                   selected: filter,
                   onSelected: ref.read(taskFilterProvider.notifier).select,
                 ),
-                const SizedBox(height: AppSpacing.space200),
-                if (tasks.isEmpty)
-                  const EmptyState(
-                    title: 'Дедлайнов пока нет,\nможно отдыхать!',
-                    description:
-                        'Новая задача добавится сюда — или прилетит из бота '
-                        'вместе с расписанием.',
-                    withAccentDot: true,
-                    illustrationSize: Size(148, 132),
+                if (groups.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.space200),
+                    child: EmptyState(
+                      title: filter == TaskFilter.active
+                          ? 'Задач нет,\nможно отдыхать!'
+                          : 'Выполненных задач нет',
+                      description: filter == TaskFilter.active
+                          ? 'Добавьте, что нужно сделать: к паре, к сессии '
+                                'или просто на неделю.'
+                          : 'Отмеченные задачи переедут сюда.',
+                      withAccentDot: true,
+                      illustrationSize: const Size(148, 132),
+                    ),
                   )
                 else
-                  SegmentedList(
-                    children: [
-                      for (final TaskItem task in tasks)
-                        _taskItem(
-                          context,
-                          task,
-                          () => ref
-                              .read(tasksControllerProvider.notifier)
-                              .toggle(task.id),
-                        ),
-                    ],
-                  ),
+                  for (final MapEntry<TaskGroup, List<TaskItem>> group
+                      in groups.entries) ...[
+                    SectionHeader(group.key.title),
+                    SegmentedList(
+                      children: [
+                        for (final TaskItem task in group.value)
+                          _taskItem(
+                            context,
+                            task: task,
+                            now: now,
+                            onToggle: () => ref
+                                .read(tasksControllerProvider.notifier)
+                                .toggle(task.id),
+                            onEdit: () => showTaskSheet(context, task: task),
+                          ),
+                      ],
+                    ),
+                  ],
                 // Место под medium FAB.
                 const SizedBox(
                   height: AppSpacing.space800 + AppSpacing.space800,
@@ -79,33 +99,54 @@ class NotesScreen extends ConsumerWidget {
   }
 
   /// Задача — пункт списка с ведущим чекбоксом (lists → Anatomy, «Leading
-  /// checkbox»). Отметить можно нажатием по всей строке, не только по
-  /// чекбоксу (checkbox → Accessibility). Цвет подписи от отметки не меняется
-  /// (checkbox → Specs, Adjacent text label color): выполненная задача просто
-  /// переходит в фильтр «Выполненные».
+  /// checkbox»). Чекбокс и нажатие по строке делают разное: отметить и
+  /// открыть правку, поэтому у чекбокса своя зона нажатия.
   M3ListItem _taskItem(
-    BuildContext context,
-    TaskItem task,
-    VoidCallback onToggle,
-  ) {
-    final bool urgent = task.isUrgent && !task.isDone;
+    BuildContext context, {
+    required TaskItem task,
+    required DateTime now,
+    required VoidCallback onToggle,
+    required VoidCallback onEdit,
+  }) {
+    final bool overdue = task.overdue(now);
+    final String? due = dueLabel(task.dueAt, now);
+    final String details = [?task.subject, ?due].join(' · ');
+
     return M3ListItem(
-      leading: ExcludeSemantics(
-        child: M3Checkbox(value: task.isDone, onChanged: (_) => onToggle()),
-      ),
+      leading: M3Checkbox(value: task.isDone, onChanged: (_) => onToggle()),
       headline: Text(task.text),
-      supporting: Text('${task.subject} · ${task.due}'),
-      trailing: urgent
+      supporting: details.isEmpty
+          ? null
+          : Text(
+              details,
+              style: overdue ? TextStyle(color: context.colors.error) : null,
+            ),
+      trailing: overdue
           ? Icon(Symbols.alarm, color: context.colors.error)
           : null,
-      onTap: onToggle,
+      onTap: onEdit,
       semanticsLabel: [
         task.text,
-        task.subject,
-        task.due,
-        if (urgent) 'срочно',
+        if (details.isNotEmpty) details,
+        if (overdue) 'просрочено',
         task.isDone ? 'выполнено' : 'не выполнено',
       ].join(', '),
     );
   }
+}
+
+/// Срок словами: «Сегодня», «Завтра», «Вчера», «22 сентября»,
+/// «22 сентября 2027».
+String? dueLabel(DateTime? due, DateTime now) {
+  if (due == null) return null;
+  final int days = DateUtils.dateOnly(
+    due,
+  ).difference(DateUtils.dateOnly(now)).inDays;
+  return switch (days) {
+    0 => 'Сегодня',
+    1 => 'Завтра',
+    -1 => 'Вчера',
+    _ when due.year == now.year => DateFormat('d MMMM', 'ru').format(due),
+    _ => DateFormat('d MMMM y', 'ru').format(due),
+  };
 }

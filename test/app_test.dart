@@ -102,6 +102,23 @@ Future<void> settle(WidgetTester tester) async {
   }
 }
 
+/// Нажатие в нижнем листе: содержимое длиннее экрана и строится по мере
+/// прокрутки, поэтому элемент сначала выводится в видимую часть.
+Future<void> tapInSheet(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  await settle(tester);
+  await tester.tap(finder);
+  await settle(tester);
+}
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ru');
@@ -117,7 +134,7 @@ void main() {
     expect(find.text('Справок пока нет'), findsOneWidget);
 
     await openTab(tester, 'Заметки');
-    expect(find.textContaining('Дедлайнов пока нет'), findsOneWidget);
+    expect(find.textContaining('Задач нет'), findsOneWidget);
 
     await openTab(tester, 'Профиль');
     expect(find.text('2423 УИР'), findsOneWidget);
@@ -313,7 +330,7 @@ void main() {
     expect(find.widgetWithText(M3Button, 'Повторить'), findsOneWidget);
   });
 
-  testWidgets('добавленная задача уходит в «Выполненные» после отметки', (
+  testWidgets('задача со сроком «Завтра» попадает в свой раздел и в память', (
     tester,
   ) async {
     await pumpApp(tester);
@@ -321,15 +338,93 @@ void main() {
 
     await tester.tap(find.byType(M3Fab));
     await settle(tester);
-    expect(find.text('Новая задача'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Сдать лабораторную');
+    await settle(tester);
+    await tapInSheet(tester, find.text('Завтра'));
+    // Предмет — из загруженного расписания.
+    await tapInSheet(tester, find.text('Эконометрика'));
+    await tapInSheet(tester, find.text('Добавить'));
+
+    expect(find.text('Завтра'), findsWidgets);
+    expect(find.text('Сдать лабораторную'), findsOneWidget);
+    expect(find.text('Эконометрика · Завтра'), findsOneWidget);
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getString('tasks.items'),
+      contains('Сдать лабораторную'),
+    );
+  });
+
+  testWidgets('отмеченная задача уходит в «Выполненные»', (tester) async {
+    await pumpApp(tester);
+    await openTab(tester, 'Заметки');
+
+    await tester.tap(find.byType(M3Fab));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'Прочитать главу');
+    await settle(tester);
+    await tapInSheet(tester, find.text('Добавить'));
+    expect(find.text('Без срока'), findsOneWidget);
 
     await tester.tap(find.byType(M3Checkbox).first);
     await settle(tester);
-    expect(find.text('Новая задача'), findsNothing);
+    expect(find.text('Прочитать главу'), findsNothing);
 
     await tester.tap(find.text('Выполненные'));
     await settle(tester);
-    expect(find.text('Новая задача'), findsOneWidget);
+    expect(find.text('Прочитать главу'), findsOneWidget);
+  });
+
+  testWidgets('просроченная задача — первым разделом и красным', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      preferences: {
+        'tasks.items': jsonEncode([
+          {
+            'id': '1',
+            'text': 'Отдать конспект',
+            'subject': 'Эконометрика',
+            'dueAt': DateTime(2026, 9, 14).toIso8601String(),
+            'isDone': false,
+          },
+        ]),
+      },
+    );
+    await openTab(tester, 'Заметки');
+
+    expect(find.text('Просрочено'), findsOneWidget);
+    expect(find.text('Эконометрика · 14 сентября'), findsOneWidget);
+    expect(find.textContaining('просрочена'), findsWidgets);
+  });
+
+  testWidgets('нажатие на задачу открывает правку, удаление убирает её', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      preferences: {
+        'tasks.items': jsonEncode([
+          {
+            'id': '1',
+            'text': 'Отдать конспект',
+            'subject': null,
+            'dueAt': null,
+            'isDone': false,
+          },
+        ]),
+      },
+    );
+    await openTab(tester, 'Заметки');
+
+    await tester.tap(find.text('Отдать конспект'));
+    await settle(tester);
+    expect(find.text('Задача'), findsOneWidget);
+
+    await tapInSheet(tester, find.text('Удалить'));
+    expect(find.text('Отдать конспект'), findsNothing);
   });
 
   /// Открывает лист регистрации пропуска на вкладке «Пропуски».

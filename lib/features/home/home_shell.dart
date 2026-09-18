@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../state/tasks_controller.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_transitions.dart';
@@ -12,6 +11,7 @@ import '../../widgets/m3_snackbar.dart';
 import '../absences/absences_screen.dart';
 import '../absences/widgets/certificate_sheet.dart';
 import '../notes/notes_screen.dart';
+import '../notes/task_sheet.dart';
 import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
 
@@ -96,7 +96,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // «Use a medium FAB for mobile layouts» — FAB guidelines.
     2 => (
       fab: M3Fab(
-        onPressed: ref.read(tasksControllerProvider.notifier).add,
+        onPressed: () => showTaskSheet(context),
         icon: const Icon(Symbols.add, fill: 1),
         size: M3FabSize.medium,
         tooltip: 'Добавить задачу',

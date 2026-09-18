@@ -45,10 +45,22 @@
 - Морфинг — для состояний взаимодействия (например, выбранная кнопка), действий в процессе (загрузка), изменений окружения. Компоненты с морфингом: standard button group и loading indicator. Морф по умолчанию использует expressive motion scheme.
 - Loading indicator (Compose): неопределённый — SoftBurst → Cookie9Sided → Pentagon → Pill → Sunny → Cookie4Sided → Oval; определённый — Circle → SoftBurst.
 - «Tension»: сочетать круглые и квадратные формы, «Break from the surrounding shape style to draw attention».
-- В приложении: пустые состояния (Circle, Square, Triangle) и номер аудитории на карточке пары
+- В приложении: номер аудитории на карточке пары
   (Cookie9Sided из правого верхнего угла, выбор заказчика 17.09.2026). Гайд советует абстрактные
   формы для декора, а не для текстовых контейнеров; здесь форма несёт короткий номер и
   обрезана краем карточки — записано в README, п. 21.
+- Пустое состояние (`lib/widgets/empty_state.dart`): три слоя, каждый морфится по своему циклу
+  форм и медленно вращается. Основания в гайде: «Emphasize aesthetic moments with shape»
+  (декоративные, неинтерактивные места), «Shape is versatile, not semantic — **Progress could
+  just as easily be shown using rotating shapes or shape morph**», «Shape can be 2.5D — **apply
+  motion and shape differently on each layer to give it the illusion of depth**», «Shape
+  morphing uses the expressive motion scheme by default». Циклы: `circle → cookie9Sided → oval →
+  clover4Leaf`, `square → slanted → gem → diamond`, `triangle → arrow → pentagon →
+  pixelTriangle` — круглые и угловатые вперемешку («tension»). Числа и отступления — в
+  `motion.md` и README, п. 23.
+- Морф во Flutter — `Morph(start.normalized(), end.normalized()).toPath(progress:, path:)` из
+  `material_new_shapes`; `Morph` создаётся один раз (сопоставление кривых в конструкторе), путь
+  пишется в переиспользуемый буфер.
 
 ### Формы компонентов (для сверки)
 
