@@ -1,5 +1,7 @@
 # Расписание — Material 3 Expressive
 
+<img src="docs/icon/logo.png" width="96" align="right" alt="Логотип: шапка выпускника в форме Cookie9Sided" />
+
 Android-приложение на Flutter: расписание студентов Международного университета
 «МИТСО» с [apps.mitso.by](https://apps.mitso.by/). Интерфейс на русском, дизайн —
 Material 3 Expressive строго по гайдлайнам Google.
@@ -82,6 +84,22 @@ PNG всех вкладок в светлой и тёмной теме, субб
 | ![Расписание](docs/screenshots/1-schedule-light.png) | ![Пропуски](docs/screenshots/2-absences-light.png) |
 | ![Заметки](docs/screenshots/3-notes-light.png) | ![Профиль](docs/screenshots/4-profile-light.png) |
 | ![Подгруппы](docs/screenshots/7-subgroups-light.png) | ![Подробности пары](docs/screenshots/8-lesson-details-light.png) |
+
+### Иконка приложения
+
+```bash
+flutter test test/icon_generator.dart
+```
+
+Рисует слои иконки и кладёт их в `android/app/src/main/res/mipmap-*` и `docs/icon/`. Логотип —
+шапка выпускника (`Symbols.school`) в форме `MaterialShapes.cookie9Sided`, той же, что у номера
+аудитории на карточке пары; фон — `primary` эталонной схемы M3.
+
+Геометрия — по [adaptive icons](https://developer.android.com/develop/ui/views/launch/icon_design_adaptive):
+слой 108dp, видно 72dp, рисунок внутри безопасного круга 66dp. Слоёв три — фон (цвет), передний
+и монохромный для тем Android 13+ (силуэт печеньки с вырезанной шапкой, система красит его сама);
+для Android ниже 26 генерируются обычные PNG. В `docs/icon/` лежат и отвергнутые варианты —
+часы, карточка с парами, волна, лента дней, буква.
 
 ### Проверки с сетью
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Адаптивная иконка: фон — фирменный фиолетовый, передний слой — печенька
+     из библиотеки форм M3 с шапкой выпускника, монохромный слой — для тем
+     Android 13+. Слои рисует `flutter test test/icon_generator.dart`. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>
