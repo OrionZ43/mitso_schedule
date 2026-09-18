@@ -3,6 +3,7 @@ import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models/lesson.dart';
+import '../../theme/app_motion.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -19,8 +20,9 @@ import 'lesson_timing.dart';
 /// 28dp; идущая — залитая `primary` радиусом 32dp с меткой «Сейчас идёт» и
 /// волнистой шкалой прогресса; прошедшая — `surfaceContainerLow` без обводки.
 /// Аудитория — крупный номер в форме «печенье» из библиотеки форм M3
-/// Expressive, которая выходит из правого верхнего угла; у подгрупп — плашки
-/// в их строках. Нажатие открывает подробности.
+/// Expressive, которая выходит из правого верхнего угла и очень медленно
+/// вращается; значок двери прижат к самому углу, у подгрупп — плашки в их
+/// строках. Нажатие открывает подробности.
 class LessonCard extends StatelessWidget {
   const LessonCard({
     super.key,
@@ -241,15 +243,23 @@ class _CardContent extends StatelessWidget {
     if (room == null) return content;
 
     // Форма под содержимым, обрезана скруглением карточки.
+    final _AccentColors accent = _AccentColors.of(
+      colors,
+      isNow: isNow,
+      past: past,
+    );
     return Stack(
       children: [
         PositionedDirectional(
           top: -_RoomShape.overflow,
           end: -_RoomShape.overflow,
-          child: _RoomShape(
-            room: room,
-            colors: _AccentColors.of(colors, isNow: isNow, past: past),
-          ),
+          child: _RoomShape(room: room, colors: accent),
+        ),
+        // Значок аудитории — в самом углу карточки, над формой.
+        PositionedDirectional(
+          top: padding,
+          end: padding,
+          child: Icon(Symbols.door_front, size: 20, color: accent.content),
         ),
         content,
       ],
@@ -335,68 +345,105 @@ class _RoomPill extends StatelessWidget {
 }
 
 /// Номер аудитории в expressive-форме из правого верхнего угла.
-class _RoomShape extends StatelessWidget {
+///
+/// Форма — `MaterialShapes.cookie9Sided` (styles/shape → библиотека форм:
+/// абстрактные формы для декоративных элементов), она очень медленно
+/// вращается, а номер стоит на месте по центру видимой части. Вращается
+/// только слой с формой: рисунок кэшируется, каждый кадр меняется лишь
+/// матрица. При «Удалить анимации» форма стоит.
+class _RoomShape extends StatefulWidget {
   const _RoomShape({required this.room, required this.colors});
 
   final String room;
   final _AccentColors colors;
 
   /// Сторона формы.
-  static const double size = 148;
+  static const double size = 132;
 
   /// Насколько форма выходит за край карточки.
-  static const double overflow = 28;
+  static const double overflow = 16;
 
-  /// Видимая часть формы.
+  /// Видимая часть формы — квадрат в углу карточки.
   static const double visibleSize = size - overflow;
+
+  /// Один оборот.
+  static const Duration turn = Duration(seconds: 90);
+
+  @override
+  State<_RoomShape> createState() => _RoomShapeState();
+}
+
+class _RoomShapeState extends State<_RoomShape>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _turn = AnimationController(
+    vsync: this,
+    duration: _RoomShape.turn,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotionOf(context)) {
+      _turn.stop();
+    } else if (!_turn.isAnimating) {
+      _turn.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: _roomSemantics(room),
+      label: _roomSemantics(widget.room),
       excludeSemantics: true,
       child: SizedBox.square(
-        dimension: size,
+        dimension: _RoomShape.size,
         child: Stack(
           children: [
             Positioned.fill(
-              child: CustomPaint(
-                painter: _ShapePainter(
-                  MaterialShapes.cookie9Sided,
-                  colors.container,
+              child: RotationTransition(
+                turns: _turn,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _ShapePainter(
+                      MaterialShapes.cookie9Sided,
+                      widget.colors.container,
+                    ),
+                  ),
                 ),
               ),
             ),
+            // Номер — по центру видимого квадрата, не по центру всей формы.
             Positioned(
               left: 0,
               bottom: 0,
-              width: visibleSize,
-              height: visibleSize,
+              width: _RoomShape.visibleSize,
+              height: _RoomShape.visibleSize,
               child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space150),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space100,
+                  AppSpacing.space300,
+                  AppSpacing.space100,
+                  AppSpacing.space100,
+                ),
                 child: Center(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Symbols.door_front,
-                          size: 20,
-                          color: colors.content,
-                        ),
-                        // Номер — главное в форме: крупный и жирный; длинные
-                        // названия («409 чжф») FittedBox уменьшает.
-                        Text(
-                          room,
-                          style: context.text.displaySmall!.copyWith(
-                            color: colors.content,
-                            fontWeight: FontWeight.w700,
-                            height: 1.05,
-                            fontFeatures: _tabular,
-                          ),
-                        ),
-                      ],
+                    // Номер — главное в форме: крупный и жирный; длинные
+                    // названия («409 чжф») FittedBox уменьшает.
+                    child: Text(
+                      widget.room,
+                      style: context.text.displaySmall!.copyWith(
+                        color: widget.colors.content,
+                        fontWeight: FontWeight.w700,
+                        height: 1.05,
+                        fontFeatures: _tabular,
+                      ),
                     ),
                   ),
                 ),
