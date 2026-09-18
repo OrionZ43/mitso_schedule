@@ -8,6 +8,7 @@ import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
 import 'state/mitso_providers.dart';
 import 'state/settings_controller.dart';
+import 'state/student_controller.dart';
 import 'theme/app_color_schemes.dart';
 import 'theme/app_shapes.dart';
 import 'theme/app_state_layer.dart';
@@ -74,11 +75,13 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
     super.dispose();
   }
 
-  // Обои или контраст могли смениться, пока приложение было в фоне.
+  // Обои или контраст могли смениться, пока приложение было в фоне; счёт на
+  // сайте мог обновиться.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(dynamicColorsProvider);
+      ref.read(studentControllerProvider.notifier).refreshIfStale();
     }
   }
 

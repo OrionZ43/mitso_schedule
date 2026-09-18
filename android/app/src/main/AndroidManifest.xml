@@ -2,6 +2,9 @@
     <!-- Расписание загружается с apps.mitso.by. В шаблоне Flutter это разрешение
          было только в debug/profile, и release-сборка не смогла бы выйти в сеть. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Уведомление о долге по лицевому счёту: Android 13+ спрашивает
+         разрешение, приложение просит его при включении настройки. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Расписание"
         android:name="${applicationName}"

@@ -24,7 +24,6 @@ class LessonDetailsPage extends StatelessWidget {
     required this.day,
     required this.days,
     required this.status,
-    required this.subgroup,
   });
 
   final LessonSlot slot;
@@ -36,8 +35,6 @@ class LessonDetailsPage extends StatelessWidget {
   final SlotStatus status;
 
   /// Своя подгруппа из настроек.
-  final int? subgroup;
-
   /// Сколько следующих занятий показывать.
   static const int upcomingLimit = 6;
 
@@ -182,7 +179,7 @@ class LessonDetailsPage extends StatelessWidget {
     bool afterThis = false;
 
     for (final ScheduleDay d in days) {
-      for (final LessonSlot s in d.slots(subgroup: subgroup)) {
+      for (final LessonSlot s in d.slots()) {
         if (DateUtils.isSameDay(d.date, day.date) && s.start == slot.start) {
           afterThis = true;
           continue;

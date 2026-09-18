@@ -23,6 +23,12 @@ class MitsoException implements Exception {
       'MitsoException: $message${cause == null ? '' : ' ($cause)'}';
 }
 
+/// Текст ошибки для пользователя: у наших исключений — свой, у остальных —
+/// общий.
+String messageOf(Object error) => error is MitsoException
+    ? error.message
+    : 'Что-то пошло не так. Попробуйте ещё раз.';
+
 /// Источник расписания: живой сайт в приложении, подстановка в тестах.
 abstract interface class MitsoApi {
   Future<List<MitsoOption>> faculties();

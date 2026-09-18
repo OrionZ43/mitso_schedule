@@ -9,7 +9,6 @@ import '../../data/models/group_ref.dart';
 import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
-import '../../state/settings_controller.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_typography.dart';
@@ -348,10 +347,7 @@ class _DayContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final int? subgroup = ref.watch(
-      settingsControllerProvider.select((s) => s.subgroup),
-    );
-    final List<LessonSlot> slots = day.slots(subgroup: subgroup);
+    final List<LessonSlot> slots = day.slots();
     final List<SlotStatus> statuses = slotTimings(slots, day.date, now);
 
     return Column(
@@ -383,7 +379,6 @@ class _DayContent extends ConsumerWidget {
                             day: day,
                             days: days,
                             status: statuses[i],
-                            subgroup: subgroup,
                           ),
                         ),
                       );

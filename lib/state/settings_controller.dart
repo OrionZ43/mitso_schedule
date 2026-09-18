@@ -11,7 +11,7 @@ class Settings {
     this.darkOverride,
     this.dynamicColor = true,
     this.palette = AppPalette.baseline,
-    this.subgroup,
+    this.balanceAlerts = true,
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -23,8 +23,8 @@ class Settings {
   /// Статичная палитра — когда [dynamicColor] выключен или обоев нет.
   final AppPalette palette;
 
-  /// Своя подгруппа: 1 или 2. `null` — показывать занятия всех подгрупп.
-  final int? subgroup;
+  /// Сообщать о долге по лицевому счёту.
+  final bool balanceAlerts;
 
   ThemeMode get themeMode => switch (darkOverride) {
     null => ThemeMode.system,
@@ -37,8 +37,7 @@ class Settings {
     bool clearDarkOverride = false,
     bool? dynamicColor,
     AppPalette? palette,
-    int? subgroup,
-    bool clearSubgroup = false,
+    bool? balanceAlerts,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -46,7 +45,7 @@ class Settings {
           : (darkOverride ?? this.darkOverride),
       dynamicColor: dynamicColor ?? this.dynamicColor,
       palette: palette ?? this.palette,
-      subgroup: clearSubgroup ? null : (subgroup ?? this.subgroup),
+      balanceAlerts: balanceAlerts ?? this.balanceAlerts,
     );
   }
 }
@@ -64,7 +63,9 @@ class SettingsController extends Notifier<Settings> {
   static const String _darkKey = 'settings.dark';
   static const String _dynamicKey = 'settings.dynamicColor';
   static const String _paletteKey = 'settings.palette';
-  static const String _subgroupKey = 'settings.subgroup';
+
+  /// Тот же ключ читает фоновая проверка баланса.
+  static const String balanceAlertsKey = 'settings.balanceAlerts';
 
   SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
 
@@ -75,7 +76,7 @@ class SettingsController extends Notifier<Settings> {
       darkOverride: prefs.getBool(_darkKey),
       dynamicColor: prefs.getBool(_dynamicKey) ?? true,
       palette: AppPalette.byName(prefs.getString(_paletteKey)),
-      subgroup: prefs.getInt(_subgroupKey),
+      balanceAlerts: prefs.getBool(balanceAlertsKey) ?? true,
     );
   }
 
@@ -101,15 +102,8 @@ class SettingsController extends Notifier<Settings> {
     _prefs.setString(_paletteKey, palette.name);
   }
 
-  /// `null` — все подгруппы.
-  void setSubgroup(int? value) {
-    state = value == null
-        ? state.copyWith(clearSubgroup: true)
-        : state.copyWith(subgroup: value);
-    if (value == null) {
-      _prefs.remove(_subgroupKey);
-    } else {
-      _prefs.setInt(_subgroupKey, value);
-    }
+  void setBalanceAlerts(bool value) {
+    state = state.copyWith(balanceAlerts: value);
+    _prefs.setBool(balanceAlertsKey, value);
   }
 }

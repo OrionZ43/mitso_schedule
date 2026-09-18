@@ -6,6 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'data/balance_alerts.dart';
+import 'data/balance_background.dart';
 import 'state/settings_controller.dart';
 
 Future<void> main() async {
@@ -20,6 +22,13 @@ Future<void> main() async {
   if (picker is ImagePickerAndroid) picker.useAndroidPhotoPicker = true;
 
   final SharedPreferences preferences = await SharedPreferences.getInstance();
+
+  // Уведомление о долге и фоновая проверка баланса раз в шесть часов.
+  await BalanceAlerts.init();
+  await BalanceBackground.initialize();
+  await BalanceBackground.sync(
+    enabled: preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
+  );
 
   runApp(
     ProviderScope(

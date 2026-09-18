@@ -22,7 +22,10 @@ import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mitso_schedule/state/student_controller.dart';
+
 import 'support/fake_certificate_photos.dart';
+import 'support/fake_student_api.dart';
 import 'support/fake_mitso_api.dart';
 
 const String _outputDir = 'docs/screenshots';
@@ -58,6 +61,8 @@ Future<void> _pumpApp(
   SharedPreferences.setMockInitialValues({
     'settings.dark': dark,
     'group.selected': jsonEncode(group2423.toJson()),
+    // Лицевой счёт подключён: профиль на скриншотах с балансом и СДО.
+    'student.number': FakeStudentApi.number,
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -73,6 +78,8 @@ Future<void> _pumpApp(
         certificatePhotosProvider.overrideWithValue(
           FakeCertificatePhotos(photoPath: photoPath),
         ),
+        studentApiProvider.overrideWith((ref) async => FakeStudentApi()),
+        balanceAlertsProvider.overrideWithValue(FakeBalanceAlerts()),
       ],
       child: RepaintBoundary(key: _rootKey, child: const ScheduleApp()),
     ),
@@ -357,6 +364,22 @@ void main() {
     list.position.jumpTo(360);
     await _frames(tester, 300);
     await _capture(tester, '7-subgroups-light');
+  });
+
+  _shot('скриншот настроек', (tester) async {
+    await _pumpApp(tester, dark: false);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3NavigationBar),
+        matching: find.text('Профиль'),
+      ),
+    );
+    await tester.pump();
+    await _frames(tester, 600);
+    await tester.tap(find.byTooltip('Настройки'));
+    await tester.pump();
+    await _frames(tester, 600);
+    await _capture(tester, '10-settings-light');
   });
 
   _shot('скриншот подробностей пары', (tester) async {

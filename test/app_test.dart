@@ -17,7 +17,10 @@ import 'package:mitso_schedule/widgets/m3_checkbox.dart';
 import 'package:mitso_schedule/widgets/m3_fab.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mitso_schedule/state/student_controller.dart';
+
 import 'support/fake_certificate_photos.dart';
+import 'support/fake_student_api.dart';
 import 'support/fake_mitso_api.dart';
 
 /// Поднимает приложение целиком.
@@ -31,6 +34,8 @@ Future<FakeMitsoApi> pumpApp(
   bool withGroup = true,
   FakeMitsoApi? api,
   CertificatePhotos? photos,
+  FakeStudentApi? student,
+  FakeBalanceAlerts? alerts,
   Map<String, Object> preferences = const {},
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
@@ -59,6 +64,10 @@ Future<FakeMitsoApi> pumpApp(
         certificatePhotosProvider.overrideWithValue(
           photos ?? FakeCertificatePhotos(),
         ),
+        studentApiProvider.overrideWith(
+          (ref) async => student ?? FakeStudentApi(),
+        ),
+        balanceAlertsProvider.overrideWithValue(alerts ?? FakeBalanceAlerts()),
       ],
       child: const ScheduleApp(),
     ),
@@ -160,18 +169,6 @@ void main() {
       ),
       findsOneWidget,
     );
-  });
-
-  testWidgets('своя подгруппа скрывает строки другой', (tester) async {
-    await pumpApp(tester, preferences: {'settings.subgroup': 1});
-
-    await tester.scrollUntilVisible(
-      find.text('1 подгруппа'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.textContaining('Пархимович А. В.'), findsNothing);
-    expect(find.text('4 пары'), findsOneWidget);
   });
 
   testWidgets('свайп по списку пар листает дни', (tester) async {
@@ -462,16 +459,90 @@ void main() {
     }
   });
 
+  /// Открывает настройки из профиля.
+  Future<void> openSettings(WidgetTester tester) async {
+    await openTab(tester, 'Профиль');
+    await tester.tap(find.byTooltip('Настройки'));
+    await settle(tester);
+    await settle(tester);
+  }
+
+  testWidgets('лицевой счёт подключается и показывает долг', (tester) async {
+    final FakeStudentApi api = FakeStudentApi();
+    final FakeBalanceAlerts alerts = FakeBalanceAlerts();
+    await pumpApp(tester, student: api, alerts: alerts);
+    await openTab(tester, 'Профиль');
+
+    expect(find.text('Баланс и доступ к СДО'), findsOneWidget);
+    await tester.tap(find.widgetWithText(M3Button, 'Подключить'));
+    await settle(tester);
+
+    await tester.enterText(find.byType(TextField), FakeStudentApi.number);
+    await settle(tester);
+    await tester.tap(find.widgetWithText(M3Button, 'Подключить').last);
+    await settle(tester);
+    await settle(tester);
+
+    expect(api.requests, [FakeStudentApi.number]);
+    expect(find.textContaining('12,34'), findsWidgets);
+    expect(find.text('Есть задолженность'), findsOneWidget);
+    expect(find.text('Иванов Иван Иванович'), findsOneWidget);
+
+    // Долг появился — уведомление.
+    expect(alerts.shown, hasLength(1));
+
+    // Номер счёта сохранён: после перезапуска данные возьмутся из кэша.
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('student.number'), FakeStudentApi.number);
+    expect(preferences.getString('student.cache'), contains('Иванов'));
+  });
+
+  testWidgets('пароль СДО скрыт, нажатие показывает', (tester) async {
+    await pumpApp(
+      tester,
+      preferences: {'student.number': FakeStudentApi.number},
+    );
+    await openTab(tester, 'Профиль');
+    await settle(tester);
+
+    expect(find.text('Дистанционное обучение'), findsOneWidget);
+    expect(find.text('••••••••'), findsOneWidget);
+    expect(find.text('12345678'), findsNothing);
+
+    await tester.ensureVisible(find.text('••••••••'));
+    await settle(tester);
+    await tester.tap(find.text('••••••••'));
+    await settle(tester);
+    expect(find.text('12345678'), findsOneWidget);
+  });
+
+  testWidgets('счёт отключается из настроек', (tester) async {
+    await pumpApp(
+      tester,
+      preferences: {'student.number': FakeStudentApi.number},
+    );
+    await openSettings(tester);
+
+    await tester.tap(find.text('Отключить счёт'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(TextButton, 'Отключить'));
+    await settle(tester);
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('student.number'), isNull);
+    expect(find.text('Отключить счёт'), findsNothing);
+  });
+
   testWidgets('выбор темы переключает ThemeMode и сохраняется', (tester) async {
     await pumpApp(tester);
-    await openTab(tester, 'Профиль');
+    await openSettings(tester);
 
     await tester.tap(find.text('Тёмная'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(
-      Theme.of(tester.element(find.byType(M3NavigationBar))).brightness,
+      Theme.of(tester.element(find.text('Тёмная'))).brightness,
       Brightness.dark,
     );
 
