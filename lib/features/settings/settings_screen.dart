@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/balance_alerts.dart';
 import '../../data/balance_background.dart';
 import '../../data/models/student_account.dart';
+import '../../state/app_icon_controller.dart';
 import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_color_schemes.dart';
@@ -14,6 +15,7 @@ import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_filter_chip.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/m3_switch.dart';
+import '../../theme/app_typography.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 
@@ -93,6 +95,9 @@ class SettingsScreen extends ConsumerWidget {
                     enabled: !settings.dynamicColor,
                     onSelected: controller.setPalette,
                   ),
+
+                  const SectionHeader('Значок приложения'),
+                  const _AppIconPicker(),
 
                   if (account != null) ...[
                     const SectionHeader('Лицевой счёт'),
@@ -182,6 +187,120 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed ?? false) {
       await ref.read(studentControllerProvider.notifier).unlink();
     }
+  }
+}
+
+/// Выбор значка приложения: образцы с подписями, выбранный обведён.
+///
+/// Значок меняет система, поэтому в лаунчере он обновляется не мгновенно — об
+/// этом говорит снекбар после выбора.
+class _AppIconPicker extends ConsumerStatefulWidget {
+  const _AppIconPicker();
+
+  static const double size = 64;
+
+  @override
+  ConsumerState<_AppIconPicker> createState() => _AppIconPickerState();
+}
+
+class _AppIconPickerState extends ConsumerState<_AppIconPicker> {
+  static const double size = _AppIconPicker.size;
+
+  String? _message;
+
+  Future<void> _select(AppIcon icon) async {
+    final bool ok = await ref
+        .read(appIconControllerProvider.notifier)
+        .select(icon);
+    if (!mounted) return;
+    setState(
+      () => _message = ok
+          ? 'Значок сменится в лаунчере через пару секунд'
+          : 'Не удалось сменить значок',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AppIcon? selected = ref.watch(appIconControllerProvider).value;
+    final ColorScheme colors = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.space150),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpacing.space100,
+            runSpacing: AppSpacing.space150,
+            children: [
+              for (final AppIcon icon in AppIcon.values)
+                Semantics(
+                  selected: icon == selected,
+                  button: true,
+                  label: 'Значок «${icon.title}»',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    onTap: () => _select(icon),
+                    borderRadius: BorderRadius.circular(size),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.space50),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: size,
+                            height: size,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: icon == selected
+                                    ? colors.primary
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(3),
+                            child: ClipOval(
+                              child: Image.asset(icon.asset, fit: BoxFit.cover),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.space50),
+                          SizedBox(
+                            width: size + AppSpacing.space200,
+                            child: Text(
+                              icon.title,
+                              textAlign: TextAlign.center,
+                              style: context.text.labelSmall!.copyWith(
+                                color: icon == selected
+                                    ? colors.primary
+                                    : colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.space100),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  _message!,
+                  style: context.text.bodySmall!.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

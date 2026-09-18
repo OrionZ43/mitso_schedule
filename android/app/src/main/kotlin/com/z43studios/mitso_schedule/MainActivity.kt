@@ -1,5 +1,7 @@
 package com.z43studios.mitso_schedule
 
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -15,6 +17,67 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mitso/app_icon")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "current" -> result.success(currentIcon())
+                    "select" -> {
+                        val name = call.argument<String>("name") ?: ""
+                        if (aliases.containsKey(name)) {
+                            selectIcon(name)
+                            result.success(null)
+                        } else {
+                            result.error("unknown_icon", "Нет значка $name", null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    /**
+     * Значки приложения: имя варианта → activity-alias в манифесте.
+     *
+     * Значок меняется включением одного алиаса и выключением остальных
+     * (`PackageManager.setComponentEnabledSetting`) — другого способа поменять
+     * иконку в лаунчере у Android нет. Сначала включается новый алиас, потом
+     * выключаются старые: иначе приложение на мгновение осталось бы без
+     * значка совсем.
+     */
+    private val aliases = mapOf(
+        "" to ".MainActivityDefault",
+        "cap" to ".MainActivityCap",
+        "clock" to ".MainActivityClock",
+        "card" to ".MainActivityCard",
+    )
+
+    private fun component(alias: String) = ComponentName(packageName, packageName + alias)
+
+    private fun currentIcon(): String {
+        for ((name, alias) in aliases) {
+            val state = packageManager.getComponentEnabledSetting(component(alias))
+            if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return name
+        }
+        // Ни один не переключали — включён тот, что enabled="true" в манифесте.
+        return ""
+    }
+
+    private fun selectIcon(name: String) {
+        val target = aliases.getValue(name)
+        packageManager.setComponentEnabledSetting(
+            component(target),
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP,
+        )
+        for ((other, alias) in aliases) {
+            if (other == name) continue
+            packageManager.setComponentEnabledSetting(
+                component(alias),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP,
+            )
+        }
     }
 
     /**

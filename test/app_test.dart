@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -618,6 +619,12 @@ void main() {
     );
     await openSettings(tester);
 
+    await tester.scrollUntilVisible(
+      find.text('Отключить счёт'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
     await tester.tap(find.text('Отключить счёт'));
     await settle(tester);
     await tester.tap(find.widgetWithText(TextButton, 'Отключить'));
@@ -626,6 +633,36 @@ void main() {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('student.number'), isNull);
     expect(find.text('Отключить счёт'), findsNothing);
+  });
+
+  testWidgets('значок приложения переключается из настроек', (tester) async {
+    final List<MethodCall> calls = [];
+    const MethodChannel channel = MethodChannel('mitso/app_icon');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          return call.method == 'current' ? '' : null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    await pumpApp(tester);
+    await openSettings(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Значок приложения'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('Значок «Шапка»'));
+    await settle(tester);
+
+    expect(calls.last.method, 'select');
+    expect(calls.last.arguments, {'name': 'cap'});
+    expect(find.textContaining('Значок сменится в лаунчере'), findsOneWidget);
   });
 
   testWidgets('выбор темы переключает ThemeMode и сохраняется', (tester) async {

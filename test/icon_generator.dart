@@ -379,68 +379,165 @@ void iconLetter(Canvas c, Size size) {
   );
 }
 
-/// Выбранный логотип, слой переднего плана: печенька и шапка, без фона.
-void logoForeground(Canvas c, Size size) {
-  final Rect rect = Rect.fromCenter(
-    center: const Offset(canvas / 2, canvas / 2),
-    width: safe,
-    height: safe,
-  );
-  c.drawPath(
-    _shapePath(MaterialShapes.cookie9Sided, rect),
-    Paint()..color = onPrimary,
-  );
-  _symbol(
-    c,
-    icon: Symbols.school,
-    center: rect.center,
-    size: safe * 0.52,
-    color: primary,
-  );
+/// Вариант логотипа: слой переднего плана и монохромный силуэт.
+class Logo {
+  const Logo({
+    required this.name,
+    required this.title,
+    required this.foreground,
+    required this.monochrome,
+  });
+
+  /// Суффикс ресурсов: `ic_launcher_<name>`; у варианта по умолчанию пусто.
+  final String name;
+
+  /// Подпись в настройках.
+  final String title;
+
+  final IconPainter foreground;
+  final IconPainter monochrome;
+
+  /// Иконка для Android ниже 26: фон и передний слой вместе, скруглённым
+  /// квадратом — маски там нет.
+  void legacy(Canvas c, Size size) {
+    final Rect visibleRect = Rect.fromCenter(
+      center: const Offset(canvas / 2, canvas / 2),
+      width: visible,
+      height: visible,
+    );
+    c.save();
+    c.clipRRect(
+      RRect.fromRectAndRadius(visibleRect, Radius.circular(visible * 0.28)),
+    );
+    _background(c, primary);
+    foreground(c, size);
+    c.restore();
+  }
+
+  /// Образец для настроек: фон и передний слой без маски.
+  void preview(Canvas c, Size size) {
+    _background(c, primary);
+    foreground(c, size);
+  }
 }
 
-/// Монохромный слой для тем Android 13+: силуэт печеньки с вырезанной шапкой,
-/// система красит его сама.
-void logoMonochrome(Canvas c, Size size) {
-  final Rect rect = Rect.fromCenter(
-    center: const Offset(canvas / 2, canvas / 2),
-    width: safe,
-    height: safe,
-  );
+Rect get _shapeRect => Rect.fromCenter(
+  center: const Offset(canvas / 2, canvas / 2),
+  width: safe,
+  height: safe,
+);
+
+/// Рисует подложку варианта и вырезает из неё значок — монохромный слой.
+void _cutout(
+  Canvas c, {
+  required IconPainter plate,
+  required IconPainter glyph,
+}) {
   c.saveLayer(const Rect.fromLTWH(0, 0, canvas, canvas), Paint());
-  c.drawPath(
-    _shapePath(MaterialShapes.cookie9Sided, rect),
-    Paint()..color = onPrimary,
-  );
-  _symbol(
-    c,
-    icon: Symbols.school,
-    center: rect.center,
-    size: safe * 0.52,
-    color: onPrimary,
-    blendMode: BlendMode.dstOut,
-  );
+  plate(c, const Size(canvas, canvas));
+  glyph(c, const Size(canvas, canvas));
   c.restore();
 }
 
-/// Иконка для Android ниже 26: фон и передний слой вместе, скруглённый
-/// квадрат (маски там нет).
-void logoLegacy(Canvas c, Size size) {
-  final Rect full = const Rect.fromLTWH(0, 0, canvas, canvas);
-  // Видимая часть адаптивной иконки — 72 из 108.
-  final Rect visibleRect = Rect.fromCenter(
-    center: full.center,
-    width: visible,
-    height: visible,
-  );
-  c.save();
-  c.clipRRect(
-    RRect.fromRectAndRadius(visibleRect, Radius.circular(visible * 0.28)),
-  );
-  _background(c, primary);
-  logoForeground(c, size);
-  c.restore();
+void _cookiePlate(Canvas c, Size size) => c.drawPath(
+  _shapePath(MaterialShapes.cookie9Sided, _shapeRect),
+  Paint()..color = onPrimary,
+);
+
+void _cardPlate(Canvas c, Size size) => c.drawRRect(
+  RRect.fromRectAndRadius(_shapeRect, Radius.circular(safe * 0.28)),
+  Paint()..color = onPrimary,
+);
+
+void _cap(
+  Canvas c, {
+  required double size,
+  required Color color,
+  Offset offset = Offset.zero,
+  BlendMode blendMode = BlendMode.srcOver,
+}) => _symbol(
+  c,
+  icon: Symbols.school,
+  center: _shapeRect.center + offset,
+  size: size,
+  color: color,
+  blendMode: blendMode,
+);
+
+void _clockHands(
+  Canvas c, {
+  required Color color,
+  BlendMode blendMode = BlendMode.srcOver,
+}) {
+  final Offset center = _shapeRect.center;
+  final Paint hand = Paint()
+    ..color = color
+    ..blendMode = blendMode
+    ..strokeWidth = safe * 0.075
+    ..strokeCap = StrokeCap.round;
+  c.drawLine(center, center + Offset(0, -safe * 0.26), hand);
+  c.drawLine(center, center + Offset(safe * 0.19, 0), hand);
 }
+
+/// Варианты значка приложения; первый — по умолчанию.
+final List<Logo> logos = [
+  Logo(
+    name: '',
+    title: 'Печенька и шапка',
+    foreground: (c, s) {
+      _cookiePlate(c, s);
+      _cap(c, size: safe * 0.52, color: primary);
+    },
+    monochrome: (c, s) => _cutout(
+      c,
+      plate: _cookiePlate,
+      glyph: (c, s) => _cap(
+        c,
+        size: safe * 0.52,
+        color: onPrimary,
+        blendMode: BlendMode.dstOut,
+      ),
+    ),
+  ),
+  Logo(
+    name: 'cap',
+    title: 'Шапка',
+    foreground: (c, s) => _cap(c, size: safe * 0.86, color: onPrimary),
+    monochrome: (c, s) => _cap(c, size: safe * 0.86, color: onPrimary),
+  ),
+  Logo(
+    name: 'clock',
+    title: 'Печенька и часы',
+    foreground: (c, s) {
+      _cookiePlate(c, s);
+      _clockHands(c, color: primary);
+    },
+    monochrome: (c, s) => _cutout(
+      c,
+      plate: _cookiePlate,
+      glyph: (c, s) =>
+          _clockHands(c, color: onPrimary, blendMode: BlendMode.dstOut),
+    ),
+  ),
+  Logo(
+    name: 'card',
+    title: 'Карточка и шапка',
+    foreground: (c, s) {
+      _cardPlate(c, s);
+      _cap(c, size: safe * 0.56, color: primary);
+    },
+    monochrome: (c, s) => _cutout(
+      c,
+      plate: _cardPlate,
+      glyph: (c, s) => _cap(
+        c,
+        size: safe * 0.56,
+        color: onPrimary,
+        blendMode: BlendMode.dstOut,
+      ),
+    ),
+  ),
+];
 
 const Map<String, IconPainter> icons = {
   '1-cookie-clock': iconCookieClock,
@@ -525,37 +622,44 @@ void main() {
     expect(Directory('docs/icon').listSync(), isNotEmpty);
   });
 
-  testWidgets('ресурсы иконки приложения', (tester) async {
+  testWidgets('ресурсы значков приложения', (tester) async {
     const String res = 'android/app/src/main/res';
-    for (final MapEntry<String, double> density in densities.entries) {
-      final String dir = '$res/mipmap-${density.key}';
-      // Слои адаптивной иконки — 108dp, обычная иконка — 48dp.
+    for (final Logo logo in logos) {
+      final String suffix = logo.name.isEmpty ? '' : '_${logo.name}';
+      for (final MapEntry<String, double> density in densities.entries) {
+        final String dir = '$res/mipmap-${density.key}';
+        // Слои адаптивной иконки — 108dp, обычная иконка — 48dp.
+        await _writePng(
+          '$dir/ic_launcher${suffix}_foreground.png',
+          logo.foreground,
+          tester,
+          size: 108 * density.value,
+        );
+        await _writePng(
+          '$dir/ic_launcher${suffix}_monochrome.png',
+          logo.monochrome,
+          tester,
+          size: 108 * density.value,
+        );
+        await _writePng(
+          '$dir/ic_launcher$suffix.png',
+          logo.legacy,
+          tester,
+          size: 48 * density.value,
+        );
+      }
+      // Образец для выбора значка в настройках.
       await _writePng(
-        '$dir/ic_launcher_foreground.png',
-        logoForeground,
+        'assets/app_icons/${logo.name.isEmpty ? 'default' : logo.name}.png',
+        logo.preview,
         tester,
-        size: 108 * density.value,
-      );
-      await _writePng(
-        '$dir/ic_launcher_monochrome.png',
-        logoMonochrome,
-        tester,
-        size: 108 * density.value,
-      );
-      await _writePng(
-        '$dir/ic_launcher.png',
-        logoLegacy,
-        tester,
-        size: 48 * density.value,
+        size: 192,
       );
     }
     // Для витрины и README.
     await _writePng(
       'docs/icon/logo.png',
-      (c, s) {
-        _background(c, primary);
-        logoForeground(c, s);
-      },
+      logos.first.preview,
       tester,
       size: 512,
     );

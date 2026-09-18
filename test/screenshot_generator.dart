@@ -379,6 +379,7 @@ void main() {
     await tester.tap(find.byTooltip('Настройки'));
     await tester.pump();
     await _frames(tester, 600);
+    await _loadImages(tester);
     await _capture(tester, '10-settings-light');
   });
 
