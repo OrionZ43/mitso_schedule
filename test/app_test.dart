@@ -749,4 +749,23 @@ void main() {
     expect(find.text('Преподаватель'), findsWidgets);
     expect(find.text('Лицевой счёт'), findsNothing);
   });
+
+  testWidgets('лист открывается на преподавателях, когда он уже выбран', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      preferences: {
+        'schedule.target': '{"kind":"teacher","name":"Сысун В. В."}',
+      },
+    );
+    await tester.tap(find.byTooltip('Сменить расписание'));
+    await settle(tester);
+    await settle(tester);
+
+    // Список грузится сразу: раньше он ждал переключения режима и крутил
+    // индикатор бесконечно.
+    expect(find.text('Гардейчик С. М.'), findsOneWidget);
+    expect(find.text('Фамилия'), findsOneWidget);
+  });
 }

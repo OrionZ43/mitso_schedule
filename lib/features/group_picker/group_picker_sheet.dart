@@ -72,9 +72,17 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
   MitsoOption? _form;
   MitsoOption? _course;
 
-  /// Список преподавателей и строка поиска по нему.
-  Future<List<String>>? _teachers;
+  /// Список преподавателей и строка поиска по нему. Запрос заводится при
+  /// первом обращении — в том числе когда лист сразу открылся на
+  /// преподавателях, потому что он уже выбран.
+  Future<List<String>>? _teachersRequest;
   String _query = '';
+
+  Future<List<String>> get _teachers =>
+      _teachersRequest ??= Future<List<String>>(() async {
+        final MitsoApi api = await ref.read(mitsoApiProvider.future);
+        return api.teachers();
+      });
 
   /// Последний переход был назад — для направления shared axis.
   bool _backward = false;
@@ -174,16 +182,7 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
 
   void _setMode(_Mode mode) {
     if (mode == _mode) return;
-    setState(() {
-      _mode = mode;
-      // Список преподавателей грузится только когда он понадобился.
-      if (mode == _Mode.teacher) {
-        _teachers ??= Future<List<String>>(() async {
-          final MitsoApi api = await ref.read(mitsoApiProvider.future);
-          return api.teachers();
-        });
-      }
-    });
+    setState(() => _mode = mode);
   }
 
   @override
@@ -286,7 +285,7 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
             return SliverToBoxAdapter(
               child: _PickerMessage(
                 text: messageOf(snapshot.error!),
-                onRetry: () => setState(() => _teachers = null),
+                onRetry: () => setState(() => _teachersRequest = null),
               ),
             );
           }
