@@ -120,6 +120,16 @@ void main() {
       expect(manifest.assetFor(<String>['windows-x64']), isNull);
     });
 
+    test('смещение versionCode по архитектуре снимается', () {
+      // Так Flutter нумерует сборки при --split-per-abi: armeabi-v7a 1001,
+      // arm64-v8a 2001, x86_64 4001 — это всё сборка 1 из pubspec.
+      expect(normalizeBuildNumber(1), 1);
+      expect(normalizeBuildNumber(1001), 1);
+      expect(normalizeBuildNumber(2001), 1);
+      expect(normalizeBuildNumber(4001), 1);
+      expect(normalizeBuildNumber(2042), 42);
+    });
+
     test('ключи файлов для каждой архитектуры знакомы манифесту', () {
       for (final Abi abi in <Abi>[
         Abi.androidArm64,

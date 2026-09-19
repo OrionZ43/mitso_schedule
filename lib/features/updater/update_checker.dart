@@ -170,5 +170,17 @@ List<String> currentAssetKeys() => assetKeysFor(Abi.current());
 /// ProductVersion exe.
 Future<int> currentBuildNumber() async {
   final PackageInfo info = await PackageInfo.fromPlatform();
-  return int.tryParse(info.buildNumber) ?? 0;
+  return normalizeBuildNumber(int.tryParse(info.buildNumber) ?? 0);
 }
+
+/// Убирает из versionCode смещение по архитектуре.
+///
+/// При `--split-per-abi` Flutter прибавляет к номеру сборки тысячи —
+/// armeabi-v7a 1000, arm64-v8a 2000, x86_64 4000, — и один и тот же выпуск
+/// называет себя 1001, 2001 или 4001. В манифесте номер один, из pubspec,
+/// поэтому смещение здесь снимается: иначе телефон считал бы себя новее
+/// любого релиза и обновлений не видел никогда.
+///
+/// Из этого же следует ограничение Flutter: номер сборки в pubspec меньше
+/// 1000.
+int normalizeBuildNumber(int versionCode) => versionCode % 1000;
