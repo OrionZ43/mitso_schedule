@@ -46,9 +46,7 @@ void main() {
   testWidgets('на компьютере справка добавляется файлом', (tester) async {
     await onDesktop(() async {
       await pumpApp(tester);
-      await openTab(tester, 'Пропуски');
-      await tester.tap(find.text('Зарегистрировать пропуск'));
-      await settle(tester);
+      await openCertificateSheet(tester);
 
       expect(find.text('Выбрать файл'), findsOneWidget);
       expect(find.text('Фото с телефона или скан справки'), findsOneWidget);
@@ -73,7 +71,7 @@ void main() {
       expect(find.text('71'), findsOneWidget);
       expect(find.text('09:45–11:05 · осталось 35 мин'), findsOneWidget);
       // Ни навигации, ни списка дней в компактном окне нет.
-      expect(find.text('Пропуски'), findsNothing);
+      expect(find.text('Заметки'), findsNothing);
     });
   });
 }

@@ -132,7 +132,7 @@ void main() {
 
     probe.start();
     final TestGesture button = await tester.startGesture(
-      tester.getCenter(find.byTooltip('Сменить группу')),
+      tester.getCenter(find.byTooltip('Сменить расписание')),
     );
     await probe.frames(tester, 30);
     probe.report('удержание кнопки');
@@ -174,12 +174,12 @@ void main() {
     }
 
     probe.start();
-    await _tapTab(tester, 'Пропуски');
+    await _tapTab(tester, 'Заметки');
     await probe.frames(tester, 60);
-    probe.report('переход на вкладку «Пропуски»');
+    probe.report('переход на вкладку «Заметки»');
 
     probe.start();
-    await tester.tap(find.byType(M3ExtendedFab));
+    await tester.tap(find.byType(M3Fab));
     await probe.frames(tester, 60);
     probe.report('открытие листа');
 

@@ -36,20 +36,14 @@ const double _devicePixelRatio = 2.625;
 
 final GlobalKey _rootKey = GlobalKey();
 
-/// Центры четырёх пунктов navigation bar по подписям.
-const List<String> _tabs = ['Расписание', 'Пропуски', 'Заметки', 'Профиль'];
-const List<String> _fileNames = [
-  '1-schedule',
-  '2-absences',
-  '3-notes',
-  '4-profile',
-];
+/// Пункты navigation bar по подписям.
+const List<String> _tabs = ['Расписание', 'Заметки', 'Профиль'];
+const List<String> _fileNames = ['1-schedule', '2-notes', '3-profile'];
 
 Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
   Map<String, Object> preferences = const {},
-  String? photoPath,
 }) async {
   tester.view.physicalSize = _physicalSize;
   tester.view.devicePixelRatio = _devicePixelRatio;
@@ -75,9 +69,7 @@ Future<void> _pumpApp(
         // Настоящая страница 2423 УИР и фиксированное время вместо сети.
         mitsoApiProvider.overrideWith((ref) async => FakeMitsoApi()),
         clockProvider.overrideWithValue(() => fakeNow),
-        certificatePhotosProvider.overrideWithValue(
-          FakeCertificatePhotos(photoPath: photoPath),
-        ),
+        certificatePhotosProvider.overrideWithValue(FakeCertificatePhotos()),
         studentApiProvider.overrideWith((ref) async => FakeStudentApi()),
         balanceAlertsProvider.overrideWithValue(FakeBalanceAlerts()),
       ],
@@ -107,52 +99,6 @@ Future<void> _capture(WidgetTester tester, String name) async {
     file.parent.createSync(recursive: true);
     file.writeAsBytesSync(data.buffer.asUint8List());
   });
-}
-
-/// Рисует условное фото справки — лист с полосами текста — и возвращает путь
-/// к PNG во временной папке.
-Future<String> _samplePhoto(WidgetTester tester) async {
-  final String path = '${Directory.systemTemp.path}/mitso_certificate.png';
-  await tester.runAsync(() async {
-    const Size size = Size(900, 1200);
-    final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(recorder);
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = const Color(0xFF8D7B68),
-    );
-    final Rect sheet = const Offset(90, 80) & const Size(720, 1040);
-    canvas.drawRect(sheet, Paint()..color = const Color(0xFFF7F4EE));
-    final Paint line = Paint()..color = const Color(0xFFB9B4AA);
-    for (int i = 0; i < 16; i++) {
-      final double width = i % 4 == 3 ? 380 : 580;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Offset(160, 200 + i * 52.0) & Size(width, 18),
-          const Radius.circular(9),
-        ),
-        line,
-      );
-    }
-    canvas.drawCircle(
-      const Offset(640, 1000),
-      70,
-      Paint()
-        ..color = const Color(0xFF5B7DB1)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8,
-    );
-    final ui.Image image = await recorder.endRecording().toImage(
-      size.width.toInt(),
-      size.height.toInt(),
-    );
-    final ByteData? data = await image.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
-    image.dispose();
-    File(path).writeAsBytesSync(data!.buffer.asUint8List());
-  });
-  return path;
 }
 
 /// Даёт настоящему вводу-выводу прочитать и декодировать фото, затем
@@ -301,60 +247,6 @@ void main() {
     await tester.pump();
     await _frames(tester, 600);
     await _capture(tester, '5-empty-saturday-light');
-  });
-
-  _shot('скриншот листа регистрации пропуска', (tester) async {
-    final String photo = await _samplePhoto(tester);
-    await _pumpApp(tester, dark: false, photoPath: photo);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(M3NavigationBar),
-        matching: find.text('Пропуски'),
-      ),
-    );
-    await tester.pump();
-    await _frames(tester, 500);
-    await tester.tap(find.text('Зарегистрировать пропуск'));
-    await tester.pump();
-    await _frames(tester, 600);
-    await tester.tap(find.text('Сфотографировать'));
-    await tester.pump();
-    await _loadImages(tester);
-    await _frames(tester, 400);
-    await _capture(tester, '6-certificate-sheet-light');
-  });
-
-  _shot('скриншот сохранённых справок', (tester) async {
-    final String photo = await _samplePhoto(tester);
-    await _pumpApp(
-      tester,
-      dark: false,
-      preferences: {
-        'absences.certificates': jsonEncode([
-          for (final (String id, DateTime at) in [
-            ('2', DateTime(2026, 9, 16, 9, 12)),
-            ('1', DateTime(2026, 9, 4, 18, 24)),
-          ])
-            {
-              'id': id,
-              'photoPath': photo,
-              'createdAt': at.toIso8601String(),
-              'status': 'notSent',
-            },
-        ]),
-      },
-    );
-    await tester.tap(
-      find.descendant(
-        of: find.byType(M3NavigationBar),
-        matching: find.text('Пропуски'),
-      ),
-    );
-    await tester.pump();
-    await _frames(tester, 500);
-    await _loadImages(tester);
-    await _frames(tester, 500);
-    await _capture(tester, '9-certificates-light');
   });
 
   _shot('скриншот объединённых подгрупп', (tester) async {

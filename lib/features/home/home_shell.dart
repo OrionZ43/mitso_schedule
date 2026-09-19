@@ -8,8 +8,6 @@ import '../../theme/app_transitions.dart';
 import '../../widgets/m3_fab.dart';
 import '../../widgets/m3_navigation_bar.dart';
 import '../../widgets/m3_snackbar.dart';
-import '../absences/absences_screen.dart';
-import '../absences/widgets/certificate_sheet.dart';
 import '../notes/notes_screen.dart';
 import '../notes/task_sheet.dart';
 import '../profile/profile_screen.dart';
@@ -21,7 +19,7 @@ import '../updater/update_section.dart';
 /// приходят и из шитов, которые живут в отдельных маршрутах.
 final GlobalKey<M3SnackbarHostState> appSnackbarHost = GlobalKey();
 
-/// Каркас приложения: четыре раздела, navigation bar и FAB раздела.
+/// Каркас приложения: три раздела, navigation bar и FAB раздела.
 ///
 /// FAB живёт здесь, а не внутри раздела: гайдлайн FAB «Moving across tabs» —
 /// FAB не анимируется вместе с содержимым, а коротко исчезает и появляется,
@@ -40,11 +38,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   int _fabIndex = 0;
 
   final List<ScrollController> _scrollControllers = [
-    for (int i = 0; i < 4; i++) ScrollController(),
+    for (int i = 0; i < 3; i++) ScrollController(),
   ];
 
   /// Разделы; точка на «Профиле» — когда есть непоказанное обновление
   /// (настройки открываются из профиля).
+  ///
+  /// Пропусков в навигации нет: данные по ним взять неоткуда, показывать
+  /// пустой экран незачем. Сам экран и регистрация справки остались в
+  /// коде — вкладка вернётся, когда появится источник данных.
   static List<M3NavigationDestination> _destinationsWith({
     required bool update,
   }) => [
@@ -52,7 +54,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       icon: Symbols.calendar_month,
       label: 'Расписание',
     ),
-    const M3NavigationDestination(icon: Symbols.event_busy, label: 'Пропуски'),
     const M3NavigationDestination(icon: Symbols.checklist, label: 'Заметки'),
     M3NavigationDestination(
       icon: Symbols.person,
@@ -95,19 +96,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   /// FAB раздела; `null` — у раздела его нет.
   ({Widget fab, double height})? _fabFor(int index) => switch (index) {
-    // Главное действие длинного списка справок с подписью — extended FAB
-    // (стиль primary, как в макете; разрешён спекой).
-    1 => (
-      fab: M3ExtendedFab(
-        onPressed: () => showCertificateSheet(context),
-        icon: const Icon(Symbols.document_scanner, fill: 1),
-        label: 'Зарегистрировать пропуск',
-        color: M3FabColor.primary,
-      ),
-      height: 56,
-    ),
     // «Use a medium FAB for mobile layouts» — FAB guidelines.
-    2 => (
+    1 => (
       fab: M3Fab(
         onPressed: () => showTaskSheet(context),
         icon: const Icon(Symbols.add, fill: 1),
@@ -141,9 +131,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               onSettled: (index) => setState(() => _fabIndex = index),
               children: [
                 ScheduleScreen(scrollController: _scrollControllers[0]),
-                AbsencesScreen(scrollController: _scrollControllers[1]),
-                NotesScreen(scrollController: _scrollControllers[2]),
-                ProfileScreen(scrollController: _scrollControllers[3]),
+                NotesScreen(scrollController: _scrollControllers[1]),
+                ProfileScreen(scrollController: _scrollControllers[2]),
               ],
             ),
             if (fab != null)

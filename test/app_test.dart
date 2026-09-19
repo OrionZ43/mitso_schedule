@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -8,10 +9,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/data/certificate_photos.dart';
+import 'package:mitso_schedule/features/absences/absences_screen.dart';
 import 'package:mitso_schedule/features/absences/widgets/absence_donut.dart';
+import 'package:mitso_schedule/features/absences/widgets/certificate_sheet.dart';
+import 'package:mitso_schedule/features/home/home_shell.dart';
 import 'package:mitso_schedule/features/schedule/lesson_card.dart';
 import 'package:mitso_schedule/features/updater/update_provider.dart';
 import 'package:mitso_schedule/state/absences_controller.dart';
+import 'package:mitso_schedule/state/reminders_controller.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
@@ -23,6 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mitso_schedule/state/student_controller.dart';
 
 import 'support/fake_certificate_photos.dart';
+import 'support/fake_lesson_reminders.dart';
 import 'support/fake_student_api.dart';
 import 'support/fake_mitso_api.dart';
 
@@ -101,6 +107,31 @@ Future<void> openTab(WidgetTester tester, String label) async {
   await tester.pump(const Duration(milliseconds: 500));
 }
 
+/// Экран пропусков: из навигации он убран, но живёт в коде — открываем его
+/// маршрутом поверх оболочки.
+Future<void> openAbsences(WidgetTester tester) async {
+  final NavigatorState navigator = tester.state<NavigatorState>(
+    find.byType(Navigator).first,
+  );
+  unawaited(
+    navigator.push(
+      MaterialPageRoute<void>(builder: (context) => const AbsencesScreen()),
+    ),
+  );
+  await settle(tester);
+}
+
+/// Лист регистрации пропуска. Своего FAB у него больше нет, поэтому лист
+/// вызывается так же, как это сделает экран, когда вкладка вернётся.
+Future<void> openCertificateSheet(WidgetTester tester) async {
+  unawaited(showCertificateSheet(tester.element(find.byType(HomeShell))));
+  await tester.pump();
+  // Анимация листа стартует после первой раскладки — кадры по 100 мс.
+  for (int i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 Future<void> settle(WidgetTester tester) async {
   await tester.pump();
   // Шагами: пружинные анимации листов стартуют после первой раскладки.
@@ -137,15 +168,27 @@ void main() {
     // Стартуем на расписании: реальные пары среды 16 сентября.
     expect(find.text('Веб-дизайн и шаблоны проектирования'), findsWidgets);
 
-    await openTab(tester, 'Пропуски');
-    expect(find.text('Справок пока нет'), findsOneWidget);
-
     await openTab(tester, 'Заметки');
     expect(find.textContaining('Задач нет'), findsOneWidget);
 
     await openTab(tester, 'Профиль');
     expect(find.text('2423 УИР'), findsOneWidget);
     expect(find.textContaining('Экономический'), findsOneWidget);
+  });
+
+  testWidgets('вкладки «Пропуски» нет: данных по ним пока нет', (tester) async {
+    await pumpApp(tester);
+
+    expect(
+      find.descendant(
+        of: find.byType(M3NavigationBar),
+        matching: find.text('Пропуски'),
+      ),
+      findsNothing,
+    );
+    // Экран из кода не убран: лист регистрации справки работает.
+    await openAbsences(tester);
+    expect(find.text('Справок пока нет'), findsOneWidget);
   });
 
   testWidgets('открывается сегодняшний день, идущая пара отмечена', (
@@ -435,17 +478,6 @@ void main() {
     expect(find.text('Отдать конспект'), findsNothing);
   });
 
-  /// Открывает лист регистрации пропуска на вкладке «Пропуски».
-  Future<void> openCertificateSheet(WidgetTester tester) async {
-    await openTab(tester, 'Пропуски');
-    await tester.tap(find.text('Зарегистрировать пропуск'));
-    await tester.pump();
-    // Анимация листа стартует после первой раскладки — кадры по 100 мс.
-    for (int i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
-
   testWidgets('снятая справка сохраняется в список и в настройки', (
     tester,
   ) async {
@@ -466,6 +498,7 @@ void main() {
     await tester.tap(save);
     await settle(tester);
 
+    await openAbsences(tester);
     expect(find.text('Справок пока нет'), findsNothing);
     expect(find.text('Не отправлено'), findsOneWidget);
     expect(find.text('Сохранена 16 сентября, 10:30'), findsOneWidget);
@@ -496,7 +529,7 @@ void main() {
         ]),
       },
     );
-    await openTab(tester, 'Пропуски');
+    await openAbsences(tester);
 
     expect(find.text('Мои справки'), findsOneWidget);
     expect(find.text('Сохранена 12 сентября, 18:24'), findsOneWidget);
@@ -556,7 +589,7 @@ void main() {
     await pumpApp(tester);
 
     // Любое переполнение раскладки в тестах прилетает исключением.
-    for (final String tab in ['Пропуски', 'Заметки', 'Профиль', 'Расписание']) {
+    for (final String tab in ['Заметки', 'Профиль', 'Расписание']) {
       await openTab(tester, tab);
       expect(tester.takeException(), isNull, reason: 'вкладка «$tab»');
     }
@@ -678,6 +711,102 @@ void main() {
     expect(calls.last.method, 'select');
     expect(calls.last.arguments, {'name': 'cap'});
     expect(find.textContaining('Значок сменится в лаунчере'), findsOneWidget);
+  });
+
+  testWidgets('напоминания о паре включаются и встают по расписанию', (
+    tester,
+  ) async {
+    final FakeLessonReminders reminders = FakeLessonReminders();
+    await pumpApp(
+      tester,
+      overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
+    );
+    await openSettings(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Напоминать о паре'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    // Выключены — ничего не запланировано, сроки не предлагаются.
+    expect(reminders.planned, isEmpty);
+    expect(find.text('За 15 мин'), findsNothing);
+
+    await tester.tap(find.text('Напоминать о паре'));
+    await settle(tester);
+
+    expect(reminders.permissionRequests, 1);
+    // Среда 16 сентября, 10:30: ближайшая пара — лаба подгрупп в 11:15.
+    expect(reminders.planned.first.when, DateTime(2026, 9, 16, 11, 0));
+    expect(reminders.planned.first.body, startsWith('Через 15 мин'));
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings.lessonReminders'), isTrue);
+
+    // Другой срок — напоминания перепланируются.
+    await tester.ensureVisible(find.text('За 30 мин'));
+    await tester.tap(find.text('За 30 мин'));
+    await settle(tester);
+
+    expect(preferences.getInt('settings.reminderLeadMinutes'), 30);
+    expect(reminders.planned.first.when, DateTime(2026, 9, 16, 10, 45));
+
+    // Выключение снимает всё запланированное.
+    await tester.tap(find.text('Напоминать о паре'));
+    await settle(tester);
+    expect(reminders.planned, isEmpty);
+  });
+
+  testWidgets('без разрешения напоминания не включаются', (tester) async {
+    final FakeLessonReminders reminders = FakeLessonReminders(granted: false);
+    await pumpApp(
+      tester,
+      overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
+    );
+    await openSettings(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Напоминать о паре'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    await tester.tap(find.text('Напоминать о паре'));
+    await settle(tester);
+
+    expect(reminders.permissionRequests, 1);
+    expect(reminders.planned, isEmpty);
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings.lessonReminders'), isNull);
+  });
+
+  testWidgets('свой срок напоминания вводится вручную', (tester) async {
+    final FakeLessonReminders reminders = FakeLessonReminders();
+    await pumpApp(
+      tester,
+      preferences: {'settings.lessonReminders': true},
+      overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
+    );
+    await openSettings(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Свой срок'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    await tester.tap(find.text('Свой срок'));
+    await settle(tester);
+
+    await tester.enterText(find.byType(TextField), '20');
+    await tester.tap(find.widgetWithText(TextButton, 'Готово'));
+    await settle(tester);
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getInt('settings.reminderLeadMinutes'), 20);
+    expect(find.text('За 20 мин'), findsOneWidget);
+    expect(reminders.planned.first.when, DateTime(2026, 9, 16, 10, 55));
   });
 
   testWidgets('выбор темы переключает ThemeMode и сохраняется', (tester) async {
