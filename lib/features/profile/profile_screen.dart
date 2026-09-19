@@ -8,14 +8,10 @@ import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../app_platform.dart';
-import '../../data/balance_alerts.dart';
-import '../../data/balance_background.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/student_account.dart';
 import '../../state/avatar_controller.dart';
 import '../../state/mitso_providers.dart';
-import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
@@ -23,7 +19,6 @@ import '../../theme/app_typography.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/m3_loading_indicator.dart';
-import '../../widgets/m3_switch.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import '../../widgets/shape_avatar.dart';
@@ -34,8 +29,11 @@ import '../updater/update_provider.dart';
 import 'avatar_sheet.dart';
 import 'link_account_sheet.dart';
 
-/// Профиль: студент, группа, лицевой счёт и доступ к СДО. Настройки
-/// приложения — за шестерёнкой в app bar.
+/// Профиль: кто пользуется приложением, чьё расписание открыто, баланс
+/// лицевого счёта и доступ к СДО.
+///
+/// Переключатели счёта (уведомление о долге, отключение) живут в настройках,
+/// за шестерёнкой в app bar: в профиле — сведения, в настройках — управление.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.scrollController});
 
@@ -62,52 +60,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  /// Метка переключателя для screen reader.
-  String _alertsSemantics(Settings settings) {
-    final String state = settings.balanceAlerts ? 'включено' : 'выключено';
-    return 'Сообщать о задолженности, $state';
-  }
-
-  /// Уведомления требуют разрешения Android 13+; без него переключатель
-  /// остаётся выключенным.
-  Future<void> _setAlerts(bool value) async {
-    if (value && !await BalanceAlerts.requestPermission()) return;
-    ref.read(settingsControllerProvider.notifier).setBalanceAlerts(value);
-    await BalanceBackground.sync(enabled: value);
-  }
-
-  /// Отключение счёта стирает сохранённые данные — спрашиваем подтверждение
-  /// (dialogs → Usage: подтверждение действия, которое трудно отменить).
-  Future<void> _confirmUnlink() async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Symbols.link_off),
-        title: const Text('Отключить лицевой счёт?'),
-        content: const Text(
-          'Баланс и доступ к СДО пропадут из профиля. Счёт можно подключить '
-          'снова по номеру.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Отключить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) {
-      await ref.read(studentControllerProvider.notifier).unlink();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final Settings settings = ref.watch(settingsControllerProvider);
     final AsyncValue<StudentAccount?> student = ref.watch(
       studentControllerProvider,
     );
@@ -163,37 +117,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       account: account,
                       refreshing: _refreshing,
                       onRefresh: _refresh,
-                    ),
-                    const SizedBox(height: AppSpacing.space150),
-                    // Всё про счёт в одном месте, а не половина в настройках.
-                    SegmentedList(
-                      children: [
-                        if (AppPlatform.isPhone)
-                          M3ListItem(
-                            leading: const Icon(Symbols.notifications),
-                            headline: const Text('Сообщать о задолженности'),
-                            supporting: const Text(
-                              'Приложение проверяет счёт в фоне и присылает '
-                              'уведомление, когда появляется долг',
-                            ),
-                            trailing: ExcludeSemantics(
-                              child: M3Switch(
-                                value: settings.balanceAlerts,
-                                onChanged: _setAlerts,
-                              ),
-                            ),
-                            onTap: () => _setAlerts(!settings.balanceAlerts),
-                            semanticsLabel: _alertsSemantics(settings),
-                          ),
-                        M3ListItem(
-                          leading: const Icon(Symbols.link_off),
-                          headline: const Text('Отключить счёт'),
-                          supporting: const Text(
-                            'Баланс и доступ к СДО будут стёрты',
-                          ),
-                          onTap: _confirmUnlink,
-                        ),
-                      ],
                     ),
                   ],
 

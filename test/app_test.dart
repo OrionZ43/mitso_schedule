@@ -656,12 +656,13 @@ void main() {
     expect(find.text('12345678'), findsOneWidget);
   });
 
-  testWidgets('счёт отключается в профиле', (tester) async {
+  testWidgets('счёт отключается из настроек', (tester) async {
     await pumpApp(
       tester,
       preferences: {'student.number': FakeStudentApi.number},
     );
-    await openTab(tester, 'Профиль');
+    // Управление счётом живёт в настройках, сам счёт — в профиле.
+    await openSettings(tester);
     await settle(tester);
 
     await tester.scrollUntilVisible(

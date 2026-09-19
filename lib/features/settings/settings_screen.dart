@@ -4,9 +4,13 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_platform.dart';
+import '../../data/balance_alerts.dart';
+import '../../data/balance_background.dart';
+import '../../data/models/student_account.dart';
 import '../../data/wear_sync.dart';
 import '../../state/app_icon_controller.dart';
 import '../../state/settings_controller.dart';
+import '../../state/student_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/connected_button_group.dart';
@@ -21,10 +25,10 @@ import '../../state/reminders_controller.dart';
 import '../updater/update_section.dart';
 import '../widget_mode/app_window.dart';
 
-/// Настройки приложения: вид, устройства рядом и сведения о приложении.
+/// Настройки приложения: вид, устройства рядом, напоминания, лицевой счёт
+/// и сведения о приложении.
 ///
-/// Всё, что относится к лицевому счёту, живёт в профиле — там же, где
-/// сам счёт.
+/// Сам счёт с балансом показывает профиль; здесь — управление им.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -35,6 +39,8 @@ class SettingsScreen extends ConsumerWidget {
       settingsControllerProvider.notifier,
     );
     final bool autostart = ref.watch(autostartProvider).value ?? false;
+    // Раздел счёта показывается, только когда счёт подключён.
+    final StudentAccount? account = ref.watch(studentControllerProvider).value;
     final List<String> watches =
         ref.watch(connectedWatchesProvider).value ?? const <String>[];
     final double margin = AppSpacing.screenMargin(context);
@@ -198,6 +204,43 @@ class SettingsScreen extends ConsumerWidget {
                         selected: settings.reminderLead,
                         onSelected: controller.setReminderLead,
                       ),
+                  ],
+
+                  // ─── Лицевой счёт: управление; сам счёт — в профиле.
+                  if (account != null) ...[
+                    const SectionHeader('Лицевой счёт'),
+                    SegmentedList(
+                      children: [
+                        if (AppPlatform.isPhone)
+                          M3ListItem(
+                            leading: const Icon(Symbols.notifications),
+                            headline: const Text('Сообщать о задолженности'),
+                            supporting: const Text(
+                              'Приложение проверяет счёт в фоне и присылает '
+                              'уведомление, когда появляется долг',
+                            ),
+                            trailing: ExcludeSemantics(
+                              child: M3Switch(
+                                value: settings.balanceAlerts,
+                                onChanged: (value) => _setAlerts(ref, value),
+                              ),
+                            ),
+                            onTap: () =>
+                                _setAlerts(ref, !settings.balanceAlerts),
+                            semanticsLabel:
+                                'Сообщать о задолженности, '
+                                '${settings.balanceAlerts ? 'включено' : 'выключено'}',
+                          ),
+                        M3ListItem(
+                          leading: const Icon(Symbols.link_off),
+                          headline: const Text('Отключить счёт'),
+                          supporting: const Text(
+                            'Баланс и доступ к СДО будут стёрты',
+                          ),
+                          onTap: () => _confirmUnlink(context, ref),
+                        ),
+                      ],
+                    ),
                   ],
 
                   // ─── О приложении: версия, обновления и кто сделал.
@@ -382,6 +425,43 @@ class _PalettePicker extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Уведомления требуют разрешения Android 13+; без него переключатель
+/// остаётся выключенным.
+Future<void> _setAlerts(WidgetRef ref, bool value) async {
+  if (value && !await BalanceAlerts.requestPermission()) return;
+  ref.read(settingsControllerProvider.notifier).setBalanceAlerts(value);
+  await BalanceBackground.sync(enabled: value);
+}
+
+/// Отключение счёта стирает сохранённые данные — спрашиваем подтверждение
+/// (dialogs → Usage: подтверждение действия, которое трудно отменить).
+Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
+  final bool? confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Symbols.link_off),
+      title: const Text('Отключить лицевой счёт?'),
+      content: const Text(
+        'Баланс и доступ к СДО пропадут из профиля. Счёт можно подключить '
+        'снова по номеру.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Отмена'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Отключить'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed ?? false) {
+    await ref.read(studentControllerProvider.notifier).unlink();
   }
 }
 

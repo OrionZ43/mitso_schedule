@@ -32,6 +32,10 @@
 **Учёба**
 - Заметки: задача, предмет из расписания и срок; список разложен по срокам, выполненные уходят на отдельную вкладку
 
+**Профиль**
+- Фото профиля: снимок с камеры или из галереи, остаётся на устройстве
+- Кто ты и чьё расписание открыто — в одной карточке, оттуда же смена группы
+
 **Лицевой счёт** *(по желанию, только по номеру из договора)*
 - Баланс в BYN, основной долг и пеня; при долге карточка становится красной
 - Уведомление, когда долг появился или вырос
@@ -45,10 +49,6 @@
 - Пары ближайшего дня на Wear OS и плитка «Ближайшая пара»
 - Расписание приходит с телефона, часам не нужны ни сеть, ни вход
 
-**Профиль**
-- Фото профиля: снимок с камеры или из галереи, остаётся на устройстве
-- Кто ты и чьё расписание открыто — в одной карточке, оттуда же смена группы
-
 **Внешний вид**
 - Material 3 Expressive: цвета из обоев Android, светлая и тёмная тема, пять запасных палитр
 - Значок приложения на выбор, уважение к системной настройке «Удалить анимации»
@@ -56,10 +56,18 @@
 
 ## 📱 Как выглядит
 
-| | |
-|---|---|
-| ![Расписание](docs/screenshots/1-schedule-light.png) | ![Пары подгрупп](docs/screenshots/7-subgroups-light.png) |
-| ![Заметки](docs/screenshots/2-notes-light.png) | ![Профиль](docs/screenshots/3-profile-light.png) |
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/1-schedule-light.png" alt="Расписание" /><br /><sub><b>Расписание дня</b></sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/3-profile-light.png" alt="Профиль" /><br /><sub><b>Профиль и счёт</b></sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/2-notes-light.png" alt="Заметки" /><br /><sub><b>Заметки</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/7-subgroups-light.png" alt="Пары подгрупп" /><br /><sub><b>Пары подгрупп</b></sub></td>
+    <td align="center"><img src="docs/screenshots/3-profile-dark.png" alt="Задолженность" /><br /><sub><b>Долг видно сразу</b></sub></td>
+    <td align="center"><img src="docs/screenshots/10-settings-light.png" alt="Настройки" /><br /><sub><b>Настройки</b></sub></td>
+  </tr>
+</table>
 
 <div align="center">
 

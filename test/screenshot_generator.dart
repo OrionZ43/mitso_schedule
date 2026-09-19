@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/data/models/student_account.dart';
 import 'package:mitso_schedule/data/photo_picker.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
@@ -36,13 +37,34 @@ const double _devicePixelRatio = 2.625;
 
 final GlobalKey _rootKey = GlobalKey();
 
+/// Фото профиля для скриншотов: кадр из арта владельца приложения.
+const String _avatarPath = 'test/fixtures/avatar.png';
+
 /// Пункты navigation bar по подписям.
 const List<String> _tabs = ['Расписание', 'Заметки', 'Профиль'];
 const List<String> _fileNames = ['1-schedule', '2-notes', '3-profile'];
 
+/// Профиль на скриншотах — владельца приложения, с его фото и группой.
+/// Номера счёта в кадре нет: вместо него нули.
+StudentAccount _account({required double balance}) => StudentAccount(
+  number: '000000',
+  fullName: 'Ковалёв Денис Дмитриевич',
+  balance: balance,
+  debt: balance < 0 ? 60 : 0,
+  penalty: balance < 0 ? 7 : 0,
+  asOf: DateTime(2026, 9, 17, 23, 59),
+  fetchedAt: fakeNow,
+  moodle: const MoodleAccess(
+    group: '2423 УИР',
+    login: '000000',
+    password: 'mitso2026',
+  ),
+);
+
 Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
+  double balance = 67,
   Map<String, Object> preferences = const {},
 }) async {
   tester.view.physicalSize = _physicalSize;
@@ -57,6 +79,7 @@ Future<void> _pumpApp(
     'group.selected': jsonEncode(group2423.toJson()),
     // Лицевой счёт подключён: профиль на скриншотах с балансом и СДО.
     'student.number': FakeStudentApi.number,
+    'profile.avatar': _avatarPath,
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -70,7 +93,9 @@ Future<void> _pumpApp(
         mitsoApiProvider.overrideWith((ref) async => FakeMitsoApi()),
         clockProvider.overrideWithValue(() => fakeNow),
         photoPickerProvider.overrideWithValue(FakePhotoPicker()),
-        studentApiProvider.overrideWith((ref) async => FakeStudentApi()),
+        studentApiProvider.overrideWith(
+          (ref) async => FakeStudentApi(account: _account(balance: balance)),
+        ),
         balanceAlertsProvider.overrideWithValue(FakeBalanceAlerts()),
       ],
       child: RepaintBoundary(key: _rootKey, child: const ScheduleApp()),
@@ -224,7 +249,9 @@ void main() {
     final String theme = dark ? 'dark' : 'light';
 
     _shot('скриншоты вкладок — $theme', (tester) async {
-      await _pumpApp(tester, dark: dark);
+      // Светлая тема — баланс в плюсе, тёмная — долг: в README видно оба
+      // состояния карточки счёта.
+      await _pumpApp(tester, dark: dark, balance: dark ? -67 : 67);
 
       for (int i = 0; i < _tabs.length; i++) {
         await tester.tap(
@@ -236,6 +263,8 @@ void main() {
         await tester.pump();
         await _frames(tester, 500);
         await _frames(tester, 500);
+        // Фото профиля читается с диска — даём ему декодироваться.
+        await _loadImages(tester);
         await _capture(tester, '${_fileNames[i]}-$theme');
       }
     });

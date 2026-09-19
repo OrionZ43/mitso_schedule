@@ -8,7 +8,7 @@ import 'package:mitso_schedule/data/models/student_account.dart';
 /// Подстановка student.mitso.by: настоящая разметка страницы с выдуманными
 /// данными, номер 100200. Любой другой номер — «счёт не найден».
 class FakeStudentApi implements StudentApi {
-  FakeStudentApi({this.fetchedAt, this.fail = false});
+  FakeStudentApi({this.fetchedAt, this.fail = false, this.account});
 
   static const String number = '100200';
 
@@ -16,6 +16,9 @@ class FakeStudentApi implements StudentApi {
 
   /// Имитировать недоступный сайт.
   final bool fail;
+
+  /// Готовый счёт вместо разбора страницы — для скриншотов.
+  final StudentAccount? account;
 
   final List<String> requests = [];
 
@@ -25,6 +28,8 @@ class FakeStudentApi implements StudentApi {
     if (fail) {
       throw const MitsoException('Нет соединения с сайтом лицевого счёта.');
     }
+    final StudentAccount? ready = account;
+    if (ready != null) return ready;
     final String page = File(
       number == FakeStudentApi.number
           ? 'test/fixtures/student_account.html'
