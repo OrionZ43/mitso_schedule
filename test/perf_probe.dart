@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:mitso_schedule/features/schedule/lesson_card.dart';
 import 'package:mitso_schedule/widgets/day_selector.dart';
 import 'package:mitso_schedule/widgets/m3_fab.dart';
@@ -155,10 +156,22 @@ void main() {
     await probe.frames(tester, 60);
     probe.report('переход на вкладку «Профиль»');
 
+    // Настройки живут за шестерёнкой в app bar профиля.
+    await tester.tap(find.byIcon(Symbols.settings));
+    for (int i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
     probe.start();
     await tester.tap(find.byType(M3Switch).first);
     await probe.frames(tester, 50);
     probe.report('переключатель динамических цветов');
+
+    // Обратно к разделам: следующие сценарии — про вкладки.
+    await tester.tap(find.byTooltip('Назад'));
+    for (int i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     probe.start();
     await _tapTab(tester, 'Пропуски');
