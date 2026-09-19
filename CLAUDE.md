@@ -35,7 +35,7 @@ Flutter-приложение для Android: расписание студент
 3. Если Flutter-виджет расходится с Compose (размеры, анимации, состояния) —
    портировать поведение Compose, а не мириться с дефолтом Flutter.
 4. Каждое отступление от спеки — осознанное: записать причину в `docs/m3/`
-   и в раздел «Сознательные отступления» README.
+   и в раздел «Сознательные отступления» [`docs/development.md`](docs/development.md).
 5. После изменения компонента обновить его раздел в `docs/m3/`.
 
 ## Движение
@@ -53,7 +53,7 @@ dart format lib test
 flutter analyze
 flutter test
 flutter test test/screenshot_generator.dart      # PNG в docs/screenshots — посмотреть глазами
-flutter build apk --release -t lib/main.dart     # -t обязателен, см. README
+flutter build apk --release -t lib/main.dart     # -t обязателен, см. docs/development.md
 C:/android/sdk/platform-tools/adb.exe install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
@@ -72,7 +72,7 @@ cd android && ./gradlew :wear:assembleRelease
 
 На телефон ставить release: debug-сборка тормозит сама по себе, по ней о плавности не судить.
 После изменений анимаций и списков — `flutter test test/perf_probe.dart` (перестройки и
-отрисовки за кадр, см. README → «Производительность»).
+отрисовки за кадр, см. `docs/development.md` → «Производительность»).
 
 ## Ограничения
 
