@@ -5,6 +5,7 @@ import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.protolayout.material3.MaterialScope
+import androidx.wear.protolayout.material3.Typography
 import androidx.wear.protolayout.material3.materialScope
 import androidx.wear.protolayout.material3.primaryLayout
 import androidx.wear.protolayout.material3.text
@@ -21,15 +22,16 @@ import java.util.Locale
 /**
  * Плитка «Ближайшая пара»: что идёт сейчас или будет следующим.
  *
- * Данные — те же, что у приложения (последнее расписание с телефона), поэтому
- * плитка работает и без телефона рядом.
+ * Слоты `primaryLayout` сами расставляют поля под размер экрана: сверху
+ * подпись («Сейчас» или «Дальше»), в середине предмет, снизу время и
+ * аудитория. Данные — те же, что у приложения (последнее расписание с
+ * телефона), поэтому плитка работает и без телефона рядом.
  */
 class ScheduleTileService : TileService() {
 
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> {
-        val layout = tileLayout(requestParams.deviceConfiguration)
         val tile = TileBuilders.Tile.Builder()
             .setResourcesVersion(RESOURCES_VERSION)
             // Раз в десять минут плитка перечитывает расписание: пары
@@ -41,7 +43,7 @@ class ScheduleTileService : TileService() {
                         TimelineBuilders.TimelineEntry.Builder()
                             .setLayout(
                                 LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(layout)
+                                    .setRoot(tileLayout(requestParams.deviceConfiguration))
                                     .build(),
                             )
                             .build(),
@@ -61,65 +63,71 @@ class ScheduleTileService : TileService() {
     private fun tileLayout(
         device: DeviceParametersBuilders.DeviceParameters,
     ): LayoutElementBuilders.LayoutElement = materialScope(this, device) {
-        val schedule = ScheduleStore.load(this@ScheduleTileService)
-        val now = LocalDateTime.now()
-        val lessonNow = schedule?.lessonNow(now)
-        val next = schedule?.nextLesson(now)
-
-        val title: String
-        val subtitle: String
-        when {
-            schedule == null -> {
-                title = "Нет расписания"
-                subtitle = "Откройте приложение на телефоне"
-            }
-            lessonNow != null -> {
-                title = lessonNow.title
-                subtitle = "Сейчас · до ${lessonNow.end}" +
-                    (lessonNow.room?.let { " · $it" } ?: "")
-            }
-            next != null -> {
-                val (day, lesson) = next
-                title = lesson.title
-                subtitle = whenLabel(day, lesson, now) +
-                    (lesson.room?.let { " · $it" } ?: "")
-            }
-            else -> {
-                title = "Пар впереди нет"
-                subtitle = ""
-            }
-        }
+        val content = tileContent()
 
         primaryLayout(
-            mainSlot = {
-                column {
-                    setWidth(androidx.wear.protolayout.DimensionBuilders.expand())
-                    addContent(bodyText(title))
-                    if (subtitle.isNotEmpty()) addContent(labelText(subtitle))
-                }
-            },
+            titleSlot = { label(content.label) },
+            mainSlot = { title(content.title) },
+            bottomSlot = content.details
+                ?.let { details -> { label(details) } },
         )
     }
 
-    private fun MaterialScope.bodyText(value: String): LayoutElementBuilders.LayoutElement =
-        text(value.layoutString, maxLines = 3)
+    private fun MaterialScope.label(value: String): LayoutElementBuilders.LayoutElement =
+        text(value.layoutString, typography = Typography.LABEL_MEDIUM, maxLines = 1)
 
-    private fun MaterialScope.labelText(value: String): LayoutElementBuilders.LayoutElement =
-        text(value.layoutString, maxLines = 2)
+    private fun MaterialScope.title(value: String): LayoutElementBuilders.LayoutElement =
+        text(value.layoutString, typography = Typography.TITLE_MEDIUM, maxLines = 3)
 
-    private fun column(
-        builder: LayoutElementBuilders.Column.Builder.() -> Unit,
-    ): LayoutElementBuilders.Column =
-        LayoutElementBuilders.Column.Builder().apply(builder).build()
+    /** Что показать: подпись сверху, предмет и строка подробностей. */
+    private fun tileContent(): TileContent {
+        val schedule = ScheduleStore.load(this) ?: return TileContent(
+            label = "Расписание",
+            title = "Откройте приложение на телефоне",
+            details = null,
+        )
+        val now = LocalDateTime.now()
+        val lessonNow = schedule.lessonNow(now)
+        if (lessonNow != null) {
+            return TileContent(
+                label = "Сейчас",
+                title = lessonNow.title,
+                details = listOfNotNull(
+                    "до ${lessonNow.end}",
+                    lessonNow.room,
+                ).joinToString(" · "),
+            )
+        }
+        val next = schedule.nextLesson(now) ?: return TileContent(
+            label = "Расписание",
+            title = "Пар впереди нет",
+            details = null,
+        )
+        val (day, lesson) = next
+        return TileContent(
+            label = "Дальше",
+            title = lesson.title,
+            details = listOfNotNull(
+                whenLabel(day, lesson, now),
+                lesson.room,
+            ).joinToString(" · "),
+        )
+    }
 
-    /** «Завтра в 8:30», «Пн, 21 сент., 11:15» или «через 25 мин». */
+    private data class TileContent(
+        val label: String,
+        val title: String,
+        val details: String?,
+    )
+
+    /** «через 25 мин», «в 11:15», «завтра в 8:30», «Пн, 21 сент., 11:15». */
     private fun whenLabel(day: Day, lesson: Lesson, now: LocalDateTime): String {
         val today = now.toLocalDate()
         val minutes = now.hour * 60 + now.minute
         return when {
             day.date == today -> {
                 val left = lesson.startMinutes - minutes
-                if (left < 60) "через $left мин" else "в ${lesson.start}"
+                if (left in 0..59) "через $left мин" else "в ${lesson.start}"
             }
             day.date == today.plusDays(1) -> "завтра в ${lesson.start}"
             else -> day.date

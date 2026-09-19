@@ -237,6 +237,13 @@ Windows 11 и автозапуск ключом в `HKCU\...\CurrentVersion\Run`
 пара» — что идёт сейчас или через сколько начнётся следующая. В настройках телефона появляется
 раздел «Часы», когда они рядом.
 
+Экран собран по образцам Wear Compose (`ScaffoldSample`, `ListHeaderSample`,
+`SurfaceTransformationSample`): `AppScaffold` держит часы на месте, `ScreenScaffold` даёт
+отступы под круглый экран и полосу прокрутки, список — `TransformingLazyColumn`, пары —
+`TitleCard` со слотами `time` / `title` / `subtitle`, чтобы типографику задавал сам компонент.
+Первая версия была написана своими `Column` с мелким текстом и без полей — на часах текст
+упирался в стекло и не читался.
+
 ```bash
 cd android && ./gradlew :wear:assembleRelease
 # build/wear/outputs/apk/release/wear-release.apk
@@ -252,8 +259,17 @@ C:/android/sdk/platform-tools/adb.exe -s <адрес часов>:<порт> inst
 те же, что у телефонного модуля. Более свежие compose и lifecycle требуют AGP 9.1 и SDK 37,
 и с ними сборка не пройдёт.
 
-**Проверено пока только сборкой**: часов под рукой не было, на живом Pixel Watch 2 приложение и
-плитку никто не открывал.
+**Как смотреть экран без часов.** Образа Wear OS для эмулятора может не быть, но годится
+телефонный: `adb shell wm size 450x450 && adb shell wm density 320` даёт ту же геометрию, что у
+Pixel Watch 2, и на ней видно и размеры текста, и поля. Расписание в отладочную сборку кладётся
+прямо в настройки приложения:
+
+```bash
+adb shell "run-as com.z43studios.mitso_schedule sh -c 'cat > /data/data/com.z43studios.mitso_schedule/shared_prefs/mitso.wear.xml'" < mitso.wear.xml
+```
+
+Так проверены список, идущая пара и пустой экран. **Плитка на живых часах не проверялась**:
+для неё нужен настоящий хост Wear OS.
 
 ## Обновления приложения
 

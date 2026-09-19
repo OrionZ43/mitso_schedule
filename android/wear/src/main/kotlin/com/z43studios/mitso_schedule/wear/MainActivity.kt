@@ -20,16 +20,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CardDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TitleCard
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import java.time.LocalDate
@@ -72,34 +75,59 @@ fun ScheduleApp() {
             .addOnFailureListener { loading = false }
     }
 
+    // AppScaffold держит часы (TimeText) на месте при переходах внутри
+    // приложения, ScreenScaffold — полосу прокрутки и отступы под круглый
+    // экран (образцы ScaffoldSample и ListHeaderSample из Wear Compose).
     MaterialTheme {
         AppScaffold {
-            val listState = rememberScalingLazyListState()
+            val listState = rememberTransformingLazyColumnState()
+            val transformationSpec = rememberTransformationSpec()
+
             ScreenScaffold(scrollState = listState) { contentPadding ->
                 val now = LocalDateTime.now()
                 val day = schedule?.dayToShow(now)
+                val lessonNow = schedule?.lessonNow(now)
 
                 if (day == null) {
                     Message(
                         text = when {
                             loading -> null
-                            schedule == null ->
-                                "Откройте расписание на телефоне — часы возьмут его оттуда"
+                            schedule == null -> "Откройте расписание на телефоне"
                             else -> "Пар впереди нет"
                         },
                     )
                 } else {
-                    ScalingLazyColumn(
+                    TransformingLazyColumn(
                         state = listState,
                         contentPadding = contentPadding,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        item { ListHeader { Text(dayTitle(day.date, now.toLocalDate())) } }
+                        item {
+                            ListHeader(
+                                transformation = SurfaceTransformation(
+                                    transformationSpec,
+                                ),
+                                modifier = Modifier.transformedHeight(
+                                    this,
+                                    transformationSpec,
+                                ),
+                            ) {
+                                Text(dayTitle(day.date, now.toLocalDate()))
+                            }
+                        }
                         items(day.lessons.size) { index ->
                             val lesson = day.lessons[index]
                             LessonCard(
                                 lesson = lesson,
-                                isNow = schedule?.lessonNow(now) === lesson,
+                                isNow = lesson === lessonNow,
+                                transformation = SurfaceTransformation(
+                                    transformationSpec,
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .transformedHeight(this, transformationSpec),
                             )
                         }
                     }
@@ -109,53 +137,69 @@ fun ScheduleApp() {
     }
 }
 
-/** Пара: время, название, аудитория. Идущая выделена цветом. */
+/**
+ * Пара: время в углу, предмет крупно, подробности строкой ниже. Идущая —
+ * на ролях primary container, как выделенная карточка на телефоне.
+ */
 @Composable
-private fun LessonCard(lesson: Lesson, isNow: Boolean) {
-    Card(
-        onClick = {},
-        colors = if (isNow) {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        } else {
-            CardDefaults.cardColors()
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column {
+private fun LessonCard(
+    lesson: Lesson,
+    isNow: Boolean,
+    transformation: SurfaceTransformation,
+    modifier: Modifier = Modifier,
+) {
+    val colors = if (isNow) {
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            titleColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            subtitleColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            timeColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
+
+    TitleCard(
+        title = {
             Text(
-                text = "${lesson.start}–${lesson.end}" +
-                    (lesson.room?.let { " · $it" } ?: ""),
-                style = MaterialTheme.typography.labelSmall,
-            )
-            Text(
-                text = lesson.title,
-                style = MaterialTheme.typography.bodyMedium,
+                lesson.title,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            val details = listOfNotNull(
-                lesson.typeLabel.takeIf { it.isNotEmpty() },
-                lesson.subgroup?.let { "$it подгруппа" },
-            ).joinToString(" · ")
-            if (details.isNotEmpty()) {
-                Text(
-                    text = details,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
+        },
+        subtitle = {
+            Text(
+                subtitleOf(lesson, isNow),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        time = { Text("${lesson.start}–${lesson.end}") },
+        colors = colors,
+        transformation = transformation,
+        modifier = modifier,
+    )
+}
+
+/** «Идёт до 11:05», «Лекция · 71», «Лаб · 62 (к) · 2 подгруппа». */
+private fun subtitleOf(lesson: Lesson, isNow: Boolean): String {
+    if (isNow) return "Идёт до ${lesson.end}"
+    return listOfNotNull(
+        lesson.typeLabel.takeIf { it.isNotEmpty() },
+        lesson.room,
+        lesson.subgroup?.let { "$it подгруппа" },
+    ).joinToString(" · ")
 }
 
 /** Сообщение посреди экрана; `null` — ещё грузим. */
 @Composable
 private fun Message(text: String?) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            // Поля круглого экрана: у краёв текст обрезает стекло.
+            .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -165,7 +209,7 @@ private fun Message(text: String?) {
             Text(
                 text = text,
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
             )
         }
     }
