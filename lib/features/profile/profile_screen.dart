@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import '../../data/balance_alerts.dart';
 import '../../data/balance_background.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/student_account.dart';
+import '../../state/avatar_controller.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
@@ -28,6 +31,7 @@ import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
 import '../settings/settings_screen.dart';
 import '../updater/update_provider.dart';
+import 'avatar_sheet.dart';
 import 'link_account_sheet.dart';
 
 /// Профиль: студент, группа, лицевой счёт и доступ к СДО. Настройки
@@ -218,7 +222,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 /// rich and nuanced colors»), emphasized-заголовок («Guide attention with
 /// typography») и вложенный контейнер с расписанием («Contain content for
 /// emphasis»).
-class _ProfileHero extends StatelessWidget {
+class _ProfileHero extends ConsumerWidget {
   const _ProfileHero({
     required this.target,
     required this.account,
@@ -252,10 +256,11 @@ class _ProfileHero extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme colors = context.colors;
     final ScheduleTarget? target = this.target;
     final bool teacher = target is TeacherTarget;
+    final String? photo = ref.watch(avatarControllerProvider);
 
     return Card.filled(
       color: colors.primaryContainer,
@@ -264,16 +269,43 @@ class _ProfileHero extends StatelessWidget {
         padding: const EdgeInsets.all(padding),
         child: Column(
           children: [
-            ShapeAvatar(
-              // Круглая фигура с мягкими зубцами: аватар остаётся аватаром,
-              // но выбивается из прямоугольников экрана («Break from the
-              // surrounding shape style to draw attention»).
-              polygon: MaterialShapes.cookie9Sided,
-              size: avatarSize,
-              color: colors.primary,
-              onColor: colors.onPrimary,
-              initials: _initials,
-              icon: teacher ? Symbols.co_present : Symbols.school,
+            Stack(
+              alignment: AlignmentDirectional.bottomEnd,
+              children: [
+                ShapeAvatar(
+                  // Круглая фигура с мягкими зубцами: аватар остаётся
+                  // аватаром, но выбивается из прямоугольников экрана («Break
+                  // from the surrounding shape style to draw attention»).
+                  polygon: MaterialShapes.cookie9Sided,
+                  size: avatarSize,
+                  color: colors.primary,
+                  onColor: colors.onPrimary,
+                  image: photo == null
+                      ? null
+                      // Фото в файле крупнее аватара: декодируем под него.
+                      : ResizeImage(
+                          FileImage(File(photo)),
+                          width:
+                              (avatarSize *
+                                      MediaQuery.devicePixelRatioOf(context))
+                                  .round(),
+                        ),
+                  initials: _initials,
+                  icon: teacher ? Symbols.co_present : Symbols.school,
+                ),
+                // Сама фигура неинтерактивна (гайд: формы библиотеки — для
+                // «non-interactive elements»), меняет фото кнопка рядом.
+                M3IconButton(
+                  onPressed: () => showAvatarSheet(context),
+                  icon: const Icon(Symbols.photo_camera, fill: 1),
+                  size: M3ButtonSize.extraSmall,
+                  // Tonal: filled повторил бы цвет аватара и слился с ним.
+                  color: M3IconButtonColor.tonal,
+                  tooltip: photo == null
+                      ? 'Добавить фото профиля'
+                      : 'Сменить фото профиля',
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.space200),
             Text(

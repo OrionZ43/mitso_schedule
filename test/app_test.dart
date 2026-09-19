@@ -8,14 +8,13 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
-import 'package:mitso_schedule/data/certificate_photos.dart';
+import 'package:mitso_schedule/data/photo_picker.dart';
 import 'package:mitso_schedule/features/absences/absences_screen.dart';
 import 'package:mitso_schedule/features/absences/widgets/absence_donut.dart';
 import 'package:mitso_schedule/features/absences/widgets/certificate_sheet.dart';
 import 'package:mitso_schedule/features/home/home_shell.dart';
 import 'package:mitso_schedule/features/schedule/lesson_card.dart';
 import 'package:mitso_schedule/features/updater/update_provider.dart';
-import 'package:mitso_schedule/state/absences_controller.dart';
 import 'package:mitso_schedule/state/reminders_controller.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
@@ -27,7 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mitso_schedule/state/student_controller.dart';
 
-import 'support/fake_certificate_photos.dart';
+import 'support/fake_photo_picker.dart';
 import 'support/fake_lesson_reminders.dart';
 import 'support/fake_student_api.dart';
 import 'support/fake_mitso_api.dart';
@@ -42,7 +41,7 @@ Future<FakeMitsoApi> pumpApp(
   WidgetTester tester, {
   bool withGroup = true,
   FakeMitsoApi? api,
-  CertificatePhotos? photos,
+  PhotoPicker? photos,
   FakeStudentApi? student,
   FakeBalanceAlerts? alerts,
   Map<String, Object> preferences = const {},
@@ -71,9 +70,7 @@ Future<FakeMitsoApi> pumpApp(
         appBootProvider.overrideWith((ref) async {}),
         mitsoApiProvider.overrideWith((ref) async => fake),
         clockProvider.overrideWithValue(() => fakeNow),
-        certificatePhotosProvider.overrideWithValue(
-          photos ?? FakeCertificatePhotos(),
-        ),
+        photoPickerProvider.overrideWithValue(photos ?? FakePhotoPicker()),
         studentApiProvider.overrideWith(
           (ref) async => student ?? FakeStudentApi(),
         ),
@@ -481,7 +478,7 @@ void main() {
   testWidgets('снятая справка сохраняется в список и в настройки', (
     tester,
   ) async {
-    final FakeCertificatePhotos photos = FakeCertificatePhotos();
+    final FakePhotoPicker photos = FakePhotoPicker();
     await pumpApp(tester, photos: photos);
     await openCertificateSheet(tester);
 
@@ -491,7 +488,7 @@ void main() {
 
     await tester.tap(find.text('Сфотографировать'));
     await settle(tester);
-    expect(photos.captures, [CertificatePhotoSource.camera]);
+    expect(photos.captures, [PhotoSource.camera]);
     expect(find.text('Переснять'), findsOneWidget);
     expect(tester.widget<M3Button>(save).onPressed, isNotNull);
 
@@ -536,7 +533,7 @@ void main() {
   });
 
   testWidgets('недоступная камера — сообщение в листе', (tester) async {
-    await pumpApp(tester, photos: FakeCertificatePhotos(failCapture: true));
+    await pumpApp(tester, photos: FakePhotoPicker(failCapture: true));
     await openCertificateSheet(tester);
 
     await tester.tap(find.text('Сфотографировать'));
@@ -547,7 +544,7 @@ void main() {
   });
 
   testWidgets('отказ от снимка оставляет лист без фото', (tester) async {
-    await pumpApp(tester, photos: FakeCertificatePhotos(photoPath: null));
+    await pumpApp(tester, photos: FakePhotoPicker(photoPath: null));
     await openCertificateSheet(tester);
 
     await tester.tap(find.text('Выбрать из галереи'));
@@ -862,6 +859,38 @@ void main() {
 
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('schedule.target'), contains('Сысун'));
+  });
+
+  testWidgets('фото профиля выбирается и убирается', (tester) async {
+    final FakePhotoPicker photos = FakePhotoPicker(
+      photoPath: '/fake/avatar.jpg',
+    );
+    await pumpApp(tester, photos: photos);
+    await openTab(tester, 'Профиль');
+
+    // Пока фото нет — в шапке иконка или инициалы, картинки нет.
+    expect(find.byType(Image), findsNothing);
+    await tester.tap(find.byTooltip('Добавить фото профиля'));
+    await settle(tester);
+
+    await tapInSheet(tester, find.text('Выбрать из галереи'));
+    await settle(tester);
+
+    expect(photos.captures, [PhotoSource.gallery]);
+    expect(photos.kept.single, startsWith('avatar/'));
+    expect(find.byType(Image), findsOneWidget);
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('profile.avatar'), '/fake/avatar.jpg');
+
+    // Убрать фото — вернутся инициалы, файл удалится.
+    await tester.tap(find.byTooltip('Сменить фото профиля'));
+    await settle(tester);
+    await tapInSheet(tester, find.text('Убрать фото'));
+    await settle(tester);
+
+    expect(find.byType(Image), findsNothing);
+    expect(photos.discarded, ['/fake/avatar.jpg']);
+    expect(preferences.getString('profile.avatar'), isNull);
   });
 
   testWidgets('у преподавателя в профиле нет лицевого счёта', (tester) async {

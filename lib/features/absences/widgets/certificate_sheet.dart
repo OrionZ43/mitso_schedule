@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../app_platform.dart';
-import '../../../data/certificate_photos.dart';
+import '../../../data/photo_picker.dart';
 import '../../../state/absences_controller.dart';
 import '../../../theme/app_shapes.dart';
 import '../../../theme/app_spacing.dart';
@@ -48,22 +48,20 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
   /// Высота превью снимка.
   static const double previewHeight = 240;
 
-  Future<void> _capture(CertificatePhotoSource source) async {
+  Future<void> _capture(PhotoSource source) async {
     if (_capturing || _saving) return;
     setState(() {
       _capturing = true;
       _error = null;
     });
     try {
-      final String? path = await ref
-          .read(certificatePhotosProvider)
-          .capture(source);
+      final String? path = await ref.read(photoPickerProvider).pick(source);
       if (!mounted) return;
       setState(() => _photoPath = path ?? _photoPath);
     } on PlatformException {
       if (!mounted) return;
       setState(
-        () => _error = source == CertificatePhotoSource.camera
+        () => _error = source == PhotoSource.camera
             ? 'Не удалось открыть камеру.'
             : 'Не удалось открыть галерею.',
       );
@@ -173,7 +171,7 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                   photo == null ? 'Выбрать файл' : 'Выбрать другой файл',
                 ),
                 supporting: const Text('Фото с телефона или скан справки'),
-                onTap: () => _capture(CertificatePhotoSource.gallery),
+                onTap: () => _capture(PhotoSource.gallery),
                 enabled: !_saving,
               ),
             ],
@@ -186,7 +184,7 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                 headline: Text(
                   photo == null ? 'Сфотографировать' : 'Переснять',
                 ),
-                onTap: () => _capture(CertificatePhotoSource.camera),
+                onTap: () => _capture(PhotoSource.camera),
                 enabled: !_saving,
               ),
               M3ListItem(
@@ -194,7 +192,7 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                 headline: Text(
                   photo == null ? 'Выбрать из галереи' : 'Выбрать другое фото',
                 ),
-                onTap: () => _capture(CertificatePhotoSource.gallery),
+                onTap: () => _capture(PhotoSource.gallery),
                 enabled: !_saving,
               ),
             ],

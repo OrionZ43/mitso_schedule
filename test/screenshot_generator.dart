@@ -15,7 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mitso_schedule/app.dart';
-import 'package:mitso_schedule/state/absences_controller.dart';
+import 'package:mitso_schedule/data/photo_picker.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
@@ -24,7 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mitso_schedule/state/student_controller.dart';
 
-import 'support/fake_certificate_photos.dart';
+import 'support/fake_photo_picker.dart';
 import 'support/fake_student_api.dart';
 import 'support/fake_mitso_api.dart';
 
@@ -69,7 +69,7 @@ Future<void> _pumpApp(
         // Настоящая страница 2423 УИР и фиксированное время вместо сети.
         mitsoApiProvider.overrideWith((ref) async => FakeMitsoApi()),
         clockProvider.overrideWithValue(() => fakeNow),
-        certificatePhotosProvider.overrideWithValue(FakeCertificatePhotos()),
+        photoPickerProvider.overrideWithValue(FakePhotoPicker()),
         studentApiProvider.overrideWith((ref) async => FakeStudentApi()),
         balanceAlertsProvider.overrideWithValue(FakeBalanceAlerts()),
       ],

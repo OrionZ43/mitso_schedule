@@ -16,6 +16,7 @@ class ShapeAvatar extends StatelessWidget {
     required this.size,
     required this.color,
     required this.onColor,
+    this.image,
     this.initials,
     this.icon,
   }) : assert(initials != null || icon != null);
@@ -30,6 +31,10 @@ class ShapeAvatar extends StatelessWidget {
   final Color color;
   final Color onColor;
 
+  /// Фото; обрезается фигурой. Нет фото или файл пропал — остаются
+  /// [initials] или [icon].
+  final ImageProvider? image;
+
   /// Инициалы; если их нет — [icon].
   final String? initials;
   final IconData? icon;
@@ -40,32 +45,47 @@ class ShapeAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: size,
-      child: ClipPath(
-        clipper: _PolygonClipper(polygon),
-        child: ColoredBox(
-          color: color,
-          child: Center(
-            child: initials != null
-                ? Text(
-                    initials!,
-                    style: context.text.headlineMedium!.emphasized.copyWith(
-                      color: onColor,
-                    ),
-                  )
-                : Icon(
-                    icon,
-                    size: size * _iconRatio,
-                    opticalSize: size * _iconRatio,
-                    color: onColor,
-                    fill: 1,
+    final ImageProvider? image = this.image;
+
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: ClipPath(
+          clipper: _PolygonClipper(polygon),
+          child: ColoredBox(
+            color: color,
+            child: image == null
+                ? _fallback(context)
+                : Image(
+                    image: image,
+                    fit: BoxFit.cover,
+                    width: size,
+                    height: size,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _fallback(context),
                   ),
           ),
         ),
       ),
     );
   }
+
+  Widget _fallback(BuildContext context) => Center(
+    child: initials != null
+        ? Text(
+            initials!,
+            style: context.text.headlineMedium!.emphasized.copyWith(
+              color: onColor,
+            ),
+          )
+        : Icon(
+            icon,
+            size: size * _iconRatio,
+            opticalSize: size * _iconRatio,
+            color: onColor,
+            fill: 1,
+          ),
+  );
 }
 
 class _PolygonClipper extends CustomClipper<Path> {

@@ -2,15 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/certificate_photos.dart';
 import '../data/models/certificate.dart';
+import '../data/photo_picker.dart';
 import 'mitso_providers.dart';
 import 'settings_controller.dart';
-
-/// Съёмка и хранение фото справок.
-final certificatePhotosProvider = Provider<CertificatePhotos>(
-  (ref) => const DeviceCertificatePhotos(),
-);
 
 /// Сводка пропусков. Её будет присылать Telegram-бот; пока он не подключён,
 /// сводки нет.
@@ -46,8 +41,8 @@ class AbsencesController extends Notifier<List<Certificate>> {
     final DateTime now = ref.read(clockProvider)();
     final String id = now.microsecondsSinceEpoch.toString();
     final String kept = await ref
-        .read(certificatePhotosProvider)
-        .keep(photoPath, id);
+        .read(photoPickerProvider)
+        .keep(photoPath, folder: 'certificates', name: id);
     state = [Certificate(id: id, photoPath: kept, createdAt: now), ...state];
     await ref
         .read(sharedPreferencesProvider)

@@ -93,8 +93,9 @@
 - `lib/widgets/m3_loading_indicator.dart` — `MaterialShapes` из `material_new_shapes`, порядок как в Compose.
 - `lib/widgets/shape_avatar.dart` — аватар маской из библиотеки форм (`ClipPath` по
   `RoundedPolygon.normalized().toPath()`); в шапке профиля — `MaterialShapes.cookie9Sided`
-  96dp, заливка `primary`, внутри инициалы или иконка. Та же фигура у значка приложения и у
-  номера аудитории на карточке пары.
+  96dp, заливка `primary`, внутри фото профиля, инициалы или иконка. Та же фигура у значка
+  приложения и у номера аудитории на карточке пары. Фигура неинтерактивна (гайд: библиотека
+  форм — для «non-interactive elements»), фото меняет tonal icon button XS в углу аватара.
 - Кастомные контейнеры: `absences_screen.dart` и `profile_screen.dart` (32dp), `schedule_screen.dart` (баннер ошибки 16dp; результаты поиска `ListTile` 20dp), `lesson_card.dart` (строки подгрупп 16/4), `segmented_list.dart` (16/4), `day_selector.dart` (16 → 28 морф).
 
 ### Расхождения
