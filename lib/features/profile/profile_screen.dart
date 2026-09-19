@@ -20,6 +20,7 @@ import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
 import '../settings/settings_screen.dart';
+import '../updater/update_provider.dart';
 import 'link_account_sheet.dart';
 
 /// Профиль: студент, группа, лицевой счёт и доступ к СДО. Настройки
@@ -57,6 +58,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
     final StudentAccount? account = student.value;
     final GroupRef? group = ref.watch(selectedGroupProvider);
+    final bool hasUpdate = ref.watch(updateBadgeProvider);
     final double margin = AppSpacing.screenMargin(context);
 
     return M3AppBarSettle(
@@ -73,9 +75,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     builder: (context) => const SettingsScreen(),
                   ),
                 ),
-                icon: const Icon(Symbols.settings),
+                // Точка на значке настроек, пока обновление не показано:
+                // обновления живут в разделе «О приложении».
+                icon: Badge(
+                  isLabelVisible: hasUpdate,
+                  child: const Icon(Symbols.settings),
+                ),
                 color: M3IconButtonColor.standard,
-                tooltip: 'Настройки',
+                tooltip: hasUpdate
+                    ? 'Настройки, доступно обновление'
+                    : 'Настройки',
               ),
             ],
           ),

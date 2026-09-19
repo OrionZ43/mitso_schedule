@@ -14,6 +14,8 @@ import '../notes/notes_screen.dart';
 import '../notes/task_sheet.dart';
 import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
+import '../updater/update_provider.dart';
+import '../updater/update_section.dart';
 
 /// Хост снекбаров над navigation bar. Глобальный, потому что сообщения
 /// приходят и из шитов, которые живут в отдельных маршрутах.
@@ -41,11 +43,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     for (int i = 0; i < 4; i++) ScrollController(),
   ];
 
-  static const List<M3NavigationDestination> _destinations = [
-    M3NavigationDestination(icon: Symbols.calendar_month, label: 'Расписание'),
-    M3NavigationDestination(icon: Symbols.event_busy, label: 'Пропуски'),
-    M3NavigationDestination(icon: Symbols.checklist, label: 'Заметки'),
-    M3NavigationDestination(icon: Symbols.person, label: 'Профиль'),
+  /// Разделы; точка на «Профиле» — когда есть непоказанное обновление
+  /// (настройки открываются из профиля).
+  static List<M3NavigationDestination> _destinationsWith({
+    required bool update,
+  }) => [
+    const M3NavigationDestination(
+      icon: Symbols.calendar_month,
+      label: 'Расписание',
+    ),
+    const M3NavigationDestination(icon: Symbols.event_busy, label: 'Пропуски'),
+    const M3NavigationDestination(icon: Symbols.checklist, label: 'Заметки'),
+    M3NavigationDestination(
+      icon: Symbols.person,
+      label: 'Профиль',
+      badgeLabel: update ? 'Доступно обновление' : null,
+    ),
   ];
 
   /// Отступ FAB от краёв окна.
@@ -111,6 +124,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final fab = _fabFor(_fabIndex);
     final bool fabVisible = _fabIndex == _index && fab != null;
 
+    // Обновление, которое нельзя отложить, спрашивать не о чем: диалог
+    // появляется сразу, как только проверка его нашла.
+    ref.listen<bool>(mandatoryUpdateProvider, (bool? previous, bool next) {
+      if (next) showMandatoryUpdateDialog(context);
+    });
+
     return Scaffold(
       body: M3SnackbarHost(
         key: appSnackbarHost,
@@ -142,7 +161,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       bottomNavigationBar: M3NavigationBar(
         selectedIndex: _index,
-        destinations: _destinations,
+        destinations: _destinationsWith(update: ref.watch(updateBadgeProvider)),
         onSelected: _select,
         onReselected: _reselect,
       ),

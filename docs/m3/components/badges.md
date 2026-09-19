@@ -1,11 +1,11 @@
 # Бейдж (Badges)
 
-Статус в приложении: — не используется
+Статус в приложении: — small badge (точка) на пункте «Профиль» и на значке настроек
 
-Компонента Badge в приложении нет: у навигации и иконок нет ни точек, ни счётчиков. Виджеты с
-«Badge» в названии (`LessonTypeBadge`, `CertificateStatusBadge`, `SubgroupBadge`) — цветные
-текстовые метки на карточках. По спецификации это **не бейджи**, решение по ним описано в
-`chips.md`.
+Точка горит, пока есть найденное и ещё не показанное обновление приложения. Счётчиков
+(large badge) в приложении нет. Виджеты с «Badge» в названии (`LessonTypeBadge`,
+`CertificateStatusBadge`, `SubgroupBadge`) — цветные текстовые метки на карточках. По
+спецификации это **не бейджи**, решение по ним описано в `chips.md`.
 
 ## Источники
 - Guidelines / Specs / Accessibility: https://m3.material.io/components/badges/guidelines,
@@ -69,8 +69,19 @@
 
 ## В приложении
 **Где используется**
-- Badge не используется: `NavigationBar` в `lib/features/home/home_shell.dart` и иконки-кнопки
-  без бейджей.
+- `lib/widgets/m3_navigation_bar.dart` → `M3NavigationDestination.badgeLabel`: точка на иконке
+  пункта, когда `badgeLabel != null`. На выбранном пункте бейдж скрыт (Guidelines → With other
+  components), текст `badgeLabel` идёт отдельным `Semantics` после названия пункта
+  (Accessibility → Labeling). Сейчас точку зажигает `updateBadgeProvider` — «Доступно
+  обновление» на пункте «Профиль» (`lib/features/home/home_shell.dart`).
+- `lib/features/profile/profile_screen.dart` → точка на значке настроек в app bar (Guidelines →
+  Placement: «в тесных местах — small badge»); tooltip меняется на «Настройки, доступно
+  обновление», чтобы screen reader сказал то же самое.
+- Положение проверено: у `Badge` без подписи `offset` равен нулю, а `alignment` —
+  `topEnd`, поэтому точка 6dp встаёт вплотную к верхнему конечному углу иконки, то есть её
+  нижний начальный угол отстоит от этого угла ровно на 6×6dp — как в Specs → Measurements.
+  Это верно, только если `Badge` обёрнута вокруг самой иконки 24dp, а не вокруг зоны нажатия
+  48dp, — так и сделано в обоих местах.
 - Не бейджи, хотя так названы:
   - `lib/widgets/status_badge.dart` → `LessonTypeBadge` («Лекция», «Лаб», «Практика»…) и
     `CertificateStatusBadge` («В обработке» и т. п.);
@@ -91,7 +102,7 @@
    `ColorScheme`. Гармонизировать с динамической схемой через уже подключённый пакет
    `dynamic_color` (`Color.harmonizeWith`). Контраст текста проверяет существующий
    `test/status_contrast_test.dart`.
-3. Если понадобится настоящий бейдж (например, число задач на вкладке «Заметки»), взять
-   `Badge` / `Badge.count(maxCount: 999)` из Flutter на иконке `NavigationDestination`.
-   Сверить положение с 6×6 / 14×12dp, скрывать бейдж на выбранной вкладке, задать
-   `Semantics` с числом.
+3. Если понадобится счётчик (например, число задач на вкладке «Заметки»), взять
+   `Badge.count(maxCount: 999)` — у него подпись, а значит `offset` уже не нулевой:
+   положение нужно сверить с 14×12dp отдельно, у Flutter смещение считается иначе
+   (`Offset(4, -4) + Offset(0, 8)`), чем в Compose.

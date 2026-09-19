@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Папки, файлы из которых приложение вправе отдать другому приложению.
+     Здесь только скачанное обновление: path_provider кладёт временные файлы в
+     cacheDir, а UpdateDownloader — в подпапку mitso-update. -->
+<paths>
+    <cache-path name="updates" path="mitso-update/"/>
+</paths>

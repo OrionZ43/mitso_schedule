@@ -12,12 +12,21 @@ import '../theme/app_state_layer.dart';
 /// (Anatomy → Icons).
 @immutable
 class M3NavigationDestination {
-  const M3NavigationDestination({required this.icon, required this.label});
+  const M3NavigationDestination({
+    required this.icon,
+    required this.label,
+    this.badgeLabel,
+  });
 
   final IconData icon;
 
   /// Подпись 1–2 слова. Она же — метка для screen reader.
   final String label;
+
+  /// Текст для screen reader, если на иконке точка непрочитанного (small
+  /// badge); `null` — точки нет. На выбранном пункте точка не показывается
+  /// (badges → Guidelines → With other components).
+  final String? badgeLabel;
 }
 
 /// Flexible navigation bar Material 3 Expressive с вертикальными пунктами.
@@ -180,6 +189,7 @@ class _M3NavigationItemState extends State<_M3NavigationItem>
     final ColorScheme colors = Theme.of(context).colorScheme;
     final TextTheme text = Theme.of(context).textTheme;
     final bool selected = widget.selected;
+    final String? badgeLabel = widget.destination.badgeLabel;
 
     // Иконка и подпись меняются без анимации: `NavigationItem` передаёт цвет
     // сразу, `StyledLabel(animateColor = false)`.
@@ -200,11 +210,18 @@ class _M3NavigationItemState extends State<_M3NavigationItem>
             clipBehavior: Clip.none,
             children: [
               _Indicator(progress: _progress, color: colors.secondaryContainer),
-              Icon(
-                widget.destination.icon,
-                size: M3NavigationBar.iconSize,
-                fill: selected ? 1 : 0,
-                color: iconColor,
+              // Small badge: `Badge` без подписи сажает точку 6dp так, что её
+              // нижний начальный угол отстоит от верхнего конечного угла
+              // иконки на 6×6dp, — как в спеке, потому что обёрнута сама
+              // иконка 24dp, а не зона нажатия.
+              Badge(
+                isLabelVisible: badgeLabel != null && !selected,
+                child: Icon(
+                  widget.destination.icon,
+                  size: M3NavigationBar.iconSize,
+                  fill: selected ? 1 : 0,
+                  color: iconColor,
+                ),
               ),
             ],
           ),
@@ -225,6 +242,8 @@ class _M3NavigationItemState extends State<_M3NavigationItem>
             context,
           ).tabLabel(tabIndex: widget.index + 1, tabCount: widget.count),
         ),
+        // Бейдж озвучивается после названия пункта (badges → Accessibility).
+        if (badgeLabel != null && !selected) Semantics(label: badgeLabel),
         const SizedBox(height: M3NavigationBar.itemVerticalPadding),
       ],
     );

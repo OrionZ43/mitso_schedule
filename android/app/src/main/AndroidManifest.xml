@@ -5,6 +5,9 @@
     <!-- Уведомление о долге по лицевому счёту: Android 13+ спрашивает
          разрешение, приложение просит его при включении настройки. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Приложение обновляет себя само: скачивает APK из своего релиза на
+         GitHub, проверяет подпись манифеста и открывает системный установщик. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Расписание"
         android:name="${applicationName}"
@@ -29,6 +32,17 @@
               android:resource="@style/NormalTheme"
               />
         </activity>
+        <!-- Скачанный APK обновления отдаётся установщику по content://:
+             file:// начиная с Android 7 приводит к FileUriExposedException. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
         <!-- Вариант значка «Печенька и шапка»: включается из настроек приложения. -->
         <activity-alias
             android:name=".MainActivityDefault"

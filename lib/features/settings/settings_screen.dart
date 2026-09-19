@@ -18,6 +18,7 @@ import '../../widgets/m3_switch.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
+import '../updater/update_section.dart';
 
 /// Настройки приложения: тема, цвета, лицевой счёт.
 class SettingsScreen extends ConsumerWidget {
@@ -138,6 +139,9 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ],
+                  const SectionHeader('О приложении'),
+                  const UpdateSection(),
+
                   const SizedBox(height: AppSpacing.space800),
                 ],
               ),

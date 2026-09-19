@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mitso_schedule/app.dart';
 import 'package:mitso_schedule/data/certificate_photos.dart';
 import 'package:mitso_schedule/features/absences/widgets/absence_donut.dart';
 import 'package:mitso_schedule/features/schedule/lesson_card.dart';
+import 'package:mitso_schedule/features/updater/update_provider.dart';
 import 'package:mitso_schedule/state/absences_controller.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
@@ -38,6 +40,7 @@ Future<FakeMitsoApi> pumpApp(
   FakeStudentApi? student,
   FakeBalanceAlerts? alerts,
   Map<String, Object> preferences = const {},
+  List<Override> updates = const [],
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
   // Medium Phone API 36: 1080x2400 при плотности 2.625.
@@ -69,6 +72,9 @@ Future<FakeMitsoApi> pumpApp(
           (ref) async => student ?? FakeStudentApi(),
         ),
         balanceAlertsProvider.overrideWithValue(alerts ?? FakeBalanceAlerts()),
+        // Версия читается плагином из платформы, которой в тестах нет.
+        appVersionProvider.overrideWith((ref) async => '1.0.0 (1)'),
+        ...updates,
       ],
       child: const ScheduleApp(),
     ),
