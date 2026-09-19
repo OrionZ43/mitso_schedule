@@ -66,9 +66,13 @@ final updateTargetProvider = FutureProvider<UpdateTarget>(
 
 /// Версия этой сборки для экрана «О приложении»: «1.0.0 (12)». В тестах
 /// переопределяется: `PackageInfo` ходит в платформу.
+///
+/// Номер сборки — без смещения по архитектуре, как в манифесте и в заметках к
+/// релизу: человеку не с чем сравнивать «2001».
 final appVersionProvider = FutureProvider<String>((ref) async {
   final PackageInfo info = await PackageInfo.fromPlatform();
-  return '${info.version} (${info.buildNumber})';
+  final int build = normalizeBuildNumber(int.tryParse(info.buildNumber) ?? 0);
+  return '${info.version} ($build)';
 }, retry: noRetry);
 
 /// Что сейчас делает обновление.
