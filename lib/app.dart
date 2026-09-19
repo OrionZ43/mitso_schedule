@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'data/models/group_ref.dart';
 import 'data/wear_sync.dart';
 import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
@@ -83,9 +82,9 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   }
 
   void _syncWatch(ScheduleState? schedule) {
-    final GroupRef? group = ref.read(selectedGroupProvider);
-    if (schedule == null || group == null) return;
-    ref.read(wearSyncProvider).push(group.groupName, schedule.weeks);
+    final ScheduleTarget? target = ref.read(scheduleTargetProvider);
+    if (schedule == null || target == null) return;
+    ref.read(wearSyncProvider).push(target.title, schedule.weeks);
   }
 
   @override

@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 enum LessonType {
   lecture('Лекция'),
   practice('Практика'),
-  lab('Лаб'),
+  lab('Лабораторная'),
   other('Занятие');
 
   const LessonType(this.label);
@@ -26,6 +26,7 @@ class Lesson {
     required this.type,
     required this.typeLabel,
     this.teacher,
+    this.group,
     this.room,
     this.subgroup,
   });
@@ -42,7 +43,14 @@ class Lesson {
   final String typeLabel;
 
   /// `Клименко Т. В.`; `null`, если на сайте не указан.
+  ///
+  /// В расписании преподавателя его имени в строке нет — там вместо него
+  /// стоит [group].
   final String? teacher;
+
+  /// `2343 МП` — группа, у которой идёт пара. Заполняется только в
+  /// расписании преподавателя; у студента вместо неё [teacher].
+  final String? group;
 
   /// `71`, `62 (к)`, `41-42`; `null`, если не указана.
   final String? room;
@@ -66,6 +74,7 @@ class Lesson {
     'type': type.name,
     'typeLabel': typeLabel,
     'teacher': teacher,
+    'group': group,
     'room': room,
     'subgroup': subgroup,
   };
@@ -77,6 +86,7 @@ class Lesson {
     type: LessonType.values.byName(json['type']! as String),
     typeLabel: json['typeLabel']! as String,
     teacher: json['teacher'] as String?,
+    group: json['group'] as String?,
     room: json['room'] as String?,
     subgroup: json['subgroup'] as int?,
   );

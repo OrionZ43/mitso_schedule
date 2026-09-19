@@ -169,4 +169,42 @@ void main() {
       );
     });
   });
+
+  group('расписание преподавателя', () {
+    final String teacherFixture = File(
+      'test/fixtures/teacher_schedule.html',
+    ).readAsStringSync();
+
+    late List<ScheduleWeek> weeks;
+
+    setUp(() => weeks = ScheduleParser.parse(teacherFixture, today: today));
+
+    test('недели и дни разбираются', () {
+      expect(weeks, hasLength(3));
+      expect(weeks.first.label, 'Текущая неделя');
+      expect(weeks.expand((w) => w.days), isNotEmpty);
+    });
+
+    test('вместо преподавателя в строке стоит группа', () {
+      final Lesson lesson = weeks
+          .expand((w) => w.days)
+          .expand((d) => d.lessons)
+          .first;
+
+      expect(lesson.group, isNotNull);
+      expect(lesson.teacher, isNull);
+      expect(lesson.room, isNotNull);
+      expect(lesson.title, isNotEmpty);
+    });
+
+    test('подгруппы помечены так же, как у студентов', () {
+      final Iterable<Lesson> lessons = weeks
+          .expand((w) => w.days)
+          .expand((d) => d.lessons);
+
+      // В расписании преподавателя подгруппа тоже пишется «2. Предмет».
+      expect(lessons.any((l) => l.subgroup != null), isTrue);
+      expect(lessons.every((l) => !l.title.startsWith('2.')), isTrue);
+    });
+  });
 }

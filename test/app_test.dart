@@ -294,10 +294,10 @@ void main() {
     tester,
   ) async {
     final FakeMitsoApi api = await pumpApp(tester, withGroup: false);
-    expect(find.text('Выберите группу'), findsOneWidget);
+    expect(find.text('Выберите расписание'), findsOneWidget);
     expect(api.scheduleRequests, 0);
 
-    await tester.tap(find.widgetWithText(M3Button, 'Выбрать группу'));
+    await tester.tap(find.widgetWithText(M3Button, 'Выбрать'));
     await settle(tester);
     await settle(tester);
     expect(find.text('Факультет'), findsOneWidget);
@@ -313,7 +313,8 @@ void main() {
       await settle(tester);
       await tester.tap(find.text(option));
       await settle(tester);
-      expect(find.text(nextStep), findsOneWidget);
+      // «Группа» есть и на переключателе режима — ищем заголовок шага.
+      expect(find.text(nextStep), findsWidgets);
     }
 
     await tester.ensureVisible(find.text('2423 УИР'));
@@ -326,7 +327,7 @@ void main() {
     expect(find.text('Веб-дизайн и шаблоны проектирования'), findsWidgets);
 
     final SharedPreferences preferences = await SharedPreferences.getInstance();
-    expect(preferences.getString('group.selected'), contains('2423 UIR'));
+    expect(preferences.getString('schedule.target'), contains('2423 UIR'));
   });
 
   testWidgets('сайт недоступен и кэша нет — ошибка с повтором', (tester) async {
@@ -607,6 +608,13 @@ void main() {
     await openTab(tester, 'Профиль');
     await settle(tester);
 
+    // Профиль длинный: список монтирует пункты по мере прокрутки.
+    await tester.scrollUntilVisible(
+      find.text('Дистанционное обучение'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
     expect(find.text('Дистанционное обучение'), findsOneWidget);
     expect(find.text('••••••••'), findsOneWidget);
     expect(find.text('12345678'), findsNothing);
@@ -618,12 +626,13 @@ void main() {
     expect(find.text('12345678'), findsOneWidget);
   });
 
-  testWidgets('счёт отключается из настроек', (tester) async {
+  testWidgets('счёт отключается в профиле', (tester) async {
     await pumpApp(
       tester,
       preferences: {'student.number': FakeStudentApi.number},
     );
-    await openSettings(tester);
+    await openTab(tester, 'Профиль');
+    await settle(tester);
 
     await tester.scrollUntilVisible(
       find.text('Отключить счёт'),
@@ -691,5 +700,53 @@ void main() {
     await tester.tap(find.text('Системная'));
     await tester.pump();
     expect(preferences.getBool('settings.dark'), isNull);
+  });
+
+  testWidgets('расписание преподавателя: выбор и карточки с группой', (
+    tester,
+  ) async {
+    await pumpApp(tester, withGroup: false);
+    await tester.tap(find.widgetWithText(M3Button, 'Выбрать'));
+    await settle(tester);
+    await settle(tester);
+
+    // Переключаемся на преподавателей и ищем по фамилии.
+    await tester.tap(find.text('Преподаватель'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Гардейчик С. М.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'Сысун');
+    await settle(tester);
+    expect(find.text('Гардейчик С. М.'), findsNothing);
+
+    await tester.tap(find.text('Сысун В. В.'));
+    await settle(tester);
+    await settle(tester);
+
+    // В шапке расписания — фамилия и уточнение, что это преподаватель.
+    expect(find.textContaining('Сысун В. В.'), findsWidgets);
+    expect(find.textContaining('преподаватель'), findsWidgets);
+
+    // На карточке пары вместо преподавателя стоит группа.
+    expect(find.textContaining('МП'), findsWidgets);
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('schedule.target'), contains('Сысун'));
+  });
+
+  testWidgets('у преподавателя в профиле нет лицевого счёта', (tester) async {
+    await pumpApp(
+      tester,
+      preferences: {
+        'student.number': FakeStudentApi.number,
+        'schedule.target': '{"kind":"teacher","name":"Сысун В. В."}',
+      },
+    );
+    await openTab(tester, 'Профиль');
+    await settle(tester);
+
+    expect(find.text('Преподаватель'), findsWidgets);
+    expect(find.text('Лицевой счёт'), findsNothing);
   });
 }

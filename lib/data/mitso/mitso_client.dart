@@ -40,6 +40,13 @@ abstract interface class MitsoApi {
     String courseId,
   );
   Future<List<ScheduleWeek>> groupSchedule(GroupRef group);
+
+  /// Все преподаватели сайта — список для выбора.
+  Future<List<String>> teachers();
+
+  /// Расписание преподавателя: те же недели, но в строках вместо имени
+  /// преподавателя стоит группа.
+  Future<List<ScheduleWeek>> teacherSchedule(String teacher);
 }
 
 /// Клиент открытого расписания на apps.mitso.by.
@@ -99,6 +106,7 @@ class MitsoClient implements MitsoApi {
   final Map<String, String> _cookies = {};
   String? _csrf;
   List<MitsoOption>? _faculties;
+  List<String>? _teachers;
 
   void close() => _client.close(force: true);
 
@@ -150,6 +158,55 @@ class MitsoClient implements MitsoApi {
     } on ScheduleParseException catch (e) {
       throw MitsoException(
         'Сайт вернул страницу без расписания. Возможно, группа больше не существует.',
+        cause: e,
+      );
+    }
+  }
+
+  /// Список преподавателей со страницы их расписания: 185 фамилий с
+  /// инициалами, они же — значения формы.
+  @override
+  Future<List<String>> teachers() async {
+    if (_teachers != null) return _teachers!;
+    await _ensureSession();
+
+    final (int status, String body) = await _request(
+      'GET',
+      '/schedule/teacher-schedule',
+      null,
+    );
+    _checked(status, body);
+
+    final document = html.parse(body);
+    _teachers = [
+      for (final option in document.querySelectorAll(
+        'select#teacher-id option',
+      ))
+        if ((option.attributes['value'] ?? '').isNotEmpty &&
+            // «_Вакансия» — не человек, а незанятая ставка в расписании.
+            !option.attributes['value']!.startsWith('_'))
+          option.attributes['value']!,
+    ];
+    if (_teachers!.isEmpty) {
+      throw const MitsoException('Сайт не отдал список преподавателей.');
+    }
+    return _teachers!;
+  }
+
+  /// Все доступные недели преподавателя (сайт отдаёт их одним ответом, как и
+  /// для группы).
+  @override
+  Future<List<ScheduleWeek>> teacherSchedule(String teacher) async {
+    final String body = await _post('teacher-schedule', {
+      'ScheduleSearch[teacher]': [teacher],
+      'ScheduleSearch[week]': ['0'],
+    });
+    try {
+      return ScheduleParser.parse(body, today: _clock());
+    } on ScheduleParseException catch (e) {
+      throw MitsoException(
+        'Сайт вернул страницу без расписания. Возможно, у преподавателя пока '
+        'нет занятий.',
         cause: e,
       );
     }

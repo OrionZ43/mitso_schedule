@@ -166,8 +166,8 @@ class _LessonBlock extends ConsumerWidget {
       return Align(
         alignment: AlignmentDirectional.centerStart,
         child: Text(
-          ref.watch(selectedGroupProvider) == null
-              ? 'Группа не выбрана'
+          ref.watch(scheduleTargetProvider) == null
+              ? 'Расписание не выбрано'
               : 'Пар больше нет',
           style: text.bodyMedium!.copyWith(color: colors.onSurfaceVariant),
         ),

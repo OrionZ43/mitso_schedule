@@ -9,17 +9,20 @@ import '../../state/mitso_providers.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_transitions.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/connected_button_group.dart';
 import '../../widgets/m3_bottom_sheet.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/segmented_list.dart';
 
-/// Выбор группы: факультет → форма обучения → курс → группа.
+/// Выбор расписания: группы (факультет → форма обучения → курс → группа) или
+/// преподавателя (поиск по списку сайта).
 ///
-/// Списки — те же, что в форме на apps.mitso.by, и загружаются по мере выбора.
+/// Списки — те же, что в формах на apps.mitso.by, и загружаются по мере
+/// выбора.
 ///
 /// Модальный нижний лист открывается на половину экрана и тянется до полного
-/// (bottom sheets → Guidelines → Visibility): списки групп длинные.
+/// (bottom sheets → Guidelines → Visibility): списки длинные.
 Future<void> showGroupPicker(BuildContext context) {
   return showM3ModalBottomSheet<void>(
     context: context,
@@ -27,6 +30,16 @@ Future<void> showGroupPicker(BuildContext context) {
     builder: (context, scrollController) =>
         _GroupPickerSheet(scrollController: scrollController),
   );
+}
+
+/// Чьё расписание выбирают.
+enum _Mode {
+  group('Группа'),
+  teacher('Преподаватель');
+
+  const _Mode(this.label);
+
+  final String label;
 }
 
 enum _Step {
@@ -51,9 +64,17 @@ class _GroupPickerSheet extends ConsumerStatefulWidget {
 }
 
 class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
+  late _Mode _mode = ref.read(scheduleTargetProvider) is TeacherTarget
+      ? _Mode.teacher
+      : _Mode.group;
+
   MitsoOption? _faculty;
   MitsoOption? _form;
   MitsoOption? _course;
+
+  /// Список преподавателей и строка поиска по нему.
+  Future<List<String>>? _teachers;
+  String _query = '';
 
   /// Последний переход был назад — для направления shared axis.
   bool _backward = false;
@@ -97,17 +118,19 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
   void _choose(MitsoOption option) {
     if (_step == _Step.group) {
       ref
-          .read(selectedGroupProvider.notifier)
+          .read(scheduleTargetProvider.notifier)
           .select(
-            GroupRef(
-              facultyId: _faculty!.id,
-              facultyName: _faculty!.name,
-              formId: _form!.id,
-              formName: _form!.name,
-              courseId: _course!.id,
-              courseName: _course!.name,
-              groupId: option.id,
-              groupName: option.name,
+            GroupTarget(
+              GroupRef(
+                facultyId: _faculty!.id,
+                facultyName: _faculty!.name,
+                formId: _form!.id,
+                formName: _form!.name,
+                courseId: _course!.id,
+                courseName: _course!.name,
+                groupId: option.id,
+                groupName: option.name,
+              ),
             ),
           );
       Navigator.of(context).pop();
@@ -143,49 +166,212 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
     });
   }
 
+  /// Выбранный преподаватель — его строка отмечена в списке.
+  void _chooseTeacher(String name) {
+    ref.read(scheduleTargetProvider.notifier).select(TeacherTarget(name));
+    Navigator.of(context).pop();
+  }
+
+  void _setMode(_Mode mode) {
+    if (mode == _mode) return;
+    setState(() {
+      _mode = mode;
+      // Список преподавателей грузится только когда он понадобился.
+      if (mode == _Mode.teacher) {
+        _teachers ??= Future<List<String>>(() async {
+          final MitsoApi api = await ref.read(mitsoApiProvider.future);
+          return api.teachers();
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final GroupRef? current = ref.watch(selectedGroupProvider);
+    final ScheduleTarget? current = ref.watch(scheduleTargetProvider);
+    final GroupRef? currentGroup = current is GroupTarget
+        ? current.group
+        : null;
 
     // Одна прокрутка на весь лист: шаги сменяются внутри неё, поэтому
     // контроллер листа всегда привязан к одному списку.
     return CustomScrollView(
       controller: widget.scrollController,
       slivers: [
+        // Два взаимоисключающих варианта — connected button group, как
+        // переключатель недели на расписании.
         SliverToBoxAdapter(
-          child: PageTransitionSwitcher(
-            duration: AppTransitions.sharedAxisDuration,
-            reverse: _backward,
-            layoutBuilder: (entries) =>
-                Stack(alignment: Alignment.topCenter, children: entries),
-            transitionBuilder: (child, animation, secondaryAnimation) =>
-                M3SharedAxisTransition(
-                  animation: animation,
-                  secondaryAnimation: secondaryAnimation,
-                  child: child,
-                ),
-            child: _StepPage(
-              key: ValueKey(_pageKey),
-              step: _step,
-              breadcrumb: [
-                _faculty?.name,
-                _form?.name,
-                _course?.name,
-              ].whereType<String>().join(' · '),
-              options: _options,
-              isCurrent: (option) =>
-                  _step == _Step.group &&
-                  current?.groupId == option.id &&
-                  current?.courseId == _course?.id,
-              onBack: _step == _Step.faculty ? null : _back,
-              onChoose: _choose,
-              onRetry: _retry,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space200,
+              0,
+              AppSpacing.space200,
+              AppSpacing.space150,
+            ),
+            child: ConnectedButtonGroup<_Mode>(
+              values: _Mode.values,
+              labelOf: (mode) => mode.label,
+              selected: _mode,
+              onSelected: _setMode,
             ),
           ),
         ),
+        if (_mode == _Mode.group)
+          SliverToBoxAdapter(
+            child: PageTransitionSwitcher(
+              duration: AppTransitions.sharedAxisDuration,
+              reverse: _backward,
+              layoutBuilder: (entries) =>
+                  Stack(alignment: Alignment.topCenter, children: entries),
+              transitionBuilder: (child, animation, secondaryAnimation) =>
+                  M3SharedAxisTransition(
+                    animation: animation,
+                    secondaryAnimation: secondaryAnimation,
+                    child: child,
+                  ),
+              child: _StepPage(
+                key: ValueKey(_pageKey),
+                step: _step,
+                breadcrumb: [
+                  _faculty?.name,
+                  _form?.name,
+                  _course?.name,
+                ].whereType<String>().join(' · '),
+                options: _options,
+                isCurrent: (option) =>
+                    _step == _Step.group &&
+                    currentGroup?.groupId == option.id &&
+                    currentGroup?.courseId == _course?.id,
+                onBack: _step == _Step.faculty ? null : _back,
+                onChoose: _choose,
+                onRetry: _retry,
+              ),
+            ),
+          )
+        else
+          ..._teacherSlivers(current),
       ],
     );
   }
+
+  /// Поиск и список преподавателей: имён под две сотни, без поиска искать
+  /// себя в них долго.
+  List<Widget> _teacherSlivers(ScheduleTarget? current) {
+    final String? selected = current is TeacherTarget ? current.name : null;
+
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space200,
+            0,
+            AppSpacing.space200,
+            AppSpacing.space150,
+          ),
+          child: TextField(
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'Фамилия',
+              prefixIcon: Icon(Symbols.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) => setState(() => _query = value.trim()),
+          ),
+        ),
+      ),
+      FutureBuilder<List<String>>(
+        future: _teachers,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return SliverToBoxAdapter(
+              child: _PickerMessage(
+                text: messageOf(snapshot.error!),
+                onRetry: () => setState(() => _teachers = null),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.space600),
+                child: Center(child: M3LoadingIndicator()),
+              ),
+            );
+          }
+
+          final String query = _query.toLowerCase();
+          final List<String> names = [
+            for (final String name in snapshot.data!)
+              if (query.isEmpty || name.toLowerCase().contains(query)) name,
+          ];
+          if (names.isEmpty) {
+            return const SliverToBoxAdapter(
+              child: _PickerMessage(text: 'Никого не нашлось'),
+            );
+          }
+
+          return SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space200,
+              0,
+              AppSpacing.space200,
+              AppSpacing.space400,
+            ),
+            sliver: SliverList.builder(
+              itemCount: names.length,
+              itemBuilder: (context, index) => SegmentedList(
+                children: [
+                  M3ListItem(
+                    headline: Text(names[index]),
+                    trailing: names[index] == selected
+                        ? const Icon(Symbols.check)
+                        : null,
+                    selected: names[index] == selected,
+                    onTap: () => _chooseTeacher(names[index]),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ];
+  }
+}
+
+/// Сообщение в листе: ошибка загрузки или пустой поиск.
+class _PickerMessage extends StatelessWidget {
+  const _PickerMessage({required this.text, this.onRetry});
+
+  final String text;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.space200,
+      vertical: AppSpacing.space400,
+    ),
+    child: Column(
+      children: [
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: context.text.bodyMedium!.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
+        ),
+        if (onRetry != null) ...[
+          const SizedBox(height: AppSpacing.space200),
+          M3Button(
+            onPressed: onRetry,
+            color: M3ButtonColor.tonal,
+            child: const Text('Повторить'),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 /// Один шаг выбора: заголовок и список вариантов.

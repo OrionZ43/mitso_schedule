@@ -40,35 +40,38 @@ final scheduleControllerProvider =
     );
 
 /// Загружает расписание: сначала сохранённое, затем свежее с сайта.
+///
+/// Чьё именно — решает [scheduleTargetProvider]: группа студента или
+/// преподаватель. У каждой цели свой кэш.
 class ScheduleController extends AsyncNotifier<ScheduleState?> {
-  static String _cacheKey(GroupRef group) =>
-      'schedule.cache.${group.facultyId}|${group.formId}|${group.courseId}|${group.groupId}';
+  static String _cacheKey(ScheduleTarget target) =>
+      'schedule.cache.${target.cacheKey}';
 
   @override
   Future<ScheduleState?> build() async {
-    final GroupRef? group = ref.watch(selectedGroupProvider);
-    if (group == null) return null;
+    final ScheduleTarget? target = ref.watch(scheduleTargetProvider);
+    if (target == null) return null;
 
-    final ScheduleState? cached = _readCache(group);
+    final ScheduleState? cached = _readCache(target);
     if (cached != null) {
       // Сохранённое показываем сразу, свежее подтягиваем в фоне.
       Future<void>(refresh);
       return cached;
     }
-    return _fetch(group);
+    return _fetch(target);
   }
 
   /// Обновление с сайта. При ошибке остаются прежние данные, а ошибка
   /// отмечается в [ScheduleState.refreshError].
   Future<void> refresh() async {
-    final GroupRef? group = ref.read(selectedGroupProvider);
-    if (group == null) return;
+    final ScheduleTarget? target = ref.read(scheduleTargetProvider);
+    if (target == null) return;
 
     try {
-      final ScheduleState fresh = await _fetch(group);
-      if (ref.read(selectedGroupProvider) == group) state = AsyncData(fresh);
+      final ScheduleState fresh = await _fetch(target);
+      if (ref.read(scheduleTargetProvider) == target) state = AsyncData(fresh);
     } on MitsoException catch (e, stack) {
-      if (ref.read(selectedGroupProvider) != group) return;
+      if (ref.read(scheduleTargetProvider) != target) return;
       final ScheduleState? current = state.value;
       state = current != null
           ? AsyncData(current.withRefreshError(e))
@@ -76,21 +79,24 @@ class ScheduleController extends AsyncNotifier<ScheduleState?> {
     }
   }
 
-  Future<ScheduleState> _fetch(GroupRef group) async {
+  Future<ScheduleState> _fetch(ScheduleTarget target) async {
     final MitsoApi api = await ref.read(mitsoApiProvider.future);
-    final List<ScheduleWeek> weeks = await api.groupSchedule(group);
+    final List<ScheduleWeek> weeks = switch (target) {
+      GroupTarget(:final GroupRef group) => await api.groupSchedule(group),
+      TeacherTarget(:final String name) => await api.teacherSchedule(name),
+    };
     final ScheduleState result = ScheduleState(
       weeks: weeks,
       fetchedAt: ref.read(clockProvider)(),
     );
-    _writeCache(group, result);
+    _writeCache(target, result);
     return result;
   }
 
-  ScheduleState? _readCache(GroupRef group) {
+  ScheduleState? _readCache(ScheduleTarget target) {
     final String? raw = ref
         .read(sharedPreferencesProvider)
-        .getString(_cacheKey(group));
+        .getString(_cacheKey(target));
     if (raw == null) return null;
     try {
       final Map<String, Object?> json = jsonDecode(raw) as Map<String, Object?>;
@@ -107,11 +113,11 @@ class ScheduleController extends AsyncNotifier<ScheduleState?> {
     }
   }
 
-  void _writeCache(GroupRef group, ScheduleState state) {
+  void _writeCache(ScheduleTarget target, ScheduleState state) {
     ref
         .read(sharedPreferencesProvider)
         .setString(
-          _cacheKey(group),
+          _cacheKey(target),
           jsonEncode({
             'fetchedAt': state.fetchedAt.toIso8601String(),
             'weeks': [for (final w in state.weeks) w.toJson()],

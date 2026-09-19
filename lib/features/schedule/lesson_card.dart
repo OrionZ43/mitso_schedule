@@ -207,11 +207,15 @@ class _CardContent extends StatelessWidget {
                       ),
                     ],
                     if (oneRow) ...[
-                      if (single.teacher != null) ...[
+                      // В расписании преподавателя вместо его имени стоит
+                      // группа — и значок другой.
+                      if (single.teacher != null || single.group != null) ...[
                         const SizedBox(height: 10),
                         _MetaRow(
-                          icon: Symbols.person,
-                          text: single.teacher!,
+                          icon: single.group != null
+                              ? Symbols.groups
+                              : Symbols.person,
+                          text: single.group ?? single.teacher!,
                           color: secondary,
                         ),
                       ],
@@ -557,7 +561,8 @@ class _SubgroupRows extends StatelessWidget {
                                     .copyWith(color: foreground),
                               ),
                             Text(
-                              slot.lessons[i].teacher ??
+                              slot.lessons[i].group ??
+                                  slot.lessons[i].teacher ??
                                   'Преподаватель не указан',
                               style: context.text.bodyMedium!.copyWith(
                                 color: foreground,

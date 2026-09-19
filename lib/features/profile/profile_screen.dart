@@ -5,16 +5,20 @@ import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app_platform.dart';
+import '../../data/balance_alerts.dart';
+import '../../data/balance_background.dart';
 import '../../data/mitso/mitso_client.dart';
-import '../../data/models/group_ref.dart';
 import '../../data/models/student_account.dart';
 import '../../state/mitso_providers.dart';
+import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/m3_loading_indicator.dart';
+import '../../widgets/m3_switch.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import '../group_picker/group_picker_sheet.dart';
@@ -51,13 +55,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  /// Метка переключателя для screen reader.
+  String _alertsSemantics(Settings settings) {
+    final String state = settings.balanceAlerts ? 'включено' : 'выключено';
+    return 'Сообщать о задолженности, $state';
+  }
+
+  /// Уведомления требуют разрешения Android 13+; без него переключатель
+  /// остаётся выключенным.
+  Future<void> _setAlerts(bool value) async {
+    if (value && !await BalanceAlerts.requestPermission()) return;
+    ref.read(settingsControllerProvider.notifier).setBalanceAlerts(value);
+    await BalanceBackground.sync(enabled: value);
+  }
+
+  /// Отключение счёта стирает сохранённые данные — спрашиваем подтверждение
+  /// (dialogs → Usage: подтверждение действия, которое трудно отменить).
+  Future<void> _confirmUnlink() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Symbols.link_off),
+        title: const Text('Отключить лицевой счёт?'),
+        content: const Text(
+          'Баланс и доступ к СДО пропадут из профиля. Счёт можно подключить '
+          'снова по номеру.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Отключить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) {
+      await ref.read(studentControllerProvider.notifier).unlink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final Settings settings = ref.watch(settingsControllerProvider);
     final AsyncValue<StudentAccount?> student = ref.watch(
       studentControllerProvider,
     );
     final StudentAccount? account = student.value;
-    final GroupRef? group = ref.watch(selectedGroupProvider);
+    final ScheduleTarget? target = ref.watch(scheduleTargetProvider);
+    // Лицевой счёт — студенческий: преподавателю он ни к чему.
+    final bool isStudent = target is! TeacherTarget;
     final bool hasUpdate = ref.watch(updateBadgeProvider);
     final double margin = AppSpacing.screenMargin(context);
 
@@ -92,16 +142,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: EdgeInsets.symmetric(horizontal: margin),
             sliver: SliverList.list(
               children: [
-                // Группа — пункт списка с одним действием: открыть выбор.
+                // Чьё расписание показывает приложение — первым делом.
+                const SectionHeader('Расписание'),
                 SegmentedList(
                   children: [
                     M3ListItem(
-                      leading: const _Avatar(icon: Symbols.school),
-                      headline: Text(group?.groupName ?? 'Группа не выбрана'),
+                      leading: _Avatar(
+                        icon: target is TeacherTarget
+                            ? Symbols.co_present
+                            : Symbols.school,
+                      ),
+                      overline: target == null
+                          ? null
+                          : Text(
+                              target is TeacherTarget
+                                  ? 'Преподаватель'
+                                  : 'Группа',
+                            ),
+                      headline: Text(target?.title ?? 'Не выбрано'),
                       supporting: Text(
-                        group == null
-                            ? 'Расписание загружается с apps.mitso.by'
-                            : group.details,
+                        target is GroupTarget
+                            ? target.group.details
+                            : 'Расписание с apps.mitso.by',
                       ),
                       trailing: const Icon(Symbols.chevron_right),
                       onTap: () => showGroupPicker(context),
@@ -109,31 +171,64 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
 
-                const SectionHeader('Лицевой счёт'),
-                if (account == null)
-                  _LinkCard(loading: student.isLoading, error: student.error)
-                else ...[
-                  SegmentedList(
-                    children: [
-                      M3ListItem(
-                        leading: const _Avatar(icon: Symbols.person),
-                        overline: Text('Счёт № ${account.number}'),
-                        headline: Text(account.fullName),
-                        supporting: const Text('Данные с student.mitso.by'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space150),
-                  _BalanceCard(
-                    account: account,
-                    refreshing: _refreshing,
-                    onRefresh: _refresh,
-                  ),
-                ],
+                if (isStudent) ...[
+                  const SectionHeader('Лицевой счёт'),
+                  if (account == null)
+                    _LinkCard(loading: student.isLoading, error: student.error)
+                  else ...[
+                    SegmentedList(
+                      children: [
+                        M3ListItem(
+                          leading: const _Avatar(icon: Symbols.person),
+                          overline: Text('Счёт № ${account.number}'),
+                          headline: Text(account.fullName),
+                          supporting: const Text('Данные с student.mitso.by'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space150),
+                    _BalanceCard(
+                      account: account,
+                      refreshing: _refreshing,
+                      onRefresh: _refresh,
+                    ),
+                    const SizedBox(height: AppSpacing.space150),
+                    // Всё про счёт в одном месте, а не половина в настройках.
+                    SegmentedList(
+                      children: [
+                        if (AppPlatform.isPhone)
+                          M3ListItem(
+                            leading: const Icon(Symbols.notifications),
+                            headline: const Text('Сообщать о задолженности'),
+                            supporting: const Text(
+                              'Приложение проверяет счёт в фоне и присылает '
+                              'уведомление, когда появляется долг',
+                            ),
+                            trailing: ExcludeSemantics(
+                              child: M3Switch(
+                                value: settings.balanceAlerts,
+                                onChanged: _setAlerts,
+                              ),
+                            ),
+                            onTap: () => _setAlerts(!settings.balanceAlerts),
+                            semanticsLabel: _alertsSemantics(settings),
+                          ),
+                        M3ListItem(
+                          leading: const Icon(Symbols.link_off),
+                          headline: const Text('Отключить счёт'),
+                          supporting: const Text(
+                            'Баланс и доступ к СДО будут стёрты',
+                          ),
+                          onTap: _confirmUnlink,
+                        ),
+                      ],
+                    ),
+                  ],
 
-                if (account?.moodle != null) ...[
-                  const SectionHeader('Дистанционное обучение'),
-                  _MoodleCard(moodle: account!.moodle!),
+                  if (account?.moodle != null) ...[
+                    const SectionHeader('Дистанционное обучение'),
+                    _MoodleCard(moodle: account!.moodle!),
+                  ],
                 ],
                 const SizedBox(height: AppSpacing.space800),
               ],

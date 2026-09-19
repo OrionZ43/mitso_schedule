@@ -14,7 +14,8 @@ class ScheduleParseException implements Exception {
   String toString() => 'ScheduleParseException: $message';
 }
 
-/// Разбор ответа `POST /frontend/web/schedule/group-schedule` на apps.mitso.by.
+/// Разбор ответа `POST /frontend/web/schedule/group-schedule` и
+/// `…/teacher-schedule` на apps.mitso.by.
 ///
 /// Разметка ответа:
 /// ```html
@@ -77,10 +78,17 @@ abstract final class ScheduleParser {
       final List<Element> cells = row.querySelectorAll('td');
       if (cells.length < 2) continue;
 
+      // У студента три колонки: время, дисциплина с преподавателем,
+      // аудитория. У преподавателя — четыре: между дисциплиной и аудиторией
+      // стоит группа.
+      final bool byTeacher = cells.length > 3;
       final Lesson? lesson = parseRow(
         time: cells[0].text,
         description: cells[1].text,
-        room: cells.length > 2 ? cells[2].text : '',
+        group: byTeacher ? cells[2].text : '',
+        room: byTeacher
+            ? cells[3].text
+            : (cells.length > 2 ? cells[2].text : ''),
       );
       if (lesson != null) lessons.add(lesson);
     }
@@ -92,6 +100,7 @@ abstract final class ScheduleParser {
     required String time,
     required String description,
     required String room,
+    String group = '',
   }) {
     final String text = _clean(description);
     if (text.isEmpty || text == '(нет занятий)') return null;
@@ -110,6 +119,7 @@ abstract final class ScheduleParser {
 
     final (LessonType type, String typeLabel) = parseType(rawType);
     final String cleanRoom = _clean(room);
+    final String cleanGroup = _clean(group);
 
     return Lesson(
       start: start,
@@ -118,6 +128,7 @@ abstract final class ScheduleParser {
       type: type,
       typeLabel: typeLabel,
       teacher: teacher.isEmpty ? null : teacher,
+      group: cleanGroup.isEmpty ? null : cleanGroup,
       room: cleanRoom.isEmpty ? null : cleanRoom,
       subgroup: subgroup,
     );

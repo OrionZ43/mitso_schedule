@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_platform.dart';
-import '../../data/balance_alerts.dart';
 import '../../data/wear_sync.dart';
-import '../../data/balance_background.dart';
-import '../../data/models/student_account.dart';
 import '../../state/app_icon_controller.dart';
 import '../../state/settings_controller.dart';
-import '../../state/student_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/connected_button_group.dart';
@@ -23,7 +20,10 @@ import '../../widgets/segmented_list.dart';
 import '../updater/update_section.dart';
 import '../widget_mode/app_window.dart';
 
-/// Настройки приложения: тема, цвета, лицевой счёт.
+/// Настройки приложения: вид, устройства рядом и сведения о приложении.
+///
+/// Всё, что относится к лицевому счёту, живёт в профиле — там же, где
+/// сам счёт.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -33,7 +33,6 @@ class SettingsScreen extends ConsumerWidget {
     final SettingsController controller = ref.read(
       settingsControllerProvider.notifier,
     );
-    final StudentAccount? account = ref.watch(studentControllerProvider).value;
     final bool autostart = ref.watch(autostartProvider).value ?? false;
     final List<String> watches =
         ref.watch(connectedWatchesProvider).value ?? const <String>[];
@@ -56,9 +55,10 @@ class SettingsScreen extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: margin),
               sliver: SliverList.list(
                 children: [
+                  // ─── Вид: всё, что меняет внешность приложения.
+                  const SectionHeader('Вид'),
                   // Три взаимоисключающих варианта — connected button group,
                   // а не переключатель (switch → Guidelines → Usage).
-                  const SectionHeader('Тема'),
                   ConnectedButtonGroup<ThemeMode>(
                     values: const [
                       ThemeMode.system,
@@ -73,8 +73,7 @@ class SettingsScreen extends ConsumerWidget {
                     selected: settings.themeMode,
                     onSelected: controller.setThemeMode,
                   ),
-
-                  const SectionHeader('Цвета'),
+                  const SizedBox(height: AppSpacing.space150),
                   SegmentedList(
                     children: [
                       // Строка списка с переключателем: нажатие по всей
@@ -102,119 +101,71 @@ class SettingsScreen extends ConsumerWidget {
                     enabled: !settings.dynamicColor,
                     onSelected: controller.setPalette,
                   ),
-
                   // Значок меняется переключением activity-alias — это есть
                   // только в Android.
-                  if (AppPlatform.isPhone) ...[
-                    const SectionHeader('Значок приложения'),
-                    const _AppIconPicker(),
-                  ],
+                  if (AppPlatform.isPhone) const _AppIconPicker(),
 
-                  if (account != null) ...[
-                    const SectionHeader('Лицевой счёт'),
+                  // ─── Устройства: это окно, компьютер и часы рядом.
+                  if (AppPlatform.isDesktop || watches.isNotEmpty) ...[
+                    const SectionHeader('Устройства'),
                     SegmentedList(
                       children: [
-                        if (AppPlatform.isPhone)
+                        if (AppPlatform.isDesktop) ...[
                           M3ListItem(
-                            leading: const Icon(Symbols.notifications),
-                            headline: const Text('Сообщать о задолженности'),
+                            leading: const Icon(Symbols.picture_in_picture),
+                            headline: const Text('Компактное окно'),
                             supporting: const Text(
-                              'Приложение проверяет счёт в фоне и присылает '
-                              'уведомление, когда появляется долг',
+                              'Часы и ближайшая пара в углу экрана, поверх '
+                              'других окон',
+                            ),
+                            trailing: const Icon(Symbols.chevron_right),
+                            onTap: () {
+                              ref.read(widgetModeProvider.notifier).set(true);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                          M3ListItem(
+                            leading: const Icon(Symbols.rocket_launch),
+                            headline: const Text('Запускать вместе с Windows'),
+                            supporting: const Text(
+                              'При входе в систему приложение открывается '
+                              'компактным окном',
                             ),
                             trailing: ExcludeSemantics(
                               child: M3Switch(
-                                value: settings.balanceAlerts,
-                                onChanged: (value) =>
-                                    _setAlerts(ref, controller, value),
+                                value: autostart,
+                                onChanged: (value) => ref
+                                    .read(autostartProvider.notifier)
+                                    .set(value),
                               ),
                             ),
-                            onTap: () => _setAlerts(
-                              ref,
-                              controller,
-                              !settings.balanceAlerts,
-                            ),
+                            onTap: () => ref
+                                .read(autostartProvider.notifier)
+                                .set(!autostart),
                             semanticsLabel:
-                                'Сообщать о задолженности, '
-                                '${settings.balanceAlerts ? 'включено' : 'выключено'}',
+                                'Запускать вместе с Windows, '
+                                '${autostart ? 'включено' : 'выключено'}',
                           ),
-                        M3ListItem(
-                          leading: const Icon(Symbols.link_off),
-                          headline: const Text('Отключить счёт'),
-                          supporting: Text(
-                            'Счёт № ${account.number}. Баланс и доступ к СДО '
-                            'будут стёрты',
-                          ),
-                          onTap: () => _confirmUnlink(context, ref),
-                        ),
-                      ],
-                    ),
-                  ],
-                  // Часы показываются, только когда они рядом: без них
-                  // раздел ни о чём.
-                  if (watches.isNotEmpty) ...[
-                    const SectionHeader('Часы'),
-                    SegmentedList(
-                      children: [
-                        M3ListItem(
-                          leading: const Icon(Symbols.watch),
-                          headline: Text(watches.join(', ')),
-                          supporting: const Text(
-                            'Расписание уходит на часы само, как только '
-                            'обновится на телефоне',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  // Окно есть только на компьютере.
-                  if (AppPlatform.isDesktop) ...[
-                    const SectionHeader('Окно'),
-                    SegmentedList(
-                      children: [
-                        M3ListItem(
-                          leading: const Icon(Symbols.picture_in_picture),
-                          headline: const Text('Компактное окно'),
-                          supporting: const Text(
-                            'Часы и ближайшая пара в углу экрана, поверх '
-                            'других окон',
-                          ),
-                          trailing: const Icon(Symbols.chevron_right),
-                          onTap: () {
-                            ref.read(widgetModeProvider.notifier).set(true);
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        M3ListItem(
-                          leading: const Icon(Symbols.rocket_launch),
-                          headline: const Text('Запускать вместе с Windows'),
-                          supporting: const Text(
-                            'При входе в систему приложение открывается '
-                            'компактным окном',
-                          ),
-                          trailing: ExcludeSemantics(
-                            child: M3Switch(
-                              value: autostart,
-                              onChanged: (value) => ref
-                                  .read(autostartProvider.notifier)
-                                  .set(value),
+                        ],
+                        // Часы показываются, только когда они рядом.
+                        for (final String watch in watches)
+                          M3ListItem(
+                            leading: const Icon(Symbols.watch),
+                            headline: Text(watch),
+                            supporting: const Text(
+                              'Расписание уходит на часы само, как только '
+                              'обновится на телефоне',
                             ),
                           ),
-                          onTap: () => ref
-                              .read(autostartProvider.notifier)
-                              .set(!autostart),
-                          semanticsLabel:
-                              'Запускать вместе с Windows, '
-                              '${autostart ? 'включено' : 'выключено'}',
-                        ),
                       ],
                     ),
                   ],
 
+                  // ─── О приложении: версия, обновления и кто сделал.
                   const SectionHeader('О приложении'),
                   const UpdateSection(),
-
+                  const SizedBox(height: AppSpacing.space300),
+                  const _StudioSignature(),
                   const SizedBox(height: AppSpacing.space800),
                 ],
               ),
@@ -223,47 +174,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  /// Уведомления требуют разрешения Android 13+; без него переключатель
-  /// остаётся выключенным.
-  Future<void> _setAlerts(
-    WidgetRef ref,
-    SettingsController controller,
-    bool value,
-  ) async {
-    if (value && !await BalanceAlerts.requestPermission()) return;
-    controller.setBalanceAlerts(value);
-    await BalanceBackground.sync(enabled: value);
-  }
-
-  /// Отключение счёта стирает сохранённые данные — спрашиваем подтверждение
-  /// (dialogs → Usage: подтверждение действия, которое трудно отменить).
-  Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Symbols.link_off),
-        title: const Text('Отключить лицевой счёт?'),
-        content: const Text(
-          'Баланс и доступ к СДО пропадут из профиля. Счёт можно подключить '
-          'снова по номеру.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Отключить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) {
-      await ref.read(studentControllerProvider.notifier).unlink();
-    }
   }
 }
 
@@ -303,10 +213,17 @@ class _AppIconPickerState extends ConsumerState<_AppIconPicker> {
     final ColorScheme colors = context.colors;
 
     return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.space150),
+      padding: const EdgeInsets.only(top: AppSpacing.space200),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Значок приложения',
+            style: context.text.labelLarge!.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space150),
           Wrap(
             spacing: AppSpacing.space100,
             runSpacing: AppSpacing.space150,
@@ -427,4 +344,21 @@ class _PalettePicker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Подпись внизу настроек: нажатие открывает сайт студии.
+class _StudioSignature extends StatelessWidget {
+  const _StudioSignature();
+
+  static final Uri _site = Uri.parse('https://z43-studios.vercel.app/');
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: M3Button(
+      onPressed: () => launchUrl(_site, mode: LaunchMode.externalApplication),
+      color: M3ButtonColor.text,
+      icon: const Icon(Symbols.favorite, fill: 1),
+      child: const Text('Сделано в Z43 Studios'),
+    ),
+  );
 }

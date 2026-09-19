@@ -36,10 +36,10 @@ void main() {
 
       // Значок переключается activity-alias'ами — это только Android.
       expect(find.text('Значок приложения'), findsNothing);
-      // Остальные настройки на месте.
-      expect(find.text('Тема'), findsOneWidget);
+      // Разделы настроек на месте.
+      expect(find.text('Вид'), findsOneWidget);
       expect(find.text('Динамические цвета'), findsOneWidget);
-      expect(find.text('О приложении'), findsOneWidget);
+      expect(find.text('Устройства'), findsOneWidget);
     });
   });
 

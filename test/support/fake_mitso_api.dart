@@ -60,6 +60,28 @@ class FakeMitsoApi implements MitsoApi {
     MitsoOption(id: '2423 UIR', name: '2423 УИР'),
   ];
 
+  /// Преподаватели сайта — короткий список для выбора в тестах.
+  static const List<String> fakeTeachers = [
+    'Гардейчик С. М.',
+    'Калинин М. А.',
+    'Сысун В. В.',
+  ];
+
+  @override
+  Future<List<String>> teachers() async => fakeTeachers;
+
+  @override
+  Future<List<ScheduleWeek>> teacherSchedule(String teacher) async {
+    scheduleRequests++;
+    if (failSchedule) {
+      throw const MitsoException('Нет соединения с сайтом расписания.');
+    }
+    return ScheduleParser.parse(
+      File('test/fixtures/teacher_schedule.html').readAsStringSync(),
+      today: fakeNow,
+    );
+  }
+
   @override
   Future<List<ScheduleWeek>> groupSchedule(GroupRef group) async {
     scheduleRequests++;

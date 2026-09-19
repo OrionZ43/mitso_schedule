@@ -6,7 +6,6 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../app_platform.dart';
 import '../../data/mitso/mitso_client.dart';
-import '../../data/models/group_ref.dart';
 import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
@@ -79,7 +78,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         _showRefreshError(state);
       }
     });
-    final GroupRef? group = ref.watch(selectedGroupProvider);
+    final ScheduleTarget? target = ref.watch(scheduleTargetProvider);
     final AsyncValue<ScheduleState?> schedule = ref.watch(
       scheduleControllerProvider,
     );
@@ -87,17 +86,18 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final ScheduleState? data = schedule.value;
 
     final List<Widget> body;
-    if (group == null) {
+    if (target == null) {
       body = [
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyState(
-            title: 'Выберите группу',
+            title: 'Выберите расписание',
             description:
-                'Расписание загружается с сайта МИТСО — apps.mitso.by.',
+                'Своей группы или преподавателя — с сайта МИТСО, '
+                'apps.mitso.by.',
             action: M3Button(
               onPressed: () => showGroupPicker(context),
-              child: const Text('Выбрать группу'),
+              child: const Text('Выбрать'),
             ),
           ),
         ),
@@ -134,7 +134,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       ];
     }
 
-    final bool hasSubtitle = group != null;
+    final bool hasSubtitle = target != null;
     return M3PullToRefresh(
       onRefresh: ref.read(scheduleControllerProvider.notifier).refresh,
       isRefreshing: _refreshingByButton,
@@ -152,15 +152,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           slivers: [
             SliverMediumFlexibleAppBar(
               title: 'Расписание',
-              subtitle: group == null
-                  ? null
-                  : '${group.groupName} · ${group.courseName}',
+              subtitle: target?.appBarSubtitle,
               actions: [
                 if (data != null && data.days.isNotEmpty)
                   ScheduleSearchButton(days: data.days),
                 // Альтернатива жесту pull-to-refresh — гайдлайн loading
                 // indicator, Accessibility.
-                if (group != null)
+                if (target != null)
                   M3IconButton(
                     onPressed: _refreshingByButton ? null : _refreshByButton,
                     icon: const Icon(Symbols.refresh),
@@ -181,7 +179,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   onPressed: () => showGroupPicker(context),
                   icon: const Icon(Symbols.groups, fill: 1),
                   color: M3IconButtonColor.tonal,
-                  tooltip: group == null ? 'Выбрать группу' : 'Сменить группу',
+                  tooltip: target == null
+                      ? 'Выбрать расписание'
+                      : 'Сменить расписание',
                 ),
               ],
             ),
