@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/models/group_ref.dart';
+import 'data/wear_sync.dart';
 import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/widget_mode/app_window.dart';
 import 'features/widget_mode/compact_screen.dart';
 import 'state/mitso_providers.dart';
+import 'state/schedule_controller.dart';
 import 'state/settings_controller.dart';
 import 'state/student_controller.dart';
 import 'theme/app_color_schemes.dart';
@@ -69,6 +72,20 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Часы получают расписание при каждом его изменении — и сразу то, что
+    // уже загружено.
+    ref.listenManual<AsyncValue<ScheduleState?>>(
+      scheduleControllerProvider,
+      (AsyncValue<ScheduleState?>? previous, AsyncValue<ScheduleState?> next) =>
+          _syncWatch(next.value),
+      fireImmediately: true,
+    );
+  }
+
+  void _syncWatch(ScheduleState? schedule) {
+    final GroupRef? group = ref.read(selectedGroupProvider);
+    if (schedule == null || group == null) return;
+    ref.read(wearSyncProvider).push(group.groupName, schedule.weeks);
   }
 
   @override

@@ -64,6 +64,12 @@ flutter build windows --release
 powershell -ExecutionPolicy Bypass -File tool/build_windows_installer.ps1  # нужен Inno Setup 6
 ```
 
+Трогали часы (`android/wear/`, `WearSync.kt`, `lib/data/wear_sync.dart`):
+
+```bash
+cd android && ./gradlew :wear:assembleRelease
+```
+
 На телефон ставить release: debug-сборка тормозит сама по себе, по ней о плавности не судить.
 После изменений анимаций и списков — `flutter test test/perf_probe.dart` (перестройки и
 отрисовки за кадр, см. README → «Производительность»).

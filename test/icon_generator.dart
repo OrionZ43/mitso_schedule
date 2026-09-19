@@ -419,6 +419,23 @@ class Logo {
     _background(c, primary);
     foreground(c, size);
   }
+
+  /// Круглый значок — для часов: у них маска круглая, а адаптивную иконку
+  /// понимают не все лаунчеры Wear OS.
+  void round(Canvas c, Size size) {
+    c.save();
+    c.clipPath(
+      Path()..addOval(
+        Rect.fromCircle(
+          center: const Offset(canvas / 2, canvas / 2),
+          radius: visible / 2,
+        ),
+      ),
+    );
+    _background(c, primary);
+    foreground(c, size);
+    c.restore();
+  }
 }
 
 Rect get _shapeRect => Rect.fromCenter(
@@ -738,6 +755,40 @@ void main() {
 
     expect(
       File('$res/mipmap-xxxhdpi/ic_launcher_foreground.png').existsSync(),
+      isTrue,
+    );
+  });
+
+  testWidgets('ресурсы значка для часов', (tester) async {
+    // У часов свой модуль и свои ресурсы: делиться папкой res модули не
+    // умеют. Значок тот же, что у телефона по умолчанию.
+    const String res = 'android/wear/src/main/res';
+    final Logo logo = logos.first;
+    for (final MapEntry<String, double> density in densities.entries) {
+      final String dir = '$res/mipmap-${density.key}';
+      await _writePng(
+        '$dir/ic_launcher_foreground.png',
+        logo.foreground,
+        tester,
+        size: 108 * density.value,
+      );
+      // Запасной круглый значок: маска часов круглая.
+      await _writePng(
+        '$dir/ic_launcher.png',
+        logo.round,
+        tester,
+        size: 48 * density.value,
+      );
+      await _writePng(
+        '$dir/ic_launcher_round.png',
+        logo.round,
+        tester,
+        size: 48 * density.value,
+      );
+    }
+
+    expect(
+      File('$res/mipmap-xxxhdpi/ic_launcher_round.png').existsSync(),
       isTrue,
     );
   });

@@ -40,6 +40,24 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mitso/wear")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "watches" -> WearSync.connectedWatches(this) { names ->
+                        result.success(names)
+                    }
+                    "sync" -> {
+                        val payload = call.argument<String>("payload")
+                        if (payload == null) {
+                            result.error("no_payload", "Нечего отправлять", null)
+                        } else {
+                            result.success(WearSync.push(this, payload))
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mitso/updates")
             .setMethodCallHandler { call, result ->
                 when (call.method) {

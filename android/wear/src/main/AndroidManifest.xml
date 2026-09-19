@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="android.hardware.type.watch"/>
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="false"/>
+
+        <!-- Приложение ставится на часы само по себе; телефонное нужно только
+             как источник расписания, своей сети у часов нет. -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true"/>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- Расписание приходит с телефона, даже когда приложение закрыто:
+             плитка должна показывать свежие пары. -->
+        <service
+            android:name=".ScheduleListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/mitso/schedule"/>
+            </intent-filter>
+        </service>
+
+        <!-- Плитка «Ближайшая пара»: добавляется свайпом по циферблату. -->
+        <service
+            android:name=".ScheduleTileService"
+            android:exported="true"
+            android:label="@string/tile_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER"/>
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@mipmap/ic_launcher"/>
+        </service>
+    </application>
+</manifest>

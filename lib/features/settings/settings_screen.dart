@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../app_platform.dart';
 import '../../data/balance_alerts.dart';
+import '../../data/wear_sync.dart';
 import '../../data/balance_background.dart';
 import '../../data/models/student_account.dart';
 import '../../state/app_icon_controller.dart';
@@ -34,6 +35,8 @@ class SettingsScreen extends ConsumerWidget {
     );
     final StudentAccount? account = ref.watch(studentControllerProvider).value;
     final bool autostart = ref.watch(autostartProvider).value ?? false;
+    final List<String> watches =
+        ref.watch(connectedWatchesProvider).value ?? const <String>[];
     final double margin = AppSpacing.screenMargin(context);
 
     return Scaffold(
@@ -147,6 +150,24 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ],
+                  // Часы показываются, только когда они рядом: без них
+                  // раздел ни о чём.
+                  if (watches.isNotEmpty) ...[
+                    const SectionHeader('Часы'),
+                    SegmentedList(
+                      children: [
+                        M3ListItem(
+                          leading: const Icon(Symbols.watch),
+                          headline: Text(watches.join(', ')),
+                          supporting: const Text(
+                            'Расписание уходит на часы само, как только '
+                            'обновится на телефоне',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   // Окно есть только на компьютере.
                   if (AppPlatform.isDesktop) ...[
                     const SectionHeader('Окно'),
