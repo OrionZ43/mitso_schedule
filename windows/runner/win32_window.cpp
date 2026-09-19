@@ -197,6 +197,16 @@ Win32Window::MessageHandler(HWND hwnd,
 
       return 0;
     }
+    case WM_GETMINMAXINFO: {
+      // Ниже этого размера телефонная раскладка ломается: навигация и
+      // карточки не помещаются.
+      auto* info = reinterpret_cast<MINMAXINFO*>(lparam);
+      const double scale_factor = static_cast<double>(FlutterDesktopGetDpiForHWND(hwnd)) / 96.0;
+      info->ptMinTrackSize.x = Scale(360, scale_factor);
+      info->ptMinTrackSize.y = Scale(600, scale_factor);
+      return 0;
+    }
+
     case WM_SIZE: {
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {

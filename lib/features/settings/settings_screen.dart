@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../app_platform.dart';
 import '../../data/balance_alerts.dart';
 import '../../data/balance_background.dart';
 import '../../data/models/student_account.dart';
@@ -97,42 +98,47 @@ class SettingsScreen extends ConsumerWidget {
                     onSelected: controller.setPalette,
                   ),
 
-                  const SectionHeader('Значок приложения'),
-                  const _AppIconPicker(),
+                  // Значок меняется переключением activity-alias — это есть
+                  // только в Android.
+                  if (AppPlatform.isPhone) ...[
+                    const SectionHeader('Значок приложения'),
+                    const _AppIconPicker(),
+                  ],
 
                   if (account != null) ...[
                     const SectionHeader('Лицевой счёт'),
                     SegmentedList(
                       children: [
-                        M3ListItem(
-                          leading: const Icon(Symbols.notifications),
-                          headline: const Text('Сообщать о задолженности'),
-                          supporting: const Text(
-                            'Приложение проверяет счёт в фоне и присылает '
-                            'уведомление, когда появляется долг',
-                          ),
-                          trailing: ExcludeSemantics(
-                            child: M3Switch(
-                              value: settings.balanceAlerts,
-                              onChanged: (value) =>
-                                  _setAlerts(ref, controller, value),
+                        if (AppPlatform.isPhone)
+                          M3ListItem(
+                            leading: const Icon(Symbols.notifications),
+                            headline: const Text('Сообщать о задолженности'),
+                            supporting: const Text(
+                              'Приложение проверяет счёт в фоне и присылает '
+                              'уведомление, когда появляется долг',
                             ),
+                            trailing: ExcludeSemantics(
+                              child: M3Switch(
+                                value: settings.balanceAlerts,
+                                onChanged: (value) =>
+                                    _setAlerts(ref, controller, value),
+                              ),
+                            ),
+                            onTap: () => _setAlerts(
+                              ref,
+                              controller,
+                              !settings.balanceAlerts,
+                            ),
+                            semanticsLabel:
+                                'Сообщать о задолженности, '
+                                '${settings.balanceAlerts ? 'включено' : 'выключено'}',
                           ),
-                          onTap: () => _setAlerts(
-                            ref,
-                            controller,
-                            !settings.balanceAlerts,
-                          ),
-                          semanticsLabel:
-                              'Сообщать о задолженности, '
-                              '${settings.balanceAlerts ? 'включено' : 'выключено'}',
-                        ),
                         M3ListItem(
                           leading: const Icon(Symbols.link_off),
                           headline: const Text('Отключить счёт'),
                           supporting: Text(
                             'Счёт № ${account.number}. Баланс и доступ к СДО '
-                            'будут стёрты с телефона',
+                            'будут стёрты',
                           ),
                           onTap: () => _confirmUnlink(context, ref),
                         ),

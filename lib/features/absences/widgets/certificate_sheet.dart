@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../app_platform.dart';
 import '../../../data/certificate_photos.dart';
 import '../../../state/absences_controller.dart';
 import '../../../theme/app_shapes.dart';
@@ -66,6 +67,10 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
             ? 'Не удалось открыть камеру.'
             : 'Не удалось открыть галерею.',
       );
+    } on MissingPluginException {
+      // Платформа без фотовыбора: кнопок там нет, но перестраховка дешёвая.
+      if (!mounted) return;
+      setState(() => _error = 'Фото добавляется в приложении на телефоне.');
     } finally {
       if (mounted) setState(() => _capturing = false);
     }
@@ -157,24 +162,43 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
           ),
           const SizedBox(height: AppSpacing.space100),
         ],
-        SegmentedList(
-          children: [
-            M3ListItem(
-              leading: const Icon(Symbols.photo_camera),
-              headline: Text(photo == null ? 'Сфотографировать' : 'Переснять'),
-              onTap: () => _capture(CertificatePhotoSource.camera),
-              enabled: !_saving,
-            ),
-            M3ListItem(
-              leading: const Icon(Symbols.photo_library),
-              headline: Text(
-                photo == null ? 'Выбрать из галереи' : 'Выбрать другое фото',
+        // На компьютере камеры нет — остаётся готовый файл: фото, снятое
+        // телефоном, или скан.
+        if (AppPlatform.isDesktop)
+          SegmentedList(
+            children: [
+              M3ListItem(
+                leading: const Icon(Symbols.folder_open),
+                headline: Text(
+                  photo == null ? 'Выбрать файл' : 'Выбрать другой файл',
+                ),
+                supporting: const Text('Фото с телефона или скан справки'),
+                onTap: () => _capture(CertificatePhotoSource.gallery),
+                enabled: !_saving,
               ),
-              onTap: () => _capture(CertificatePhotoSource.gallery),
-              enabled: !_saving,
-            ),
-          ],
-        ),
+            ],
+          )
+        else
+          SegmentedList(
+            children: [
+              M3ListItem(
+                leading: const Icon(Symbols.photo_camera),
+                headline: Text(
+                  photo == null ? 'Сфотографировать' : 'Переснять',
+                ),
+                onTap: () => _capture(CertificatePhotoSource.camera),
+                enabled: !_saving,
+              ),
+              M3ListItem(
+                leading: const Icon(Symbols.photo_library),
+                headline: Text(
+                  photo == null ? 'Выбрать из галереи' : 'Выбрать другое фото',
+                ),
+                onTap: () => _capture(CertificatePhotoSource.gallery),
+                enabled: !_saving,
+              ),
+            ],
+          ),
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.space100),
           Semantics(

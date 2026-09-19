@@ -177,6 +177,32 @@ flutter test integration_test/mitso_tls_test.dart -d <телефон>  # на An
 - В тестах сайт подменён `FakeStudentApi` с той же разметкой и выдуманными данными
   (`test/fixtures/student_account.html`); настоящих номеров и паролей в репозитории нет.
 
+## Windows
+
+Та же сборка, что и на телефоне: интерфейс телефонный, в одну колонку, окно 480×900 и не
+меньше 360×600 (`WM_GETMINMAXINFO` в `windows/runner/win32_window.cpp`). Запущенная копия одна
+на пользователя — второй запуск поднимает уже открытое окно; имя мьютекса совпадает с тем,
+которого ждёт установщик.
+
+```bash
+flutter build windows --release
+# установщик (нужен Inno Setup 6: winget install JRSoftware.InnoSetup)
+powershell -ExecutionPolicy Bypass -File tool/build_windows_installer.ps1
+```
+
+Установщик (`windows/installer/mitso_schedule.iss`) ставит приложение в
+`%LOCALAPPDATA%\Programs\Расписание МИТСО` без прав администратора, кладёт ярлык в меню «Пуск»,
+а при обновлении сам ждёт, пока приложение закроется, и запускает новую версию. `AppId` в нём
+менять нельзя: по нему новая версия находит старую.
+
+Чего на компьютере нет: камеры для справки (остаётся выбор готового файла), выбора значка
+приложения (это `activity-alias` Android) и уведомления о долге с фоновой проверкой — плагины
+под них телефонные. Различия собраны в `lib/app_platform.dart`, проверяются
+`test/desktop_test.dart`.
+
+Значок `windows/runner/resources/app_icon.ico` рисует тот же генератор, что и значки Android
+(`flutter test test/icon_generator.dart`): семь размеров от 16 до 256 px в одном файле.
+
 ## Обновления приложения
 
 Приложение обновляет себя само: магазина у него нет, а APK раздаются релизами на GitHub.

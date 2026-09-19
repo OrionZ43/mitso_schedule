@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker_android/image_picker_android.dart';
@@ -23,15 +25,19 @@ Future<void> main() async {
 
   final SharedPreferences preferences = await SharedPreferences.getInstance();
 
-  // Уведомление о долге и фоновая проверка баланса раз в шесть часов.
-  // Сбой плагина не должен мешать запуску: без уведомлений приложение
-  // работает, а вот застрять на сплэше из-за них недопустимо.
+  // Уведомление о долге и фоновая проверка баланса раз в шесть часов —
+  // только на телефоне: плагины уведомлений и фоновых задач настольной
+  // сборки не знают. Сбой плагина не должен мешать запуску: без уведомлений
+  // приложение работает, а вот застрять на сплэше из-за них недопустимо.
   try {
-    await BalanceAlerts.init();
-    await BalanceBackground.initialize();
-    await BalanceBackground.sync(
-      enabled: preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
-    );
+    if (Platform.isAndroid) {
+      await BalanceAlerts.init();
+      await BalanceBackground.initialize();
+      await BalanceBackground.sync(
+        enabled:
+            preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
+      );
+    }
   } catch (error, stack) {
     FlutterError.reportError(
       FlutterErrorDetails(

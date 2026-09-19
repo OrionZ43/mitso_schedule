@@ -10,6 +10,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -579,6 +580,78 @@ Future<void> _writePng(
 Future<void> _write(String name, IconPainter painter, WidgetTester tester) =>
     _writePng('docs/icon/$name.png', painter, tester);
 
+/// Рисует [painter] и отдаёт PNG размером [size] px.
+Future<Uint8List> _png(
+  IconPainter painter,
+  WidgetTester tester, {
+  required double size,
+}) async {
+  late Uint8List bytes;
+  await tester.runAsync(() async {
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas c = Canvas(recorder);
+    c.scale(size / canvas);
+    painter(c, const Size(canvas, canvas));
+    final ui.Image image = await recorder.endRecording().toImage(
+      size.round(),
+      size.round(),
+    );
+    final ByteData? data = await image.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    image.dispose();
+    bytes = data!.buffer.asUint8List();
+  });
+  return bytes;
+}
+
+/// Значок Windows: несколько размеров в одном `.ico`.
+///
+/// Формат простой: заголовок `ICONDIR` (6 байт), по 16 байт на размер и сами
+/// картинки следом. Внутри лежат PNG — так Windows умеет с Vista, и для
+/// больших размеров это единственный разумный способ.
+Future<void> _writeIco(
+  String path,
+  IconPainter painter,
+  WidgetTester tester, {
+  List<int> sizes = const <int>[16, 24, 32, 48, 64, 128, 256],
+}) async {
+  final List<Uint8List> images = <Uint8List>[
+    for (final int size in sizes)
+      await _png(painter, tester, size: size.toDouble()),
+  ];
+
+  final BytesBuilder directory = BytesBuilder();
+  final ByteData header = ByteData(6)
+    ..setUint16(0, 0, Endian.little)
+    ..setUint16(2, 1, Endian.little)
+    ..setUint16(4, sizes.length, Endian.little);
+  directory.add(header.buffer.asUint8List());
+
+  int offset = 6 + 16 * sizes.length;
+  for (int i = 0; i < sizes.length; i++) {
+    final ByteData entry = ByteData(16)
+      // 256 записывается нулём — в байт он не влезает.
+      ..setUint8(0, sizes[i] == 256 ? 0 : sizes[i])
+      ..setUint8(1, sizes[i] == 256 ? 0 : sizes[i])
+      ..setUint8(2, 0)
+      ..setUint8(3, 0)
+      ..setUint16(4, 1, Endian.little)
+      ..setUint16(6, 32, Endian.little)
+      ..setUint32(8, images[i].length, Endian.little)
+      ..setUint32(12, offset, Endian.little);
+    directory.add(entry.buffer.asUint8List());
+    offset += images[i].length;
+  }
+  for (final Uint8List image in images) {
+    directory.add(image);
+  }
+
+  final File file = File(path);
+  file.parent.createSync(recursive: true);
+  file.writeAsBytesSync(directory.takeBytes());
+}
+
 /// Плотности Android: mdpi… xxxhdpi.
 const Map<String, double> densities = {
   'mdpi': 1,
@@ -668,4 +741,26 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('значок Windows', (tester) async {
+    const String path = 'windows/runner/resources/app_icon.ico';
+    await _writeIco(path, _windowsIcon, tester);
+
+    // Заголовок ICONDIR: тип 1 и семь размеров внутри.
+    final Uint8List bytes = File(path).readAsBytesSync();
+    final ByteData header = bytes.buffer.asByteData();
+    expect(header.getUint16(2, Endian.little), 1);
+    expect(header.getUint16(4, Endian.little), 7);
+  });
+}
+
+/// Значок для Windows: тот же скруглённый квадрат, что у Android ниже 26, но
+/// во весь холст — отступов под маску лаунчера здесь не нужно.
+void _windowsIcon(Canvas c, Size size) {
+  const double scale = canvas / visible;
+  c
+    ..translate(canvas / 2, canvas / 2)
+    ..scale(scale)
+    ..translate(-canvas / 2, -canvas / 2);
+  logos.first.legacy(c, size);
 }

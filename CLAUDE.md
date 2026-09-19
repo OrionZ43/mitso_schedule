@@ -57,6 +57,13 @@ flutter build apk --release -t lib/main.dart     # -t обязателен, см
 C:/android/sdk/platform-tools/adb.exe install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
+Трогали настольную часть (`windows/`, `lib/app_platform.dart`, плагины) — собрать и её:
+
+```bash
+flutter build windows --release
+powershell -ExecutionPolicy Bypass -File tool/build_windows_installer.ps1  # нужен Inno Setup 6
+```
+
 На телефон ставить release: debug-сборка тормозит сама по себе, по ней о плавности не судить.
 После изменений анимаций и списков — `flutter test test/perf_probe.dart` (перестройки и
 отрисовки за кадр, см. README → «Производительность»).
