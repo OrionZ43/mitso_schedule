@@ -190,9 +190,9 @@ abstract final class LessonReminders {
     _initialized = true;
   }
 
-  /// Android 13+ спрашивает разрешение на уведомления, Android 12+ — на
-  /// точные будильники. Без второго напоминание может опоздать, поэтому
-  /// просим оба.
+  /// Спрашивается только разрешение на уведомления (Android 13+). Точное
+  /// время приложение получает при установке (`USE_EXACT_ALARM`), поэтому
+  /// системный экран «Будильники и напоминания» пользователю не показывается.
   static Future<bool> requestPermission() async {
     await init();
     final AndroidFlutterLocalNotificationsPlugin? android = _plugin
@@ -200,12 +200,7 @@ abstract final class LessonReminders {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android == null) return false;
-
-    final bool granted =
-        await android.requestNotificationsPermission() ?? false;
-    if (!granted) return false;
-    await android.requestExactAlarmsPermission();
-    return true;
+    return await android.requestNotificationsPermission() ?? false;
   }
 
   /// Планирует [reminders] вместо всех прежних.
@@ -220,10 +215,10 @@ abstract final class LessonReminders {
     }
     if (reminders.isEmpty) return;
 
-    // Точный будильник: пара начинается в своё время, а не «примерно».
-    // Android 12+ выдаёт такое разрешение отдельно, и его могут не дать —
-    // тогда планируем неточно: напоминание придёт с опозданием в несколько
-    // минут, но придёт. Попытка запланировать точно без разрешения
+    // Точное время: пара начинается в своё время, а не «примерно». На
+    // Android 13+ разрешение выдано при установке; на Android 12 его могли
+    // отнять — тогда планируем неточно: напоминание придёт с опозданием в
+    // несколько минут, но придёт. Попытка запланировать точно без разрешения
     // закончилась бы исключением и молчанием.
     final AndroidScheduleMode mode = await _canScheduleExact()
         ? AndroidScheduleMode.exactAllowWhileIdle

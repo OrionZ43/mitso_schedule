@@ -8,13 +8,23 @@
     <!-- Приложение обновляет себя само: скачивает APK из своего релиза на
          GitHub, проверяет подпись манифеста и открывает системный установщик. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
-    <!-- Напоминания о начале пары планируются заранее и живут в системе.
-         RECEIVE_BOOT_COMPLETED — чтобы пережить перезагрузку,
-         SCHEDULE_EXACT_ALARM — чтобы уведомление пришло минута в минуту
-         (Android 12+ спрашивает его отдельно; без него планировщик
-         откатывается на неточное время, см. LessonReminders). -->
+    <!-- Напоминания о начале пары планируются заранее и живут в системе:
+         RECEIVE_BOOT_COMPLETED — чтобы пережить перезагрузку. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Уведомление должно приходить в своё время, а не «примерно».
+         USE_EXACT_ALARM (Android 13+) выдаётся при установке и ничего не
+         спрашивает: он для приложений, которые показывают события в
+         назначенное время — календарей, будильников и расписаний.
+         https://developer.android.com/about/versions/14/changes/schedule-exact-alarms
+         На Android 12 такого разрешения ещё нет, там работает
+         SCHEDULE_EXACT_ALARM: оно выдано по умолчанию, но его можно отнять —
+         тогда планировщик откатывается на неточное время (LessonReminders).
+         Звонка будильника нет: приложение просто просыпается и показывает
+         обычное уведомление. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32"/>
     <application
         android:label="Расписание"
         android:name="${applicationName}"
