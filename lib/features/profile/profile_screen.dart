@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,6 +14,7 @@ import '../../data/models/student_account.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
+import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/m3_buttons.dart';
@@ -21,6 +23,7 @@ import '../../widgets/m3_loading_indicator.dart';
 import '../../widgets/m3_switch.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
+import '../../widgets/shape_avatar.dart';
 import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
 import '../settings/settings_screen.dart';
@@ -117,7 +120,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         slivers: [
           SliverMediumFlexibleAppBar(
             title: 'Профиль',
-            subtitle: account?.shortName,
             actions: [
               M3IconButton(
                 onPressed: () => Navigator.of(context).push(
@@ -142,33 +144,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: EdgeInsets.symmetric(horizontal: margin),
             sliver: SliverList.list(
               children: [
-                // Чьё расписание показывает приложение — первым делом.
-                const SectionHeader('Расписание'),
-                SegmentedList(
-                  children: [
-                    M3ListItem(
-                      leading: _Avatar(
-                        icon: target is TeacherTarget
-                            ? Symbols.co_present
-                            : Symbols.school,
-                      ),
-                      overline: target == null
-                          ? null
-                          : Text(
-                              target is TeacherTarget
-                                  ? 'Преподаватель'
-                                  : 'Группа',
-                            ),
-                      headline: Text(target?.title ?? 'Не выбрано'),
-                      supporting: Text(
-                        target is GroupTarget
-                            ? target.group.details
-                            : 'Расписание с apps.mitso.by',
-                      ),
-                      trailing: const Icon(Symbols.chevron_right),
-                      onTap: () => showGroupPicker(context),
-                    ),
-                  ],
+                _ProfileHero(
+                  target: target,
+                  account: account,
+                  onPick: () => showGroupPicker(context),
                 ),
 
                 if (isStudent) ...[
@@ -176,17 +155,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   if (account == null)
                     _LinkCard(loading: student.isLoading, error: student.error)
                   else ...[
-                    SegmentedList(
-                      children: [
-                        M3ListItem(
-                          leading: const _Avatar(icon: Symbols.person),
-                          overline: Text('Счёт № ${account.number}'),
-                          headline: Text(account.fullName),
-                          supporting: const Text('Данные с student.mitso.by'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space150),
                     _BalanceCard(
                       account: account,
                       refreshing: _refreshing,
@@ -235,6 +203,182 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Шапка профиля: кто пользуется приложением и чьё расписание он смотрит.
+///
+/// Единственный «hero moment» приложения
+/// (https://m3.material.io/building-with-m3-expressive, «Combine tactics to
+/// create hero moments»: их в продукте должно быть один-два). Собран из
+/// четырёх тактик оттуда же: фигура из библиотеки форм на аватаре («Use a
+/// variety of shapes»), контраст ролей primary и primaryContainer («Apply
+/// rich and nuanced colors»), emphasized-заголовок («Guide attention with
+/// typography») и вложенный контейнер с расписанием («Contain content for
+/// emphasis»).
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.target,
+    required this.account,
+    required this.onPick,
+  });
+
+  final ScheduleTarget? target;
+  final StudentAccount? account;
+
+  /// Открыть выбор группы или преподавателя.
+  final VoidCallback onPick;
+
+  /// Аватар крупный: это главный элемент экрана. Ряд 96 = 4 × 24dp,
+  /// в шкале `ListTokens` таких размеров нет — аватар не пункт списка.
+  static const double avatarSize = 96;
+
+  /// Радиус шапки — `extra-large-increased`; отступ 20dp даёт вложенному
+  /// контейнеру 32 − 20 = 12dp (medium) по правилу оптической скруглённости.
+  static const double padding = AppSpacing.space250;
+
+  /// Фамилия и имя одной буквой: «ИИ».
+  String? get _initials {
+    final String? name = account?.fullName;
+    if (name == null) return null;
+    final List<String> parts = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return null;
+    return parts.take(2).map((part) => part[0].toUpperCase()).join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    final ScheduleTarget? target = this.target;
+    final bool teacher = target is TeacherTarget;
+
+    return Card.filled(
+      color: colors.primaryContainer,
+      shape: AppShapes.rounded(AppShapes.extraLargeIncreased),
+      child: Padding(
+        padding: const EdgeInsets.all(padding),
+        child: Column(
+          children: [
+            ShapeAvatar(
+              // Круглая фигура с мягкими зубцами: аватар остаётся аватаром,
+              // но выбивается из прямоугольников экрана («Break from the
+              // surrounding shape style to draw attention»).
+              polygon: MaterialShapes.cookie9Sided,
+              size: avatarSize,
+              color: colors.primary,
+              onColor: colors.onPrimary,
+              initials: _initials,
+              icon: teacher ? Symbols.co_present : Symbols.school,
+            ),
+            const SizedBox(height: AppSpacing.space200),
+            Text(
+              account?.fullName ?? target?.title ?? 'Группа не выбрана',
+              textAlign: TextAlign.center,
+              style: context.text.headlineSmall!.emphasized.copyWith(
+                color: colors.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space50),
+            Text(
+              target?.subtitle ?? 'Выберите группу или преподавателя',
+              textAlign: TextAlign.center,
+              style: context.text.bodyMedium!.copyWith(
+                color: colors.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space250),
+            // Имя в заголовке — расписание отдельной плиткой; иначе группа
+            // уже в заголовке, и остаётся только кнопка выбора.
+            if (account != null && target != null)
+              _HeroTarget(target: target, onTap: onPick)
+            else
+              M3Button(
+                onPressed: onPick,
+                icon: Icon(
+                  target == null ? Symbols.add : Symbols.swap_horiz,
+                  fill: 1,
+                ),
+                size: M3ButtonSize.medium,
+                child: Text(
+                  target == null
+                      ? 'Выбрать расписание'
+                      : teacher
+                      ? 'Другой преподаватель'
+                      : 'Другая группа',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Плитка внутри шапки: чьё расписание показывает приложение.
+class _HeroTarget extends StatelessWidget {
+  const _HeroTarget({required this.target, required this.onTap});
+
+  final ScheduleTarget target;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    final bool teacher = target is TeacherTarget;
+    final String kind = teacher
+        ? 'Расписание преподавателя'
+        : 'Расписание группы';
+
+    return Semantics(
+      button: true,
+      label: '$kind ${target.title}, сменить',
+      child: ExcludeSemantics(
+        child: Material(
+          color: colors.surface,
+          clipBehavior: Clip.antiAlias,
+          shape: AppShapes.rounded(AppShapes.medium),
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space200,
+                vertical: AppSpacing.space150,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    teacher ? Symbols.co_present : Symbols.school,
+                    color: colors.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.space150),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          target.title,
+                          style: context.text.titleMedium!.emphasized,
+                        ),
+                        Text(
+                          kind,
+                          style: context.text.bodySmall!.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Symbols.chevron_right, color: colors.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -332,16 +476,25 @@ class _BalanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Баланс на ${DateFormat('d MMMM', 'ru').format(account.asOf)}',
-              style: context.text.bodyMedium!.copyWith(color: secondary),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Счёт № ${account.number}',
+                    style: context.text.bodyMedium!.copyWith(color: secondary),
+                  ),
+                ),
+                Text(
+                  'на ${DateFormat('d MMMM', 'ru').format(account.asOf)}',
+                  style: context.text.bodyMedium!.copyWith(color: secondary),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.space50),
             Text(
               money(account.balance),
-              style: context.text.displaySmall!.copyWith(
+              style: context.text.displaySmall!.emphasized.copyWith(
                 color: onContainer,
-                fontWeight: FontWeight.w700,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -529,28 +682,6 @@ class _MoodleCardState extends State<_MoodleCard> {
           child: const Text('Войти в СДО'),
         ),
       ],
-    );
-  }
-}
-
-/// Аватар пункта списка: `ListTokens.ItemLeadingAvatar*` — 40dp,
-/// primaryContainer / onPrimaryContainer.
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = context.colors;
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: colors.primaryContainer,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: colors.onPrimaryContainer),
     );
   }
 }

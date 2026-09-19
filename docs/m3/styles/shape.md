@@ -91,6 +91,10 @@
 - `lib/app.dart` — card 28dp, chip 8dp, FAB 16dp, bottom sheet 28dp сверху, tooltip/snackbar 4dp, checkbox 2dp, search bar stadium.
 - `lib/theme/app_button_styles.dart` — full в покое, small/medium при нажатии.
 - `lib/widgets/m3_loading_indicator.dart` — `MaterialShapes` из `material_new_shapes`, порядок как в Compose.
+- `lib/widgets/shape_avatar.dart` — аватар маской из библиотеки форм (`ClipPath` по
+  `RoundedPolygon.normalized().toPath()`); в шапке профиля — `MaterialShapes.cookie9Sided`
+  96dp, заливка `primary`, внутри инициалы или иконка. Та же фигура у значка приложения и у
+  номера аудитории на карточке пары.
 - Кастомные контейнеры: `absences_screen.dart` и `profile_screen.dart` (32dp), `schedule_screen.dart` (баннер ошибки 16dp; результаты поиска `ListTile` 20dp), `lesson_card.dart` (строки подгрупп 16/4), `segmented_list.dart` (16/4), `day_selector.dart` (16 → 28 морф).
 
 ### Расхождения
@@ -103,7 +107,7 @@
 | 4 | Вложенные контейнеры с тем же или бóльшим радиусом: `absences_screen.dart` — контейнер 32dp, отступ 20 → плитки легенды 20dp; `lesson_card.dart` — карточка 28dp (32 у текущей), отступ 20 (22) → строки подгрупп 16dp | По формуле оптической скруглённости: 32 − 20 = 12 (medium); 28 − 20 = 8 (small); 32 − 22 = 10 — нет на шкале, подобрать отступ | `styles__shape.md` (Adjust for optical roundness) |
 | 5 | `AppShapes.card = 28dp` для текстонасыщенных карточек пар/справок/задач | Card — medium 12dp; гайдлайн предостерегает от large/full на информационно-плотных карточках. Отступление согласовано — держать в «Сознательных отступлениях» | `tokens/FilledCardTokens.kt`, `tokens/OutlinedCardTokens.kt`, `styles__shape.md` (CAUTION) |
 | 6 | `AppShapes.fullRadius = Radius.circular(9999)` (в `lib/` сейчас не используется; `connected_button_group.dart` берёт половину высоты, кнопки — `StadiumBorder`) | Full = 100%/50% размера. Если понадобится в анимации — не лерпить от 9999: видимое изменение сожмётся в последние доли процента анимации | `Shapes.kt` (`CornerFull = CornerSize(100)`), `docs/theming/Shape.md` |
-| 7 | Аватар профиля (`profile_screen.dart`) — круг 72dp с иконкой | Не нарушение. Гайдлайн прямо предлагает формы библиотеки для «avatar masking» — вариант для выразительности | `styles__shape.md`, `building-with-m3-expressive.md` |
+| 7 | ~~Аватар профиля — круг 72dp с иконкой~~ Сделано: `ShapeAvatar` с `Cookie9Sided` 96dp в шапке профиля; вложенная плитка 12dp = 32 − 20 по формуле оптической скруглённости | — | `styles__shape.md` («avatar masking»), `building-with-m3-expressive.md` (hero moments) |
 
 Что совпадает: значения шкалы; формы кнопок (full → small/medium при нажатии); FAB, bottom sheet, tooltip, snackbar, checkbox; сегментированный список 16/4 (`ListTokens`: контейнер large, элемент extra-small); последовательность форм `M3LoadingIndicator`.
 
