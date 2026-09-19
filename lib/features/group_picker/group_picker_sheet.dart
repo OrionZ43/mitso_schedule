@@ -33,13 +33,95 @@ Future<void> showGroupPicker(BuildContext context) {
 }
 
 /// Чьё расписание выбирают.
-enum _Mode {
+enum SchedulePickerMode {
   group('Группа'),
   teacher('Преподаватель');
 
-  const _Mode(this.label);
+  const SchedulePickerMode(this.label);
 
   final String label;
+}
+
+/// Где пользователь остановился в выборе.
+///
+/// Живёт вне листа: лист пересоздаётся при перетаскивании и возвращении в
+/// приложение, а выбранный факультет и курс терять нельзя.
+@immutable
+class SchedulePickerState {
+  const SchedulePickerState({
+    this.mode = SchedulePickerMode.group,
+    this.faculty,
+    this.form,
+    this.course,
+    this.query = '',
+  });
+
+  final SchedulePickerMode mode;
+  final MitsoOption? faculty;
+  final MitsoOption? form;
+  final MitsoOption? course;
+
+  /// Строка поиска по преподавателям.
+  final String query;
+
+  SchedulePickerState copyWith({
+    SchedulePickerMode? mode,
+    MitsoOption? faculty,
+    MitsoOption? form,
+    MitsoOption? course,
+    String? query,
+    bool clearFaculty = false,
+    bool clearForm = false,
+    bool clearCourse = false,
+  }) => SchedulePickerState(
+    mode: mode ?? this.mode,
+    faculty: clearFaculty ? null : (faculty ?? this.faculty),
+    form: clearForm ? null : (form ?? this.form),
+    course: clearCourse ? null : (course ?? this.course),
+    query: query ?? this.query,
+  );
+}
+
+final schedulePickerProvider =
+    NotifierProvider<SchedulePickerController, SchedulePickerState>(
+      SchedulePickerController.new,
+    );
+
+class SchedulePickerController extends Notifier<SchedulePickerState> {
+  @override
+  SchedulePickerState build() => SchedulePickerState(
+    // Преподавателю лист открывается сразу на преподавателях.
+    mode: ref.read(scheduleTargetProvider) is TeacherTarget
+        ? SchedulePickerMode.teacher
+        : SchedulePickerMode.group,
+  );
+
+  void setMode(SchedulePickerMode mode) => state = state.copyWith(mode: mode);
+
+  void setQuery(String query) => state = state.copyWith(query: query);
+
+  void chooseFaculty(MitsoOption option) => state = state.copyWith(
+    faculty: option,
+    clearForm: true,
+    clearCourse: true,
+  );
+
+  void chooseForm(MitsoOption option) =>
+      state = state.copyWith(form: option, clearCourse: true);
+
+  void chooseCourse(MitsoOption option) =>
+      state = state.copyWith(course: option);
+
+  /// Шаг назад: снимается последний выбор.
+  void back() {
+    if (state.course != null) {
+      state = state.copyWith(clearCourse: true);
+    } else if (state.form != null) {
+      state = state.copyWith(clearForm: true);
+    } else if (state.faculty != null) {
+      state = state.copyWith(clearFaculty: true);
+    }
+  }
 }
 
 enum _Step {
@@ -64,19 +146,20 @@ class _GroupPickerSheet extends ConsumerStatefulWidget {
 }
 
 class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
-  late _Mode _mode = ref.read(scheduleTargetProvider) is TeacherTarget
-      ? _Mode.teacher
-      : _Mode.group;
+  SchedulePickerState get _picker => ref.watch(schedulePickerProvider);
+  SchedulePickerController get _controller =>
+      ref.read(schedulePickerProvider.notifier);
 
-  MitsoOption? _faculty;
-  MitsoOption? _form;
-  MitsoOption? _course;
+  SchedulePickerMode get _mode => _picker.mode;
+  MitsoOption? get _faculty => _picker.faculty;
+  MitsoOption? get _form => _picker.form;
+  MitsoOption? get _course => _picker.course;
+  String get _query => _picker.query;
 
-  /// Список преподавателей и строка поиска по нему. Запрос заводится при
-  /// первом обращении — в том числе когда лист сразу открылся на
-  /// преподавателях, потому что он уже выбран.
+  /// Список преподавателей. Запрос заводится при первом обращении — в том
+  /// числе когда лист сразу открылся на преподавателях, потому что он уже
+  /// выбран.
   Future<List<String>>? _teachersRequest;
-  String _query = '';
 
   Future<List<String>> get _teachers =>
       _teachersRequest ??= Future<List<String>>(() async {
@@ -86,6 +169,24 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
 
   /// Последний переход был назад — для направления shared axis.
   bool _backward = false;
+
+  /// Поле поиска: создаётся с уже набранным запросом — лист мог
+  /// пересоздаться, а строка поиска должна остаться.
+  late final TextEditingController _search;
+
+  @override
+  void initState() {
+    super.initState();
+    _search = TextEditingController(
+      text: ref.read(schedulePickerProvider).query,
+    );
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   /// Запросы по шагам. Хранятся, чтобы перестроение и возврат назад не
   /// дёргали сайт повторно.
@@ -144,34 +245,22 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
       Navigator.of(context).pop();
       return;
     }
-    setState(() {
-      _backward = false;
-      switch (_step) {
-        case _Step.faculty:
-          _faculty = option;
-        case _Step.form:
-          _form = option;
-        case _Step.course:
-          _course = option;
-        case _Step.group:
-      }
-    });
+    setState(() => _backward = false);
+    switch (_step) {
+      case _Step.faculty:
+        _controller.chooseFaculty(option);
+      case _Step.form:
+        _controller.chooseForm(option);
+      case _Step.course:
+        _controller.chooseCourse(option);
+      case _Step.group:
+        break;
+    }
   }
 
   void _back() {
-    setState(() {
-      _backward = true;
-      switch (_step) {
-        case _Step.faculty:
-          return;
-        case _Step.form:
-          _faculty = null;
-        case _Step.course:
-          _form = null;
-        case _Step.group:
-          _course = null;
-      }
-    });
+    setState(() => _backward = true);
+    _controller.back();
   }
 
   /// Выбранный преподаватель — его строка отмечена в списке.
@@ -180,9 +269,9 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
     Navigator.of(context).pop();
   }
 
-  void _setMode(_Mode mode) {
+  void _setMode(SchedulePickerMode mode) {
     if (mode == _mode) return;
-    setState(() => _mode = mode);
+    _controller.setMode(mode);
   }
 
   @override
@@ -207,15 +296,15 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
               AppSpacing.space200,
               AppSpacing.space150,
             ),
-            child: ConnectedButtonGroup<_Mode>(
-              values: _Mode.values,
+            child: ConnectedButtonGroup<SchedulePickerMode>(
+              values: SchedulePickerMode.values,
               labelOf: (mode) => mode.label,
               selected: _mode,
               onSelected: _setMode,
             ),
           ),
         ),
-        if (_mode == _Mode.group)
+        if (_mode == SchedulePickerMode.group)
           SliverToBoxAdapter(
             child: PageTransitionSwitcher(
               duration: AppTransitions.sharedAxisDuration,
@@ -269,12 +358,13 @@ class _GroupPickerSheetState extends ConsumerState<_GroupPickerSheet> {
           ),
           child: TextField(
             autocorrect: false,
+            controller: _search,
             decoration: const InputDecoration(
               labelText: 'Фамилия',
               prefixIcon: Icon(Symbols.search),
               border: OutlineInputBorder(),
             ),
-            onChanged: (value) => setState(() => _query = value.trim()),
+            onChanged: (value) => _controller.setQuery(value.trim()),
           ),
         ),
       ),

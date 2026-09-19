@@ -116,6 +116,9 @@ class _TaskSheetState extends ConsumerState<_TaskSheet> {
             labelText: 'Что сделать',
             hintText: 'Например: сдать лабораторную',
             border: OutlineInputBorder(),
+            // Метка сразу в вырезе рамки: при автофокусе она иначе
+            // анимируется наверх прямо во время выезда листа и мигает.
+            floatingLabelBehavior: FloatingLabelBehavior.always,
           ),
         ),
 
