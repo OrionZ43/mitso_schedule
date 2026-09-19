@@ -16,7 +16,7 @@ import 'dart:convert';
 /// подписанную старым ключом, и только потом подписывать новым — иначе
 /// установленные копии приложения не примут релиз.
 const Map<String, String> kUpdateSigningKeys = <String, String>{
-  // 'z43-2026': '<публичная часть из keygen>',
+  'z43-2026': 'MIMWOjq2Fs3pwyzIe5CMO0kMBZlWli+9KjUA+2xqH9A=',
 };
 
 /// Разбирает [keys] из base64 в байты: kid → 32 байта публичного ключа.
