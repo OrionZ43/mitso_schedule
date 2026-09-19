@@ -8,6 +8,13 @@
     <!-- Приложение обновляет себя само: скачивает APK из своего релиза на
          GitHub, проверяет подпись манифеста и открывает системный установщик. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Напоминания о начале пары планируются заранее и живут в системе.
+         RECEIVE_BOOT_COMPLETED — чтобы пережить перезагрузку,
+         SCHEDULE_EXACT_ALARM — чтобы уведомление пришло минута в минуту
+         (Android 12+ спрашивает его отдельно; без него планировщик
+         откатывается на неточное время, см. LessonReminders). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <application
         android:label="Расписание"
         android:name="${applicationName}"
@@ -99,6 +106,24 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity-alias>
+        <!-- Приёмники flutter_local_notifications: первый показывает
+             запланированное уведомление, второй восстанавливает расписание
+             уведомлений после перезагрузки и обновления приложения.
+             Плагин их не объявляет — это делает приложение (README плагина,
+             раздел «AndroidManifest.xml setup»). -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -17,6 +17,7 @@ import '../../widgets/m3_switch.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
+import '../../state/reminders_controller.dart';
 import '../updater/update_section.dart';
 import '../widget_mode/app_window.dart';
 
@@ -159,6 +160,44 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
+                  ],
+
+                  // ─── Напоминания: уведомление перед началом пары.
+                  if (AppPlatform.isPhone) ...[
+                    const SectionHeader('Напоминания'),
+                    SegmentedList(
+                      children: [
+                        M3ListItem(
+                          leading: const Icon(Symbols.notifications_active),
+                          headline: const Text('Напоминать о паре'),
+                          supporting: Text(
+                            settings.lessonReminders
+                                ? 'Уведомление ${_leadLabel(settings.reminderLead).toLowerCase()} до начала'
+                                : 'Уведомление перед началом занятия',
+                          ),
+                          trailing: ExcludeSemantics(
+                            child: M3Switch(
+                              value: settings.lessonReminders,
+                              onChanged: (value) =>
+                                  _setReminders(context, ref, value),
+                            ),
+                          ),
+                          onTap: () => _setReminders(
+                            context,
+                            ref,
+                            !settings.lessonReminders,
+                          ),
+                          semanticsLabel:
+                              'Напоминать о паре, '
+                              '${settings.lessonReminders ? 'включено' : 'выключено'}',
+                        ),
+                      ],
+                    ),
+                    if (settings.lessonReminders)
+                      _LeadPicker(
+                        selected: settings.reminderLead,
+                        onSelected: controller.setReminderLead,
+                      ),
                   ],
 
                   // ─── О приложении: версия, обновления и кто сделал.
@@ -346,6 +385,128 @@ class _PalettePicker extends StatelessWidget {
   }
 }
 
+/// «За 15 минут», «За час», «За 1 ч 30 мин».
+String _leadLabel(Duration lead) {
+  final int minutes = lead.inMinutes;
+  if (minutes == 60) return 'За час';
+  if (minutes < 60) return 'За $minutes мин';
+  final int hours = minutes ~/ 60;
+  final int rest = minutes % 60;
+  return rest == 0 ? 'За $hours ч' : 'За $hours ч $rest мин';
+}
+
+/// Включение спрашивает разрешение: без уведомлений напоминать нечем.
+Future<void> _setReminders(
+  BuildContext context,
+  WidgetRef ref,
+  bool value,
+) async {
+  if (value &&
+      !await ref.read(lessonReminderPortProvider).requestPermission()) {
+    return;
+  }
+  ref.read(settingsControllerProvider.notifier).setLessonReminders(value);
+}
+
+/// За сколько напоминать: готовые сроки и свой.
+class _LeadPicker extends StatelessWidget {
+  const _LeadPicker({required this.selected, required this.onSelected});
+
+  final Duration selected;
+  final ValueChanged<Duration> onSelected;
+
+  static const List<int> _presets = [5, 10, 15, 30, 60];
+
+  @override
+  Widget build(BuildContext context) {
+    final bool custom = !_presets.contains(selected.inMinutes);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.space150),
+      child: Wrap(
+        spacing: AppSpacing.space100,
+        runSpacing: AppSpacing.space100,
+        children: [
+          for (final int minutes in _presets)
+            M3FilterChip(
+              label: Text(_leadLabel(Duration(minutes: minutes))),
+              selected: selected.inMinutes == minutes,
+              onSelected: (_) => onSelected(Duration(minutes: minutes)),
+            ),
+          M3FilterChip(
+            label: Text(custom ? _leadLabel(selected) : 'Свой срок'),
+            selected: custom,
+            onSelected: (_) => _askCustom(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _askCustom(BuildContext context) async {
+    final int? minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => _CustomLeadDialog(minutes: selected.inMinutes),
+    );
+    if (minutes != null && minutes > 0) {
+      onSelected(Duration(minutes: minutes));
+    }
+  }
+}
+
+/// Ввод своего срока. Поле принадлежит диалогу: закрывается он с анимацией,
+/// и контроллер должен дожить до её конца.
+class _CustomLeadDialog extends StatefulWidget {
+  const _CustomLeadDialog({required this.minutes});
+
+  final int minutes;
+
+  @override
+  State<_CustomLeadDialog> createState() => _CustomLeadDialogState();
+}
+
+class _CustomLeadDialogState extends State<_CustomLeadDialog> {
+  late final TextEditingController _field = TextEditingController(
+    text: '${widget.minutes}',
+  );
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  void _done([String? value]) =>
+      Navigator.of(context).pop(int.tryParse(value ?? _field.text));
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      icon: const Icon(Symbols.timer),
+      title: const Text('За сколько напоминать?'),
+      content: TextField(
+        controller: _field,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(
+          labelText: 'Минут до начала',
+          helperText: 'От 1 до 180',
+          border: OutlineInputBorder(),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+        ),
+        onSubmitted: _done,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        TextButton(onPressed: () => _done(), child: const Text('Готово')),
+      ],
+    );
+  }
+}
+
 /// Подпись внизу настроек: нажатие открывает сайт студии.
 class _StudioSignature extends StatelessWidget {
   const _StudioSignature();
@@ -357,8 +518,7 @@ class _StudioSignature extends StatelessWidget {
     child: M3Button(
       onPressed: () => launchUrl(_site, mode: LaunchMode.externalApplication),
       color: M3ButtonColor.text,
-      icon: const Icon(Symbols.favorite, fill: 1),
-      child: const Text('Сделано в Z43 Studios'),
+      child: const Text('Сделано с ♥ в Z43 Studios'),
     ),
   );
 }

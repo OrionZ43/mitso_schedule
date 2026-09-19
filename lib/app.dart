@@ -10,6 +10,7 @@ import 'features/home/home_shell.dart';
 import 'features/widget_mode/app_window.dart';
 import 'features/widget_mode/compact_screen.dart';
 import 'state/mitso_providers.dart';
+import 'state/reminders_controller.dart';
 import 'state/schedule_controller.dart';
 import 'state/settings_controller.dart';
 import 'state/student_controller.dart';
@@ -71,6 +72,13 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Напоминания о парах перепланируются сами, когда меняется расписание
+    // или настройки.
+    ref.listenManual<AsyncValue<int>>(
+      reminderSchedulerProvider,
+      (AsyncValue<int>? previous, AsyncValue<int> next) {},
+      fireImmediately: true,
+    );
     // Часы получают расписание при каждом его изменении — и сразу то, что
     // уже загружено.
     ref.listenManual<AsyncValue<ScheduleState?>>(

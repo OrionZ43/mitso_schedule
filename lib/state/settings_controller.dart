@@ -12,6 +12,8 @@ class Settings {
     this.dynamicColor = true,
     this.palette = AppPalette.baseline,
     this.balanceAlerts = true,
+    this.lessonReminders = false,
+    this.reminderLead = const Duration(minutes: 15),
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -26,6 +28,12 @@ class Settings {
   /// Сообщать о долге по лицевому счёту.
   final bool balanceAlerts;
 
+  /// Напоминать о начале пары.
+  final bool lessonReminders;
+
+  /// За сколько до начала пары напоминать.
+  final Duration reminderLead;
+
   ThemeMode get themeMode => switch (darkOverride) {
     null => ThemeMode.system,
     true => ThemeMode.dark,
@@ -38,6 +46,8 @@ class Settings {
     bool? dynamicColor,
     AppPalette? palette,
     bool? balanceAlerts,
+    bool? lessonReminders,
+    Duration? reminderLead,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -46,6 +56,8 @@ class Settings {
       dynamicColor: dynamicColor ?? this.dynamicColor,
       palette: palette ?? this.palette,
       balanceAlerts: balanceAlerts ?? this.balanceAlerts,
+      lessonReminders: lessonReminders ?? this.lessonReminders,
+      reminderLead: reminderLead ?? this.reminderLead,
     );
   }
 }
@@ -67,6 +79,9 @@ class SettingsController extends Notifier<Settings> {
   /// Тот же ключ читает фоновая проверка баланса.
   static const String balanceAlertsKey = 'settings.balanceAlerts';
 
+  static const String _remindersKey = 'settings.lessonReminders';
+  static const String _leadKey = 'settings.reminderLeadMinutes';
+
   SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
 
   @override
@@ -77,6 +92,8 @@ class SettingsController extends Notifier<Settings> {
       dynamicColor: prefs.getBool(_dynamicKey) ?? true,
       palette: AppPalette.byName(prefs.getString(_paletteKey)),
       balanceAlerts: prefs.getBool(balanceAlertsKey) ?? true,
+      lessonReminders: prefs.getBool(_remindersKey) ?? false,
+      reminderLead: Duration(minutes: prefs.getInt(_leadKey) ?? 15),
     );
   }
 
@@ -105,5 +122,18 @@ class SettingsController extends Notifier<Settings> {
   void setBalanceAlerts(bool value) {
     state = state.copyWith(balanceAlerts: value);
     _prefs.setBool(balanceAlertsKey, value);
+  }
+
+  void setLessonReminders(bool value) {
+    state = state.copyWith(lessonReminders: value);
+    _prefs.setBool(_remindersKey, value);
+  }
+
+  /// Насколько заранее напоминать. Меньше минуты и больше трёх часов не
+  /// имеет смысла: пара к тому времени или начнётся, или ещё не скоро.
+  void setReminderLead(Duration lead) {
+    final int minutes = lead.inMinutes.clamp(1, 180);
+    state = state.copyWith(reminderLead: Duration(minutes: minutes));
+    _prefs.setInt(_leadKey, minutes);
   }
 }
