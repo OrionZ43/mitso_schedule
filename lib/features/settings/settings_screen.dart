@@ -20,6 +20,7 @@ import '../../theme/app_typography.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import '../updater/update_section.dart';
+import '../widget_mode/app_window.dart';
 
 /// Настройки приложения: тема, цвета, лицевой счёт.
 class SettingsScreen extends ConsumerWidget {
@@ -32,6 +33,7 @@ class SettingsScreen extends ConsumerWidget {
       settingsControllerProvider.notifier,
     );
     final StudentAccount? account = ref.watch(studentControllerProvider).value;
+    final bool autostart = ref.watch(autostartProvider).value ?? false;
     final double margin = AppSpacing.screenMargin(context);
 
     return Scaffold(
@@ -145,6 +147,50 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ],
+                  // Окно есть только на компьютере.
+                  if (AppPlatform.isDesktop) ...[
+                    const SectionHeader('Окно'),
+                    SegmentedList(
+                      children: [
+                        M3ListItem(
+                          leading: const Icon(Symbols.picture_in_picture),
+                          headline: const Text('Компактное окно'),
+                          supporting: const Text(
+                            'Часы и ближайшая пара в углу экрана, поверх '
+                            'других окон',
+                          ),
+                          trailing: const Icon(Symbols.chevron_right),
+                          onTap: () {
+                            ref.read(widgetModeProvider.notifier).set(true);
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        M3ListItem(
+                          leading: const Icon(Symbols.rocket_launch),
+                          headline: const Text('Запускать вместе с Windows'),
+                          supporting: const Text(
+                            'При входе в систему приложение открывается '
+                            'компактным окном',
+                          ),
+                          trailing: ExcludeSemantics(
+                            child: M3Switch(
+                              value: autostart,
+                              onChanged: (value) => ref
+                                  .read(autostartProvider.notifier)
+                                  .set(value),
+                            ),
+                          ),
+                          onTap: () => ref
+                              .read(autostartProvider.notifier)
+                              .set(!autostart),
+                          semanticsLabel:
+                              'Запускать вместе с Windows, '
+                              '${autostart ? 'включено' : 'выключено'}',
+                        ),
+                      ],
+                    ),
+                  ],
+
                   const SectionHeader('О приложении'),
                   const UpdateSection(),
 

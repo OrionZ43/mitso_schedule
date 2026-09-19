@@ -40,7 +40,7 @@ Future<FakeMitsoApi> pumpApp(
   FakeStudentApi? student,
   FakeBalanceAlerts? alerts,
   Map<String, Object> preferences = const {},
-  List<Override> updates = const [],
+  List<Override> overrides = const [],
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
   // Medium Phone API 36: 1080x2400 при плотности 2.625.
@@ -74,7 +74,7 @@ Future<FakeMitsoApi> pumpApp(
         balanceAlertsProvider.overrideWithValue(alerts ?? FakeBalanceAlerts()),
         // Версия читается плагином из платформы, которой в тестах нет.
         appVersionProvider.overrideWith((ref) async => '1.0.0 (1)'),
-        ...updates,
+        ...overrides,
       ],
       child: const ScheduleApp(),
     ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../app_platform.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/group_ref.dart';
 import '../../data/models/lesson.dart';
@@ -21,6 +22,7 @@ import '../../widgets/m3_pager.dart';
 import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
+import '../widget_mode/app_window.dart';
 import 'lesson_card.dart';
 import 'lesson_details_page.dart';
 import 'lesson_timing.dart';
@@ -164,6 +166,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     icon: const Icon(Symbols.refresh),
                     color: M3IconButtonColor.standard,
                     tooltip: 'Обновить',
+                  ),
+                // Компактное окно — только на компьютере.
+                if (AppPlatform.isDesktop)
+                  M3IconButton(
+                    onPressed: () =>
+                        ref.read(widgetModeProvider.notifier).set(true),
+                    icon: const Icon(Symbols.picture_in_picture),
+                    color: M3IconButtonColor.standard,
+                    tooltip: 'Компактное окно',
                   ),
                 // Одна trailing-кнопка может быть tonal (app bars → Usage).
                 M3IconButton(

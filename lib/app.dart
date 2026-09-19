@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/boot/boot_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/widget_mode/app_window.dart';
+import 'features/widget_mode/compact_screen.dart';
 import 'state/mitso_providers.dart';
 import 'state/settings_controller.dart';
 import 'state/student_controller.dart';
@@ -127,6 +129,9 @@ class _BootGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool ready = ref.watch(appBootProvider).hasValue;
+    // Компактное окно на рабочем столе — то же приложение, только целиком в
+    // одном экране (features/widget_mode).
+    final bool compact = ref.watch(widgetModeProvider);
 
     // Экран загрузки и главный не связаны пространственно — fade through.
     return PageTransitionSwitcher(
@@ -137,7 +142,11 @@ class _BootGate extends ConsumerWidget {
             secondaryAnimation: secondaryAnimation,
             child: child,
           ),
-      child: ready ? const HomeShell() : const BootScreen(),
+      child: !ready
+          ? const BootScreen()
+          : compact
+          ? const CompactScreen()
+          : const HomeShell(),
     );
   }
 }

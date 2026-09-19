@@ -8,11 +8,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'features/widget_mode/app_window.dart';
 import 'data/balance_alerts.dart';
 import 'data/balance_background.dart';
 import 'state/settings_controller.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Русские названия месяцев и дней недели для intl.
@@ -51,7 +52,12 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(preferences),
+        // Автозапуск Windows добавляет ключ --widget: приложение сразу
+        // сворачивается в компактное окно на рабочем столе.
+        startCompactProvider.overrideWithValue(arguments.contains('--widget')),
+      ],
       child: const ScheduleApp(),
     ),
   );

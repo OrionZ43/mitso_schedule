@@ -55,7 +55,15 @@ class Win32Window {
   // Return a RECT representing the bounds of the current client area.
   RECT GetClientArea();
 
+  // Наименьший размер окна в логических пикселях: ниже него телефонная
+  // раскладка ломается. В компактном режиме окно заведомо меньше, поэтому
+  // ограничение подменяется (см. FlutterWindow::SetCompact).
+  void SetMinimumSize(const Size& size);
+
  protected:
+  // Наименьший размер окна, см. SetMinimumSize.
+  Size minimum_size_ = Size(360, 600);
+
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that
   // inheriting classes can handle.

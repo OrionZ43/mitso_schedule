@@ -91,7 +91,7 @@ void main() {
     tester,
   ) async {
     await publish();
-    await pumpApp(tester, updates: overrides());
+    await pumpApp(tester, overrides: overrides());
     await openSettings(tester);
 
     await tester.scrollUntilVisible(
@@ -115,7 +115,7 @@ void main() {
 
   testWidgets('точка ведёт от вкладки к настройкам', (tester) async {
     await publish();
-    await pumpApp(tester, updates: overrides());
+    await pumpApp(tester, overrides: overrides());
     await tester.pump(const Duration(milliseconds: 100));
 
     // Точка на «Профиле»: пункт не выбран, значит бейдж виден.
@@ -152,7 +152,7 @@ void main() {
 
   testWidgets('«Позже» убирает и карточку, и точку', (tester) async {
     await publish();
-    await pumpApp(tester, updates: overrides());
+    await pumpApp(tester, overrides: overrides());
     await openSettings(tester);
     await tester.scrollUntilVisible(
       find.text('Позже'),
@@ -174,7 +174,7 @@ void main() {
 
   testWidgets('когда новее нет — так и написано', (tester) async {
     await publish(build: 1);
-    await pumpApp(tester, updates: overrides());
+    await pumpApp(tester, overrides: overrides());
     await openSettings(tester);
     await tester.scrollUntilVisible(
       find.text('О приложении'),
@@ -190,7 +190,7 @@ void main() {
   testWidgets('без сети не пишем, что версия последняя', (tester) async {
     await publish();
     transport.broken.add(_manifestUrl);
-    await pumpApp(tester, updates: overrides());
+    await pumpApp(tester, overrides: overrides());
     await openSettings(tester);
     await tester.scrollUntilVisible(
       find.text('О приложении'),

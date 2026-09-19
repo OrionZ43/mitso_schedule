@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import 'package:mitso_schedule/features/widget_mode/app_window.dart';
+import 'package:mitso_schedule/features/widget_mode/compact_screen.dart';
+
 import 'app_test.dart';
 
 /// Чем настольная сборка отличается от телефонной.
@@ -51,6 +54,26 @@ void main() {
       expect(find.text('Фото с телефона или скан справки'), findsOneWidget);
       // Камеры на компьютере нет.
       expect(find.text('Сфотографировать'), findsNothing);
+    });
+  });
+
+  testWidgets('компактное окно показывает часы и идущую пару', (tester) async {
+    await onDesktop(() async {
+      // Ключ --widget в автозапуске: приложение открывается сразу компактным.
+      await pumpApp(
+        tester,
+        overrides: [startCompactProvider.overrideWithValue(true)],
+      );
+
+      expect(find.byType(CompactScreen), findsOneWidget);
+      // Среда, 16 сентября, 10:30 — идёт пара 09:45–11:05.
+      expect(find.text('10:30'), findsOneWidget);
+      expect(find.text('Ср, 16 сент.'), findsOneWidget);
+      expect(find.text('Веб-дизайн и шаблоны проектирования'), findsOneWidget);
+      expect(find.text('71'), findsOneWidget);
+      expect(find.text('09:45–11:05 · осталось 35 мин'), findsOneWidget);
+      // Ни навигации, ни списка дней в компактном окне нет.
+      expect(find.text('Пропуски'), findsNothing);
     });
   });
 }
