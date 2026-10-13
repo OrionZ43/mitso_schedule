@@ -13,6 +13,8 @@ data class Lesson(
     val title: String,
     val typeLabel: String,
     val teacher: String?,
+    /** Группа — она стоит в расписании преподавателя вместо его фамилии. */
+    val group: String?,
     val room: String?,
     val subgroup: Int?,
 ) {
@@ -94,6 +96,7 @@ data class Schedule(val group: String, val days: List<Day>) {
                                 title = lesson.getString("title"),
                                 typeLabel = lesson.optString("typeLabel", ""),
                                 teacher = lesson.optStringOrNull("teacher"),
+                                group = lesson.optStringOrNull("group"),
                                 room = lesson.optStringOrNull("room"),
                                 subgroup = if (lesson.isNull("subgroup")) {
                                     null

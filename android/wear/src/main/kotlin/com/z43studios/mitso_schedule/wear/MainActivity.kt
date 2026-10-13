@@ -182,10 +182,12 @@ private fun LessonCard(
     )
 }
 
-/** «Идёт до 11:05», «Лекция · 71», «Лаб · 62 (к) · 2 подгруппа». */
+/** «Идёт до 11:05», «Лекция · 71», «2423 УИР · Лаб · 62 (к)». */
 private fun subtitleOf(lesson: Lesson, isNow: Boolean): String {
     if (isNow) return "Идёт до ${lesson.end}"
     return listOfNotNull(
+        // У преподавателя первым делом — кто придёт.
+        lesson.group,
         lesson.typeLabel.takeIf { it.isNotEmpty() },
         lesson.room,
         lesson.subgroup?.let { "$it подгруппа" },

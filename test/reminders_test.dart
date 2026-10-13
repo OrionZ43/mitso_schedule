@@ -193,6 +193,43 @@ void main() {
     );
   });
 
+  test('вечерняя сводка: сколько пар, начало, конец и окна', () {
+    final List<LessonReminder> digests = planDayDigests(
+      days: [
+        _day(21, [
+          _lesson(start: '09:45', end: '11:05'),
+          // Между 11:05 и 13:05 — два часа: это окно.
+          _lesson(start: '13:05', end: '14:25', title: 'Маркетинг'),
+        ]),
+      ],
+      now: now,
+    );
+
+    expect(digests, hasLength(1));
+    expect(digests.single.id, kDigestBaseId);
+    expect(digests.single.when, DateTime(2026, 9, 20, kDigestHour));
+    expect(digests.single.title, 'Завтра 2 пары');
+    expect(digests.single.body, 'С 09:45 до 14:25 · окно 2 ч');
+  });
+
+  test('в сводке видно зачёт', () {
+    final List<LessonReminder> digests = planDayDigests(
+      days: [
+        _day(21, [
+          _lesson(start: '09:45', end: '11:05', type: LessonType.credit),
+        ]),
+      ],
+      now: now,
+    );
+
+    expect(digests.single.title, 'Завтра 1 пара');
+    expect(digests.single.body, 'С 09:45 до 11:05 · зачёт');
+  });
+
+  test('в день без пар сводки нет', () {
+    expect(planDayDigests(days: [_day(21, const [])], now: now), isEmpty);
+  });
+
   test('выходные пропускаются, расписание без пар ничего не планирует', () {
     expect(
       planLessonReminders(

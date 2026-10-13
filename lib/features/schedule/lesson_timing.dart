@@ -89,5 +89,9 @@ String lessonDetailsLine(Lesson lesson, {bool withTitle = false}) => [
   if (lesson.subgroup != null) '${lesson.subgroup} подгруппа',
   if (withTitle) lesson.title,
   ?lesson.teacher,
-  if (lesson.room != null) roomLabel(lesson.room!),
+  // «(к)» на экране заменил значок, вслух его читаем словами.
+  if (lesson.roomNumber != null)
+    lesson.computerRoom
+        ? '${roomLabel(lesson.roomNumber!)}, компьютерный класс'
+        : roomLabel(lesson.roomNumber!),
 ].join(' · ');

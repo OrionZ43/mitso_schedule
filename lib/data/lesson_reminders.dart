@@ -73,6 +73,16 @@ const int kMaxAssessmentReminders = 8;
 /// можно успеть подготовиться.
 const int kAssessmentHour = 19;
 
+/// Номера вечерних сводок о завтрашнем дне.
+const int kDigestBaseId = 3000;
+
+/// На сколько дней вперёд ставить сводки: дальше расписание ещё поменяется.
+const int kMaxDigests = 7;
+
+/// Во сколько приходит сводка — позже напоминания о зачёте, чтобы они не
+/// падали одновременно.
+const int kDigestHour = 20;
+
 /// Что и когда напомнить.
 ///
 /// Берутся пары, до начала которых ещё больше [before]: напоминание о паре,
@@ -208,6 +218,70 @@ String _assessmentLine(Lesson lesson) => [
   if (lesson.room != null) 'ауд. ${lesson.room}',
 ].join(', ');
 
+/// «Завтра 5 пар» — вечерняя сводка о завтрашнем дне.
+///
+/// Приходит накануне в [kDigestHour] и говорит главное: сколько пар, когда
+/// начало и конец, есть ли окна.
+List<LessonReminder> planDayDigests({
+  required List<ScheduleDay> days,
+  required DateTime now,
+  int limit = kMaxDigests,
+}) {
+  final List<LessonReminder> digests = [];
+
+  final List<ScheduleDay> sorted = [...days]
+    ..sort((a, b) => a.date.compareTo(b.date));
+  for (final ScheduleDay day in sorted) {
+    final List<LessonSlot> slots = day.slots();
+    if (slots.isEmpty) continue;
+
+    final DateTime when = DateTime(
+      day.date.year,
+      day.date.month,
+      day.date.day,
+      kDigestHour,
+    ).subtract(const Duration(days: 1));
+    if (!when.isAfter(now)) continue;
+
+    digests.add(
+      LessonReminder(
+        id: kDigestBaseId + digests.length,
+        when: when,
+        title: 'Завтра ${slots.length} ${ScheduleDay.pairsWord(slots.length)}',
+        body: _digestBody(day, slots),
+      ),
+    );
+    if (digests.length == limit) break;
+  }
+
+  return digests;
+}
+
+/// «С 08:15 до 15:55 · окно 1 ч 50 мин» — и про зачёт, если он завтра.
+String _digestBody(ScheduleDay day, List<LessonSlot> slots) {
+  final List<String> windows = [
+    for (int i = 1; i < slots.length; i++)
+      if (ScheduleDay.breakBetween(slots[i - 1], slots[i]) >=
+          ScheduleDay.windowMinutes)
+        _windowLabel(ScheduleDay.breakBetween(slots[i - 1], slots[i])),
+  ];
+
+  return [
+    'С ${slots.first.start} до ${slots.last.end}',
+    if (windows.length == 1) 'окно ${windows.single}',
+    if (windows.length > 1) 'окна: ${windows.join(', ')}',
+    for (final LessonType type in day.assessments) type.label.toLowerCase(),
+  ].join(' · ');
+}
+
+/// «1 ч 50 мин», «50 мин».
+String _windowLabel(int minutes) {
+  final int hours = minutes ~/ 60;
+  final int rest = minutes % 60;
+  if (hours == 0) return '$rest мин';
+  return rest == 0 ? '$hours ч' : '$hours ч $rest мин';
+}
+
 /// Системные напоминания Android.
 class SystemLessonReminders implements LessonReminderPort {
   const SystemLessonReminders();
@@ -282,6 +356,9 @@ abstract final class LessonReminders {
       id < kAssessmentBaseId + kMaxAssessmentReminders;
       id++
     ) {
+      await _plugin.cancel(id: id);
+    }
+    for (int id = kDigestBaseId; id < kDigestBaseId + kMaxDigests; id++) {
       await _plugin.cancel(id: id);
     }
     if (reminders.isEmpty) return;

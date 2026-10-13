@@ -80,6 +80,8 @@ class FakeMitsoApi implements MitsoApi {
     if (failSchedule) {
       throw const MitsoException('Нет соединения с сайтом расписания.');
     }
+    final List<ScheduleWeek>? custom = weeks;
+    if (custom != null) return custom;
     return ScheduleParser.parse(
       File('test/fixtures/teacher_schedule.html').readAsStringSync(),
       today: fakeNow,

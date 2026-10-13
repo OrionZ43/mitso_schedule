@@ -11,7 +11,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../data/mitso/mitso_client.dart';
 import '../../data/models/student_account.dart';
 import '../../state/avatar_controller.dart';
+import '../../data/models/lesson.dart';
+import '../../data/teacher_load.dart';
 import '../../state/mitso_providers.dart';
+import '../../state/schedule_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
@@ -108,6 +111,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onPick: () => showGroupPicker(context),
                 ),
 
+                // Преподавателю — его нагрузка; счёта у него нет.
+                if (!isStudent) const _TeacherLoadSection(),
+
                 if (isStudent) ...[
                   const SectionHeader('Лицевой счёт'),
                   if (account == null)
@@ -167,8 +173,9 @@ class _ProfileHero extends ConsumerWidget {
   /// контейнеру 32 − 20 = 12dp (medium) по правилу оптической скруглённости.
   static const double padding = AppSpacing.space250;
 
-  /// Фамилия и имя одной буквой: «ИИ».
-  String? get _initials {
+  /// Фамилия и имя одной буквой: «ИИ». У преподавателя инициалов нет —
+  /// в шапке его расписание, а не он сам.
+  String? initialsOf(StudentAccount? account) {
     final String? name = account?.fullName;
     if (name == null) return null;
     final List<String> parts = name
@@ -184,6 +191,9 @@ class _ProfileHero extends ConsumerWidget {
     final ColorScheme colors = context.colors;
     final ScheduleTarget? target = this.target;
     final bool teacher = target is TeacherTarget;
+    // Открыто расписание преподавателя — в шапке он, а не владелец счёта:
+    // счёт студенческий и к этому расписанию отношения не имеет.
+    final StudentAccount? account = teacher ? null : this.account;
     final String? photo = ref.watch(avatarControllerProvider);
 
     return Card.filled(
@@ -214,7 +224,7 @@ class _ProfileHero extends ConsumerWidget {
                                       MediaQuery.devicePixelRatioOf(context))
                                   .round(),
                         ),
-                  initials: _initials,
+                  initials: initialsOf(account),
                   icon: teacher ? Symbols.co_present : Symbols.school,
                 ),
                 // Сама фигура неинтерактивна (гайд: формы библиотеки — для
@@ -335,6 +345,132 @@ class _HeroTarget extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Нагрузка преподавателя за неделю: пар, групп, свободные дни.
+///
+/// У преподавателя нет лицевого счёта и СДО, поэтому профиль был пустым —
+/// теперь там то, ради чего он сюда и зайдёт.
+class _TeacherLoadSection extends ConsumerWidget {
+  const _TeacherLoadSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ScheduleState? schedule = ref.watch(scheduleControllerProvider).value;
+    if (schedule == null) return const SizedBox.shrink();
+
+    final ScheduleWeek? week = weekOf(schedule.weeks, ref.watch(nowProvider));
+    if (week == null) return const SizedBox.shrink();
+
+    final TeacherLoad load = teacherLoadOf(week);
+    if (load.isEmpty) return const SizedBox.shrink();
+
+    final ColorScheme colors = context.colors;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionHeader('Нагрузка'),
+        Card.filled(
+          color: colors.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space200),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  week.label,
+                  style: context.text.bodyMedium!.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space50),
+                Text(
+                  '${load.pairs} ${ScheduleDay.pairsWord(load.pairs)} · '
+                  '${load.groups.length} ${_groupsWord(load.groups.length)}',
+                  style: context.text.headlineSmall!.emphasized,
+                ),
+                if (load.busiestDay != null) ...[
+                  const SizedBox(height: AppSpacing.space150),
+                  _LoadLine(
+                    icon: Symbols.trending_up,
+                    text:
+                        'Самый плотный день — '
+                        '${load.busiestDay!.title.toLowerCase()}, '
+                        '${load.busiestDay!.pairCount} '
+                        '${ScheduleDay.pairsWord(load.busiestDay!.pairCount)}',
+                  ),
+                ],
+                if (load.freeDays.isNotEmpty)
+                  _LoadLine(
+                    icon: Symbols.weekend,
+                    text:
+                        'Без пар: '
+                        '${load.freeDays.map((d) => d.title.toLowerCase()).join(', ')}',
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (load.groups.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space150),
+          SegmentedList(
+            children: [
+              for (final GroupLoad group in load.groups)
+                M3ListItem(
+                  leading: const Icon(Symbols.groups),
+                  headline: Text(group.group),
+                  trailing: Text(
+                    '${group.pairs} ${ScheduleDay.pairsWord(group.pairs)}',
+                    style: context.text.labelLarge!.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _groupsWord(int n) {
+    final int mod100 = n % 100;
+    final int mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'групп';
+    if (mod10 == 1) return 'группа';
+    if (mod10 >= 2 && mod10 <= 4) return 'группы';
+    return 'групп';
+  }
+}
+
+/// Строка сводки: значок и текст.
+class _LoadLine extends StatelessWidget {
+  const _LoadLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = context.colors.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space50),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.space100),
+          Expanded(
+            child: Text(
+              text,
+              style: context.text.bodyMedium!.copyWith(color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -123,7 +123,8 @@ class _CardContent extends StatelessWidget {
     const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
     // Аудитория всей карточки — у одной строки; у подгрупп — в их строках.
-    final String? room = oneRow ? single.room : null;
+    final String? room = oneRow ? single.roomNumber : null;
+    final bool computerRoom = oneRow && single.computerRoom;
     final double padding = isNow ? 22 : 20;
 
     // Заголовок и название не заходят под форму с аудиторией; строки ниже
@@ -216,7 +217,12 @@ class _CardContent extends StatelessWidget {
                               ? Symbols.groups
                               : Symbols.person,
                           text: single.group ?? single.teacher!,
-                          color: secondary,
+                          // У преподавателя главное — кто придёт: группа
+                          // набрана заметнее фамилии.
+                          color: single.group != null
+                              ? (past ? colors.onSurfaceVariant : foreground)
+                              : secondary,
+                          emphasized: single.group != null,
                         ),
                       ],
                     ] else ...[
@@ -257,13 +263,18 @@ class _CardContent extends StatelessWidget {
         PositionedDirectional(
           top: -_RoomShape.overflow,
           end: -_RoomShape.overflow,
-          child: _RoomShape(room: room, colors: accent),
+          child: _RoomShape(room: room, computer: computerRoom, colors: accent),
         ),
-        // Значок аудитории — в самом углу карточки, над формой.
+        // Значок аудитории — в самом углу карточки, над формой. У
+        // компьютерного класса вместо двери монитор.
         PositionedDirectional(
           top: padding,
           end: padding,
-          child: Icon(Symbols.door_front, size: 20, color: accent.content),
+          child: Icon(
+            computerRoom ? Symbols.desktop_windows : Symbols.door_front,
+            size: 20,
+            color: accent.content,
+          ),
         ),
         content,
       ],
@@ -306,20 +317,29 @@ class _AccentColors {
 const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
 
 /// Подпись аудитории для TalkBack.
-String _roomSemantics(String room) =>
-    RegExp(r'^\d').hasMatch(room) ? 'аудитория $room' : room;
+String _roomSemantics(String room, {bool computer = false}) {
+  final String base = RegExp(r'^\d').hasMatch(room) ? 'аудитория $room' : room;
+  return computer ? '$base, компьютерный класс' : base;
+}
 
 /// Аудитория подгруппы — тональная плашка в конце строки.
 class _RoomPill extends StatelessWidget {
-  const _RoomPill({required this.room, required this.colors});
+  const _RoomPill({
+    required this.room,
+    required this.colors,
+    this.computer = false,
+  });
 
   final String room;
   final _AccentColors colors;
 
+  /// Компьютерный класс.
+  final bool computer;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: _roomSemantics(room),
+      label: _roomSemantics(room, computer: computer),
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(6, 2, 10, 2),
@@ -330,7 +350,11 @@ class _RoomPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Symbols.door_front, size: 16, color: colors.content),
+            Icon(
+              computer ? Symbols.desktop_windows : Symbols.door_front,
+              size: 16,
+              color: colors.content,
+            ),
             const SizedBox(width: AppSpacing.space50),
             Flexible(
               child: Text(
@@ -356,10 +380,17 @@ class _RoomPill extends StatelessWidget {
 /// только слой с формой: рисунок кэшируется, каждый кадр меняется лишь
 /// матрица. При «Удалить анимации» форма стоит.
 class _RoomShape extends StatefulWidget {
-  const _RoomShape({required this.room, required this.colors});
+  const _RoomShape({
+    required this.room,
+    required this.colors,
+    this.computer = false,
+  });
 
   final String room;
   final _AccentColors colors;
+
+  /// Компьютерный класс — об этом говорит значок в углу карточки.
+  final bool computer;
 
   /// Сторона формы.
   static const double size = 132;
@@ -403,7 +434,7 @@ class _RoomShapeState extends State<_RoomShape>
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: _roomSemantics(widget.room),
+      label: _roomSemantics(widget.room, computer: widget.computer),
       excludeSemantics: true,
       child: SizedBox.square(
         dimension: _RoomShape.size,
@@ -573,7 +604,8 @@ class _SubgroupRows extends StatelessWidget {
                         ),
                         if (slot.lessons[i].room != null)
                           _RoomPill(
-                            room: slot.lessons[i].room!,
+                            room: slot.lessons[i].roomNumber!,
+                            computer: slot.lessons[i].computerRoom,
                             colors: _AccentColors.of(
                               colors,
                               isNow: isNow,
@@ -631,23 +663,31 @@ class _SubgroupNumber extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.icon, required this.text, required this.color});
+  const _MetaRow({
+    required this.icon,
+    required this.text,
+    required this.color,
+    this.emphasized = false,
+  });
 
   final IconData icon;
   final String text;
   final Color color;
 
+  /// Строка важнее остальных — крупнее и жирнее.
+  final bool emphasized;
+
   @override
   Widget build(BuildContext context) {
+    final TextStyle style = emphasized
+        ? context.text.titleSmall!.emphasized
+        : context.text.bodyMedium!;
     return Row(
       children: [
-        Icon(icon, size: 18, color: color),
+        Icon(icon, size: 18, color: color, fill: emphasized ? 1 : 0),
         const SizedBox(width: AppSpacing.space100),
         Expanded(
-          child: Text(
-            text,
-            style: context.text.bodyMedium!.copyWith(color: color),
-          ),
+          child: Text(text, style: style.copyWith(color: color)),
         ),
       ],
     );

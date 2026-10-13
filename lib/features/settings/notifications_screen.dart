@@ -113,6 +113,18 @@ class NotificationsScreen extends ConsumerWidget {
                         },
                       ),
                       _Toggle(
+                        icon: Symbols.bedtime,
+                        headline: 'Каким будет завтра',
+                        supporting:
+                            'Вечером в 20:00: сколько пар, во сколько начало '
+                            'и есть ли окна',
+                        value: settings.dayDigest,
+                        onChanged: (value) async {
+                          if (!await allowed(value)) return;
+                          controller.setDayDigest(value);
+                        },
+                      ),
+                      _Toggle(
                         icon: Symbols.priority_high,
                         headline: 'Зачёты и экзамены',
                         supporting: 'Накануне вечером, в 19:00',

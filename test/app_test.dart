@@ -219,7 +219,7 @@ void main() {
       matching: find.byType(LessonCard),
     );
     expect(card, findsOneWidget);
-    for (final String text in ['Калинин М. А.', '62 (к)', '63 (к)']) {
+    for (final String text in ['Калинин М. А.', '62', '63']) {
       expect(
         find.descendant(of: card, matching: find.text(text)),
         findsOneWidget,
@@ -229,7 +229,7 @@ void main() {
       find.descendant(
         of: card,
         matching: find.bySemanticsLabel(
-          '2 подгруппа · Пархимович А. В. · ауд. 63 (к)',
+          '2 подгруппа · Пархимович А. В. · ауд. 63, компьютерный класс',
         ),
       ),
       findsOneWidget,
@@ -759,8 +759,16 @@ void main() {
     expect(preferences.getInt('settings.reminderLeadMinutes'), 30);
     expect(reminders.planned.first.when, DateTime(2026, 9, 16, 10, 45));
 
-    // Выключение снимает всё запланированное.
-    await tapInSheet(tester, find.text('Перед началом пары'));
+    // Выключение снимает всё запланированное. Список прокручен к чипам —
+    // возвращаемся к строке выше.
+    await tester.scrollUntilVisible(
+      find.text('Перед началом пары'),
+      -200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    await tester.tap(find.text('Перед началом пары'));
+    await settle(tester);
     expect(reminders.planned, isEmpty);
   });
 

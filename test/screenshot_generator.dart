@@ -67,7 +67,7 @@ Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
   double balance = 67,
-  String appVersion = '1.3.0 (6)',
+  String appVersion = '1.4.0 (7)',
   List<ScheduleWeek>? weeks,
   Map<String, Object> preferences = const {},
 }) async {
@@ -85,7 +85,7 @@ Future<void> _pumpApp(
     'student.number': FakeStudentApi.number,
     'profile.avatar': _avatarPath,
     // Окно «Что нового» всплывает только там, где оно и нужно.
-    'app.lastSeenVersion': '1.3.0',
+    'app.lastSeenVersion': '1.4.0',
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -326,11 +326,99 @@ void main() {
     await _capture(tester, '14-assessments-light');
   });
 
+  // Неделя преподавателя: группы, окно между парами, компьютерный класс.
+  List<ScheduleWeek> teacherWeeks() {
+    Lesson lesson(
+      String start,
+      String end,
+      String title,
+      String group, {
+      String room = '71',
+      LessonType type = LessonType.lecture,
+    }) => Lesson(
+      start: start,
+      end: end,
+      title: title,
+      type: type,
+      typeLabel: type.label,
+      group: group,
+      room: room,
+    );
+
+    return [
+      ScheduleWeek(
+        label: 'Текущая неделя',
+        days: [
+          ScheduleDay(
+            date: fakeNow,
+            lessons: [
+              lesson('09:45', '11:05', 'Системы баз данных', '2423 УИР'),
+              lesson(
+                '13:05',
+                '14:25',
+                'Системы баз данных',
+                '2343 МП',
+                room: '62 (к)',
+                type: LessonType.lab,
+              ),
+              lesson('14:35', '15:55', 'Маркетинг', '2421 ИСИТ'),
+            ],
+          ),
+          ScheduleDay(
+            date: fakeNow.add(const Duration(days: 1)),
+            lessons: [
+              lesson('09:45', '11:05', 'Маркетинг', '2423 УИР'),
+              lesson('11:15', '12:35', 'Эконометрика', '2343 МП'),
+            ],
+          ),
+          ScheduleDay(
+            date: fakeNow.add(const Duration(days: 2)),
+            lessons: const [],
+          ),
+        ],
+      ),
+    ];
+  }
+
+  _shot('скриншот дня преподавателя', (tester) async {
+    await _pumpApp(
+      tester,
+      dark: false,
+      weeks: teacherWeeks(),
+      preferences: {
+        'schedule.target': '{"kind":"teacher","name":"Сысун В. В."}',
+      },
+    );
+    await _frames(tester, 900);
+    await _capture(tester, '17-teacher-day-light');
+  });
+
+  _shot('скриншот нагрузки преподавателя', (tester) async {
+    await _pumpApp(
+      tester,
+      dark: false,
+      weeks: teacherWeeks(),
+      preferences: {
+        'schedule.target': '{"kind":"teacher","name":"Сысун В. В."}',
+      },
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3NavigationBar),
+        matching: find.text('Профиль'),
+      ),
+    );
+    await tester.pump();
+    await _frames(tester, 700);
+    await _loadImages(tester);
+    await _capture(tester, '18-teacher-load-light');
+  });
+
   _shot('скриншот «Что нового»', (tester) async {
     await _pumpApp(
       tester,
       dark: false,
-      preferences: {'app.lastSeenVersion': '1.2.0'},
+      preferences: {'app.lastSeenVersion': '1.3.0'},
     );
     await _frames(tester, 900);
     await _loadImages(tester);

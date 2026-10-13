@@ -43,6 +43,47 @@ class ReleaseNotes {
 /// показывается один раз после обновления.
 const List<ReleaseNotes> kReleaseNotes = [
   ReleaseNotes(
+    version: '1.4.0',
+    headline: 'Удобнее преподавателям',
+    notes: [
+      ReleaseNote(
+        icon: Symbols.groups,
+        title: 'Группа на первом месте',
+        text:
+            'В расписании преподавателя группа набрана заметнее предмета — '
+            'и она же первой стоит на часах.',
+      ),
+      ReleaseNote(
+        icon: Symbols.trending_up,
+        title: 'Нагрузка недели',
+        text:
+            'В профиле видно, сколько пар и групп на неделе, какой день '
+            'самый плотный и когда пар нет вовсе.',
+      ),
+      ReleaseNote(
+        icon: Symbols.hourglass_empty,
+        title: 'Окна между парами',
+        text:
+            'Перерыв длиннее перемены теперь отмечен прямо в расписании: '
+            '«Окно 2 ч».',
+      ),
+      ReleaseNote(
+        icon: Symbols.desktop_windows,
+        title: 'Компьютерные аудитории',
+        text:
+            'Пометка «(к)» превратилась в значок монитора, а номер стал '
+            'чище.',
+      ),
+      ReleaseNote(
+        icon: Symbols.bedtime,
+        title: 'Каким будет завтра',
+        text:
+            'Вечерняя сводка о завтрашнем дне — включается в уведомлениях. '
+            'А день целиком можно скопировать в чат одной кнопкой.',
+      ),
+    ],
+  ),
+  ReleaseNotes(
     version: '1.3.0',
     headline: 'Расписание под присмотром',
     notes: [

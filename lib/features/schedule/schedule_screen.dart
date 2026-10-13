@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../app_platform.dart';
 import '../../data/mitso/mitso_client.dart';
+import '../../data/day_text.dart';
 import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
@@ -371,7 +373,14 @@ class _DayContent extends ConsumerWidget {
         if (slots.isEmpty)
           const EmptyState(title: 'Занятий нет.\nОтдыхай!')
         else
-          for (int i = 0; i < slots.length; i++)
+          for (int i = 0; i < slots.length; i++) ...[
+            // Окно между парами — отдельной строкой, чтобы не считать в уме.
+            if (i > 0 &&
+                ScheduleDay.breakBetween(slots[i - 1], slots[i]) >=
+                    ScheduleDay.windowMinutes)
+              _DayWindow(
+                minutes: ScheduleDay.breakBetween(slots[i - 1], slots[i]),
+              ),
             Padding(
               padding: EdgeInsets.fromLTRB(
                 AppSpacing.screenMargin(context),
@@ -402,6 +411,7 @@ class _DayContent extends ConsumerWidget {
                 },
               ),
             ),
+          ],
       ],
     );
   }
@@ -471,17 +481,37 @@ class _DayHeading extends StatelessWidget {
           if (slots.isEmpty)
             Text('Выходной', style: secondary)
           else
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '${slots.length} ${ScheduleDay.pairsWord(slots.length)}',
-                  style: context.text.titleSmall,
+                // При крупном шрифте подписи переносятся, а не вылезают.
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${slots.length} ${ScheduleDay.pairsWord(slots.length)}',
+                        style: context.text.titleSmall,
+                        textAlign: TextAlign.end,
+                      ),
+                      Text(
+                        '${slots.first.start}—${slots.last.end}',
+                        style: secondary,
+                        textAlign: TextAlign.end,
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  '${slots.first.start}—${slots.last.end}',
-                  style: secondary,
+                const SizedBox(width: AppSpacing.space50),
+                // День текстом — скинуть старосте или в чат группы.
+                M3IconButton(
+                  onPressed: () => _copyDay(context, day),
+                  icon: const Icon(Symbols.content_copy),
+                  color: M3IconButtonColor.standard,
+                  size: M3ButtonSize.extraSmall,
+                  tooltip: 'Скопировать день',
                 ),
               ],
             ),
@@ -489,6 +519,74 @@ class _DayHeading extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Окно между парами: «Окно 1 ч 50 мин».
+///
+/// Не карточка и не пустое место: тонкая строка с линиями по бокам —
+/// разделитель с подписью (divider → Usage: «divider with text»).
+class _DayWindow extends StatelessWidget {
+  const _DayWindow({required this.minutes});
+
+  final int minutes;
+
+  /// «1 ч 50 мин», «50 мин».
+  static String label(int minutes) {
+    final int hours = minutes ~/ 60;
+    final int rest = minutes % 60;
+    if (hours == 0) return '$rest мин';
+    return rest == 0 ? '$hours ч' : '$hours ч $rest мин';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = context.colors;
+    final TextStyle style = context.text.labelMedium!.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin(context) + AppSpacing.space200,
+        AppSpacing.space150,
+        AppSpacing.screenMargin(context) + AppSpacing.space200,
+        AppSpacing.space50,
+      ),
+      child: Semantics(
+        label: 'Окно ${label(minutes)} до следующей пары',
+        excludeSemantics: true,
+        child: Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space150,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Symbols.hourglass_empty,
+                    size: 16,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.space50),
+                  Text('Окно ${label(minutes)}', style: style),
+                ],
+              ),
+            ),
+            const Expanded(child: Divider()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Копирует день в буфер: текст тот же, что уйдёт в чат.
+Future<void> _copyDay(BuildContext context, ScheduleDay day) async {
+  await Clipboard.setData(ClipboardData(text: dayAsText(day)));
+  appSnackbarHost.currentState?.show('День скопирован');
 }
 
 /// «Сегодня», «Завтра», «Вчера» или `null` для остальных дней.

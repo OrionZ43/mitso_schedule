@@ -62,6 +62,18 @@ class Lesson {
   /// `71`, `62 (к)`, `41-42`; `null`, если не указана.
   final String? room;
 
+  /// Компьютерный класс: на сайте такие аудитории помечены «(к)».
+  bool get computerRoom => room != null && _computerMark.hasMatch(room!);
+
+  /// Номер без пометки: «62 (к)» → «62». Пометку на карточке заменяет
+  /// значок, иначе она съедает место у крупного номера.
+  String? get roomNumber => room?.replaceAll(_computerMark, '').trim();
+
+  static final RegExp _computerMark = RegExp(
+    r'\s*\(\s*к\s*\)',
+    caseSensitive: false,
+  );
+
   /// Номер подгруппы, если пара идёт параллельно у нескольких подгрупп.
   final int? subgroup;
 
@@ -162,6 +174,17 @@ class ScheduleDay {
 
   /// Число месяца.
   String get dayNumber => date.day.toString();
+
+  /// Перерыв между парами [before] и [after] в минутах.
+  static int breakBetween(LessonSlot before, LessonSlot after) =>
+      after.startMinutes - before.endMinutes;
+
+  /// Перерыв, который уже не перемена, а окно.
+  ///
+  /// Между парами 10 минут, в обед — 30; всё, что длиннее, — свободное
+  /// время, и его стоит показать: преподавателю в него назначают
+  /// консультации, студенту — успеть съездить по делам.
+  static const int windowMinutes = 45;
 
   /// Пары дня: строки с одинаковым временем объединены.
   ///

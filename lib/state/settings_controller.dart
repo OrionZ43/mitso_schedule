@@ -17,6 +17,7 @@ class Settings {
     this.scheduleChanges = true,
     this.newWeekAlerts = true,
     this.assessmentAlerts = true,
+    this.dayDigest = false,
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -46,6 +47,9 @@ class Settings {
   /// Напоминать накануне вечером о зачёте и экзамене.
   final bool assessmentAlerts;
 
+  /// Вечером рассказывать, каким будет завтрашний день.
+  final bool dayDigest;
+
   /// Хоть одно уведомление о расписании включено — значит фоновая проверка
   /// нужна.
   bool get watchesSchedule =>
@@ -68,6 +72,7 @@ class Settings {
     bool? scheduleChanges,
     bool? newWeekAlerts,
     bool? assessmentAlerts,
+    bool? dayDigest,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -81,6 +86,7 @@ class Settings {
       scheduleChanges: scheduleChanges ?? this.scheduleChanges,
       newWeekAlerts: newWeekAlerts ?? this.newWeekAlerts,
       assessmentAlerts: assessmentAlerts ?? this.assessmentAlerts,
+      dayDigest: dayDigest ?? this.dayDigest,
     );
   }
 }
@@ -109,6 +115,7 @@ class SettingsController extends Notifier<Settings> {
   static const String scheduleChangesKey = 'settings.scheduleChanges';
   static const String newWeekKey = 'settings.newWeekAlerts';
   static const String assessmentsKey = 'settings.assessmentAlerts';
+  static const String digestKey = 'settings.dayDigest';
 
   /// Один переключатель на всё расписание из версии 1.3.0: если он остался
   /// выключенным, выключены и три новых.
@@ -131,6 +138,7 @@ class SettingsController extends Notifier<Settings> {
       scheduleChanges: prefs.getBool(scheduleChangesKey) ?? legacy,
       newWeekAlerts: prefs.getBool(newWeekKey) ?? legacy,
       assessmentAlerts: prefs.getBool(assessmentsKey) ?? legacy,
+      dayDigest: prefs.getBool(digestKey) ?? false,
     );
   }
 
@@ -169,6 +177,11 @@ class SettingsController extends Notifier<Settings> {
   void setNewWeekAlerts(bool value) {
     state = state.copyWith(newWeekAlerts: value);
     _prefs.setBool(newWeekKey, value);
+  }
+
+  void setDayDigest(bool value) {
+    state = state.copyWith(dayDigest: value);
+    _prefs.setBool(digestKey, value);
   }
 
   void setAssessmentAlerts(bool value) {

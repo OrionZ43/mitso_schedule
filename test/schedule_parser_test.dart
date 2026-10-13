@@ -157,6 +157,77 @@ void main() {
       ));
     });
 
+    test('«(к)» — компьютерный класс, а не часть номера', () {
+      const Lesson computer = Lesson(
+        start: '09:45',
+        end: '11:05',
+        title: 'Системы баз данных',
+        type: LessonType.lab,
+        typeLabel: 'Лабораторная',
+        room: '62 (к)',
+      );
+      const Lesson usual = Lesson(
+        start: '09:45',
+        end: '11:05',
+        title: 'Маркетинг',
+        type: LessonType.lecture,
+        typeLabel: 'Лекция',
+        room: '71',
+      );
+
+      expect(computer.computerRoom, isTrue);
+      expect(computer.roomNumber, '62');
+      expect(usual.computerRoom, isFalse);
+      expect(usual.roomNumber, '71');
+    });
+
+    test('окно между парами считается по перерыву', () {
+      const LessonSlot first = LessonSlot(
+        start: '09:45',
+        end: '11:05',
+        lessons: [
+          Lesson(
+            start: '09:45',
+            end: '11:05',
+            title: 'Пара',
+            type: LessonType.lecture,
+            typeLabel: 'Лекция',
+          ),
+        ],
+      );
+      const LessonSlot afterBreak = LessonSlot(
+        start: '11:15',
+        end: '12:35',
+        lessons: [
+          Lesson(
+            start: '11:15',
+            end: '12:35',
+            title: 'Пара',
+            type: LessonType.lecture,
+            typeLabel: 'Лекция',
+          ),
+        ],
+      );
+      const LessonSlot afterWindow = LessonSlot(
+        start: '13:05',
+        end: '14:25',
+        lessons: [
+          Lesson(
+            start: '13:05',
+            end: '14:25',
+            title: 'Пара',
+            type: LessonType.lecture,
+            typeLabel: 'Лекция',
+          ),
+        ],
+      );
+
+      // Перемена — не окно, два часа — окно.
+      expect(ScheduleDay.breakBetween(first, afterBreak), 10);
+      expect(ScheduleDay.breakBetween(first, afterWindow), 120);
+      expect(ScheduleDay.windowMinutes, 45);
+    });
+
     test('незнакомые типы сохраняют подпись сайта', () {
       expect(ScheduleParser.parseType('кср'), (LessonType.other, 'Кср'));
     });

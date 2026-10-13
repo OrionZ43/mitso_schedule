@@ -43,6 +43,7 @@ class ReminderScheduler extends AsyncNotifier<int> {
         ),
       if (settings.assessmentAlerts)
         ...planAssessmentReminders(days: schedule.days, now: now),
+      if (settings.dayDigest) ...planDayDigests(days: schedule.days, now: now),
     ];
     await port.replace(reminders);
     return reminders.length;
