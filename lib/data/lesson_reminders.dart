@@ -62,6 +62,17 @@ const int kMaxLessonReminders = 32;
 /// Первый номер уведомления: у уведомления о долге свой (1).
 const int kReminderBaseId = 1000;
 
+/// Номера напоминаний о зачётах и экзаменах — своим диапазоном.
+const int kAssessmentBaseId = 2000;
+
+/// Сколько зачётов и экзаменов вперёд напоминать: дальше расписание ещё
+/// поменяется.
+const int kMaxAssessmentReminders = 8;
+
+/// Во сколько накануне напоминать о зачёте и экзамене: вечером, когда ещё
+/// можно успеть подготовиться.
+const int kAssessmentHour = 19;
+
 /// Что и когда напомнить.
 ///
 /// Берутся пары, до начала которых ещё больше [before]: напоминание о паре,
@@ -144,6 +155,59 @@ String _beforeLabel(Duration before) {
   return rest == 0 ? 'Через $hours ч' : 'Через $hours ч $rest мин';
 }
 
+/// «Завтра зачёт» и «Завтра экзамен» — накануне вечером.
+///
+/// Одно напоминание на день: если зачёт и экзамен стоят в один день, они
+/// перечисляются вместе.
+List<LessonReminder> planAssessmentReminders({
+  required List<ScheduleDay> days,
+  required DateTime now,
+  int limit = kMaxAssessmentReminders,
+}) {
+  final List<LessonReminder> reminders = [];
+
+  final List<ScheduleDay> sorted = [...days]
+    ..sort((a, b) => a.date.compareTo(b.date));
+  for (final ScheduleDay day in sorted) {
+    final List<Lesson> assessments = [
+      for (final LessonSlot slot in day.slots())
+        for (final Lesson lesson in slot.lessons)
+          if (lesson.type.isAssessment) lesson,
+    ];
+    if (assessments.isEmpty) continue;
+
+    final DateTime when = DateTime(
+      day.date.year,
+      day.date.month,
+      day.date.day,
+      kAssessmentHour,
+    ).subtract(const Duration(days: 1));
+    if (!when.isAfter(now)) continue;
+
+    final Set<String> kinds = {
+      for (final Lesson lesson in assessments) lesson.type.label.toLowerCase(),
+    };
+    reminders.add(
+      LessonReminder(
+        id: kAssessmentBaseId + reminders.length,
+        when: when,
+        title: 'Завтра ${kinds.join(' и ')}',
+        body: assessments.map(_assessmentLine).join(' · '),
+      ),
+    );
+    if (reminders.length == limit) break;
+  }
+
+  return reminders;
+}
+
+/// «Системы баз данных, 09:45, ауд. 71».
+String _assessmentLine(Lesson lesson) => [
+  lesson.title,
+  lesson.start,
+  if (lesson.room != null) 'ауд. ${lesson.room}',
+].join(', ');
+
 /// Системные напоминания Android.
 class SystemLessonReminders implements LessonReminderPort {
   const SystemLessonReminders();
@@ -203,12 +267,19 @@ abstract final class LessonReminders {
     return await android.requestNotificationsPermission() ?? false;
   }
 
-  /// Планирует [reminders] вместо всех прежних.
+  /// Планирует [reminders] вместо всех прежних — и о парах, и о зачётах.
   static Future<void> replace(List<LessonReminder> reminders) async {
     await init();
     for (
       int id = kReminderBaseId;
       id < kReminderBaseId + kMaxLessonReminders;
+      id++
+    ) {
+      await _plugin.cancel(id: id);
+    }
+    for (
+      int id = kAssessmentBaseId;
+      id < kAssessmentBaseId + kMaxAssessmentReminders;
       id++
     ) {
       await _plugin.cancel(id: id);

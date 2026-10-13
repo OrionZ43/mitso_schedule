@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -23,9 +23,6 @@ abstract final class BalanceBackground {
   static const String numberKey = 'student.number';
   static const String cacheKey = 'student.cache';
   static const String alertsKey = 'settings.balanceAlerts';
-
-  static Future<void> initialize() =>
-      Workmanager().initialize(balanceCallbackDispatcher);
 
   /// Включает или выключает периодическую проверку.
   static Future<void> sync({required bool enabled}) async {
@@ -64,7 +61,9 @@ abstract final class BalanceBackground {
         await BalanceAlerts.cancel();
       }
       return true;
-    } catch (_) {
+    } catch (error) {
+      // Ошибку видно только в логе: экран показывает сохранённые данные.
+      debugPrint('[Счёт] Фоновая проверка не удалась: $error');
       return false;
     } finally {
       client?.close();
@@ -80,13 +79,4 @@ abstract final class BalanceBackground {
       return null;
     }
   }
-}
-
-/// Точка входа фонового изолята.
-@pragma('vm:entry-point')
-void balanceCallbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    WidgetsFlutterBinding.ensureInitialized();
-    return BalanceBackground.check();
-  });
 }

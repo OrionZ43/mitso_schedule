@@ -66,19 +66,14 @@ class WeekSwitcher extends StatelessWidget {
   }
 
   /// День, который открывается при выборе недели [week]: сегодня, если он в
-  /// этой неделе; иначе тот же день недели, что выбран сейчас; иначе первый.
-  static int dayToOpen(
-    List<ScheduleDay> days,
-    List<int> week,
-    int selectedIndex,
-    DateTime now,
-  ) {
+  /// этой неделе; иначе первый день недели.
+  ///
+  /// Прежде открывался тот же день недели, что был выбран, — с субботы
+  /// попадали на субботу следующей недели. Неделю переключают, чтобы
+  /// посмотреть её с начала.
+  static int dayToOpen(List<ScheduleDay> days, List<int> week, DateTime now) {
     for (final int i in week) {
       if (DateUtils.isSameDay(days[i].date, now)) return i;
-    }
-    final int weekday = days[selectedIndex].date.weekday;
-    for (final int i in week) {
-      if (days[i].date.weekday == weekday) return i;
     }
     return week.first;
   }
@@ -108,8 +103,7 @@ class WeekSwitcher extends StatelessWidget {
               labelOf: (w) =>
                   labelOf([for (final int i in weeks[w]) days[i]], now),
               selected: selectedWeek,
-              onSelected: (w) =>
-                  onSelected(dayToOpen(days, weeks[w], selectedIndex, now)),
+              onSelected: (w) => onSelected(dayToOpen(days, weeks[w], now)),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(

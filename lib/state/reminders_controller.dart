@@ -28,16 +28,22 @@ class ReminderScheduler extends AsyncNotifier<int> {
     final LessonReminderPort port = ref.read(lessonReminderPortProvider);
 
     // На компьютере уведомлений по расписанию нет: плагин телефонный.
-    if (!AppPlatform.isPhone || !settings.lessonReminders || schedule == null) {
+    if (!AppPlatform.isPhone || schedule == null) {
       await port.replace(const []);
       return 0;
     }
 
-    final List<LessonReminder> reminders = planLessonReminders(
-      days: schedule.days,
-      before: settings.reminderLead,
-      now: ref.read(clockProvider)(),
-    );
+    final DateTime now = ref.read(clockProvider)();
+    final List<LessonReminder> reminders = [
+      if (settings.lessonReminders)
+        ...planLessonReminders(
+          days: schedule.days,
+          before: settings.reminderLead,
+          now: now,
+        ),
+      if (settings.assessmentAlerts)
+        ...planAssessmentReminders(days: schedule.days, now: now),
+    ];
     await port.replace(reminders);
     return reminders.length;
   }

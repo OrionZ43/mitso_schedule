@@ -828,13 +828,26 @@ class LessonTypeBadge extends StatelessWidget {
               colors.tertiaryContainer,
               colors.onTertiaryContainer,
             ),
-            LessonType.other => (
+            // Зачёт и экзамен — то, к чему готовятся: тёплый цвет и значок
+            // выделяют их среди лекций и практик.
+            LessonType.exam => (status.exam, status.onExam),
+            LessonType.credit => (status.pending, status.onPending),
+            LessonType.consultation || LessonType.other => (
               colors.secondaryContainer,
               colors.onSecondaryContainer,
             ),
           };
 
-    return _Badge(background: background, foreground: foreground, label: label);
+    return _Badge(
+      background: background,
+      foreground: foreground,
+      label: label,
+      icon: switch (type) {
+        LessonType.exam => Symbols.priority_high,
+        LessonType.credit => Symbols.task_alt,
+        _ => null,
+      },
+    );
   }
 }
 
@@ -863,25 +876,46 @@ class _Badge extends StatelessWidget {
     required this.background,
     required this.foreground,
     required this.label,
+    this.icon,
   });
 
   final Color background;
   final Color foreground;
   final String label;
 
+  /// Значок перед подписью — у зачёта и экзамена.
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) {
+    final TextStyle style = context.text.labelSmall!.copyWith(
+      color: foreground,
+    );
     // Высота не фиксируется: при масштабе шрифта до 200% бейдж растёт вместе
     // с текстом.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.fromLTRB(icon == null ? 10 : 6, 4, 10, 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: AppShapes.all(AppShapes.chip),
       ),
-      child: Text(
-        label,
-        style: context.text.labelSmall!.copyWith(color: foreground),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              // Значок по размеру строчной буквы подписи.
+              size: style.fontSize! * 1.25,
+              opticalSize: 20,
+              color: foreground,
+              fill: 1,
+            ),
+            const SizedBox(width: 2),
+          ],
+          // Подпись может переноситься, как переносилась до значка.
+          Flexible(child: Text(label, style: style)),
+        ],
       ),
     );
   }

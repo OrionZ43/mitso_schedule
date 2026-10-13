@@ -23,6 +23,7 @@ import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
 import '../widget_mode/app_window.dart';
 import 'lesson_card.dart';
+import 'schedule_changes_card.dart';
 import 'lesson_details_page.dart';
 import 'lesson_timing.dart';
 import 'schedule_search.dart';
@@ -217,6 +218,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: EmptyState(title: 'На сайте пока нет расписания'),
         )
       else ...[
+        // Что изменилось с прошлой загрузки — первым делом.
+        SliverToBoxAdapter(child: ScheduleChangesSlot(diff: data.diff)),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(top: AppSpacing.space100),
@@ -450,6 +453,19 @@ class _DayHeading extends StatelessWidget {
                 relative != null ? '${day.title.toLowerCase()}, $date' : date,
                 style: secondary,
               ),
+              // Зачёт и экзамен — в шапке дня, чтобы их было видно до того,
+              // как доберёшься до карточки.
+              if (day.assessments.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space100),
+                Wrap(
+                  spacing: AppSpacing.space75,
+                  runSpacing: AppSpacing.space75,
+                  children: [
+                    for (final LessonType type in day.assessments)
+                      LessonTypeBadge(type: type, label: type.label),
+                  ],
+                ),
+              ],
             ],
           ),
           if (slots.isEmpty)

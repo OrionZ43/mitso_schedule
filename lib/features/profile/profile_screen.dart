@@ -115,6 +115,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   else ...[
                     _BalanceCard(
                       account: account,
+                      now: ref.watch(nowProvider),
                       refreshing: _refreshing,
                       onRefresh: _refresh,
                     ),
@@ -395,13 +396,39 @@ class _LinkCard extends StatelessWidget {
 class _BalanceCard extends StatelessWidget {
   const _BalanceCard({
     required this.account,
+    required this.now,
     required this.refreshing,
     required this.onRefresh,
   });
 
   final StudentAccount account;
+
+  /// Текущее время — чтобы написать, когда счёт проверяли.
+  final DateTime now;
+
   final bool refreshing;
   final VoidCallback onRefresh;
+
+  /// «проверено сегодня в 11:32», «проверено 3 дня назад».
+  ///
+  /// Дата в шапке — это дата сайта: он считает счёт раз в сутки и отстаёт на
+  /// день-два. Когда приложение последний раз ходило на сайт — совсем другое
+  /// дело, и раньше этого нигде не было видно.
+  static String checkedLabel(DateTime fetchedAt, DateTime now) {
+    final DateTime day = DateTime(
+      fetchedAt.year,
+      fetchedAt.month,
+      fetchedAt.day,
+    );
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final int days = today.difference(day).inDays;
+    final String time = DateFormat.Hm('ru').format(fetchedAt);
+    return switch (days) {
+      <= 0 => 'Проверено сегодня в $time',
+      1 => 'Проверено вчера в $time',
+      _ => 'Проверено ${DateFormat('d MMMM', 'ru').format(fetchedAt)}',
+    };
+  }
 
   /// «1,61 BYN»: на сайте суммы в белорусских рублях.
   static String money(double value) => NumberFormat.currency(
@@ -489,9 +516,22 @@ class _BalanceCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Сайт обновляет счёт раз в сутки в 13:00',
-                    style: context.text.bodySmall!.copyWith(color: secondary),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        checkedLabel(account.fetchedAt, now),
+                        style: context.text.bodySmall!.copyWith(
+                          color: secondary,
+                        ),
+                      ),
+                      Text(
+                        'Сайт считает счёт раз в сутки в 13:00',
+                        style: context.text.bodySmall!.copyWith(
+                          color: secondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: AppSpacing.space100),

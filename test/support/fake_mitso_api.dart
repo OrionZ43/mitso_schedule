@@ -23,10 +23,14 @@ const GroupRef group2423 = GroupRef(
 /// Подстановка сайта: расписание — настоящая страница 2423 УИР,
 /// сохранённая 16.09.2026; списки выбора — реальные значения сайта.
 class FakeMitsoApi implements MitsoApi {
-  FakeMitsoApi({this.failSchedule = false});
+  FakeMitsoApi({this.failSchedule = false, this.weeks});
 
   /// Имитировать недоступный сайт.
   final bool failSchedule;
+
+  /// Своё расписание вместо сохранённой страницы — для скриншотов и
+  /// проверок зачётов.
+  final List<ScheduleWeek>? weeks;
 
   int scheduleRequests = 0;
 
@@ -88,6 +92,8 @@ class FakeMitsoApi implements MitsoApi {
     if (failSchedule) {
       throw const MitsoException('Нет соединения с сайтом расписания.');
     }
+    final List<ScheduleWeek>? custom = weeks;
+    if (custom != null) return custom;
     return ScheduleParser.parse(
       File('test/fixtures/group_schedule_2423_uir.html').readAsStringSync(),
       today: fakeNow,

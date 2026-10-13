@@ -4,17 +4,24 @@ import 'package:intl/intl.dart';
 /// Тип занятия. Задаёт цвет бейджа на карточке.
 ///
 /// На сайте тип пишется сокращением в скобках после названия: `(лек)`,
-/// `(лаб)`, `(практ/сем)`, `(практическое)`. Всё, что не распознано, —
-/// [other] с исходной подписью.
+/// `(лаб)`, `(практ/сем)`, `(зач)`, `(экз)`, `(конс)`. Всё, что не
+/// распознано, — [other] с исходной подписью.
 enum LessonType {
   lecture('Лекция'),
   practice('Практика'),
   lab('Лабораторная'),
+  credit('Зачёт'),
+  exam('Экзамен'),
+  consultation('Консультация'),
   other('Занятие');
 
   const LessonType(this.label);
 
   final String label;
+
+  /// Зачёт и экзамен — то, к чему готовятся: в расписании они выделены
+  /// цветом и значком, а день с ними подписан отдельно.
+  bool get isAssessment => this == credit || this == exam;
 }
 
 @immutable
@@ -122,6 +129,9 @@ class LessonSlot {
   /// Идёт по подгруппам — у строк есть номера.
   bool get bySubgroups => lessons.any((l) => l.subgroup != null);
 
+  /// Зачёт или экзамен хотя бы у одной строки пары.
+  bool get hasAssessment => lessons.any((l) => l.type.isAssessment);
+
   /// Разные типы занятий в порядке появления: обычно один.
   List<Lesson> get distinctTypes {
     final Set<String> seen = {};
@@ -185,11 +195,30 @@ class ScheduleDay {
   /// Подпись к дню: `3 пары · 09:45—14:25` или `Выходной`.
   String get summary => summaryOf(slots());
 
+  /// Зачёты и экзамены дня — по порядку, без повторов: «Экзамен», «Зачёт».
+  List<LessonType> get assessments {
+    final Set<LessonType> seen = {};
+    return [
+      for (final LessonSlot slot in slots())
+        for (final Lesson lesson in slot.lessons)
+          if (lesson.type.isAssessment && seen.add(lesson.type)) lesson.type,
+    ];
+  }
+
   static String summaryOf(List<LessonSlot> slots) {
     if (slots.isEmpty) return 'Выходной';
     final String first = slots.map((s) => s.start).reduce(_min);
     final String last = slots.map((s) => s.end).reduce(_max);
-    return '${slots.length} ${pairsWord(slots.length)} · $first—$last';
+    final String pairs =
+        '${slots.length} ${pairsWord(slots.length)} · $first—$last';
+    // Зачёт и экзамен видно ещё до того, как день открыли.
+    final Set<LessonType> special = {
+      for (final LessonSlot slot in slots)
+        for (final Lesson lesson in slot.lessons)
+          if (lesson.type.isAssessment) lesson.type,
+    };
+    if (special.isEmpty) return pairs;
+    return '$pairs · ${special.map((t) => t.label.toLowerCase()).join(', ')}';
   }
 
   static String _min(String a, String b) => a.compareTo(b) <= 0 ? a : b;

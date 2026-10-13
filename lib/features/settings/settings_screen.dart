@@ -4,8 +4,6 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_platform.dart';
-import '../../data/balance_alerts.dart';
-import '../../data/balance_background.dart';
 import '../../data/models/student_account.dart';
 import '../../data/wear_sync.dart';
 import '../../state/app_icon_controller.dart';
@@ -21,8 +19,8 @@ import '../../widgets/m3_switch.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
-import '../../state/reminders_controller.dart';
 import '../updater/update_section.dart';
+import 'notifications_screen.dart';
 import '../widget_mode/app_window.dart';
 
 /// Настройки приложения: вид, устройства рядом, напоминания, лицевой счёт
@@ -168,42 +166,30 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
 
-                  // ─── Напоминания: уведомление перед началом пары.
+                  // ─── Уведомления: подробности на своём экране, чтобы
+                  // настройки не превращались в простыню.
                   if (AppPlatform.isPhone) ...[
-                    const SectionHeader('Напоминания'),
+                    const SectionHeader('Уведомления'),
                     SegmentedList(
                       children: [
                         M3ListItem(
-                          leading: const Icon(Symbols.notifications_active),
-                          headline: const Text('Напоминать о паре'),
+                          leading: const Icon(Symbols.notifications),
+                          headline: const Text('Уведомления'),
                           supporting: Text(
-                            settings.lessonReminders
-                                ? 'Уведомление ${_leadLabel(settings.reminderLead).toLowerCase()} до начала'
-                                : 'Уведомление перед началом занятия',
-                          ),
-                          trailing: ExcludeSemantics(
-                            child: M3Switch(
-                              value: settings.lessonReminders,
-                              onChanged: (value) =>
-                                  _setReminders(context, ref, value),
+                            _notificationsSummary(
+                              settings,
+                              linked: account != null,
                             ),
                           ),
-                          onTap: () => _setReminders(
-                            context,
-                            ref,
-                            !settings.lessonReminders,
+                          trailing: const Icon(Symbols.chevron_right),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (context) => const NotificationsScreen(),
+                            ),
                           ),
-                          semanticsLabel:
-                              'Напоминать о паре, '
-                              '${settings.lessonReminders ? 'включено' : 'выключено'}',
                         ),
                       ],
                     ),
-                    if (settings.lessonReminders)
-                      _LeadPicker(
-                        selected: settings.reminderLead,
-                        onSelected: controller.setReminderLead,
-                      ),
                   ],
 
                   // ─── Лицевой счёт: управление; сам счёт — в профиле.
@@ -211,26 +197,6 @@ class SettingsScreen extends ConsumerWidget {
                     const SectionHeader('Лицевой счёт'),
                     SegmentedList(
                       children: [
-                        if (AppPlatform.isPhone)
-                          M3ListItem(
-                            leading: const Icon(Symbols.notifications),
-                            headline: const Text('Сообщать о задолженности'),
-                            supporting: const Text(
-                              'Приложение проверяет счёт в фоне и присылает '
-                              'уведомление, когда появляется долг',
-                            ),
-                            trailing: ExcludeSemantics(
-                              child: M3Switch(
-                                value: settings.balanceAlerts,
-                                onChanged: (value) => _setAlerts(ref, value),
-                              ),
-                            ),
-                            onTap: () =>
-                                _setAlerts(ref, !settings.balanceAlerts),
-                            semanticsLabel:
-                                'Сообщать о задолженности, '
-                                '${settings.balanceAlerts ? 'включено' : 'выключено'}',
-                          ),
                         M3ListItem(
                           leading: const Icon(Symbols.link_off),
                           headline: const Text('Отключить счёт'),
@@ -428,14 +394,6 @@ class _PalettePicker extends StatelessWidget {
   }
 }
 
-/// Уведомления требуют разрешения Android 13+; без него переключатель
-/// остаётся выключенным.
-Future<void> _setAlerts(WidgetRef ref, bool value) async {
-  if (value && !await BalanceAlerts.requestPermission()) return;
-  ref.read(settingsControllerProvider.notifier).setBalanceAlerts(value);
-  await BalanceBackground.sync(enabled: value);
-}
-
 /// Отключение счёта стирает сохранённые данные — спрашиваем подтверждение
 /// (dialogs → Usage: подтверждение действия, которое трудно отменить).
 Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
@@ -465,126 +423,18 @@ Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// «За 15 минут», «За час», «За 1 ч 30 мин».
-String _leadLabel(Duration lead) {
-  final int minutes = lead.inMinutes;
-  if (minutes == 60) return 'За час';
-  if (minutes < 60) return 'За $minutes мин';
-  final int hours = minutes ~/ 60;
-  final int rest = minutes % 60;
-  return rest == 0 ? 'За $hours ч' : 'За $hours ч $rest мин';
-}
-
-/// Включение спрашивает разрешение: без уведомлений напоминать нечем.
-Future<void> _setReminders(
-  BuildContext context,
-  WidgetRef ref,
-  bool value,
-) async {
-  if (value &&
-      !await ref.read(lessonReminderPortProvider).requestPermission()) {
-    return;
-  }
-  ref.read(settingsControllerProvider.notifier).setLessonReminders(value);
-}
-
-/// За сколько напоминать: готовые сроки и свой.
-class _LeadPicker extends StatelessWidget {
-  const _LeadPicker({required this.selected, required this.onSelected});
-
-  final Duration selected;
-  final ValueChanged<Duration> onSelected;
-
-  static const List<int> _presets = [5, 10, 15, 30, 60];
-
-  @override
-  Widget build(BuildContext context) {
-    final bool custom = !_presets.contains(selected.inMinutes);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.space150),
-      child: Wrap(
-        spacing: AppSpacing.space100,
-        runSpacing: AppSpacing.space100,
-        children: [
-          for (final int minutes in _presets)
-            M3FilterChip(
-              label: Text(_leadLabel(Duration(minutes: minutes))),
-              selected: selected.inMinutes == minutes,
-              onSelected: (_) => onSelected(Duration(minutes: minutes)),
-            ),
-          M3FilterChip(
-            label: Text(custom ? _leadLabel(selected) : 'Свой срок'),
-            selected: custom,
-            onSelected: (_) => _askCustom(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _askCustom(BuildContext context) async {
-    final int? minutes = await showDialog<int>(
-      context: context,
-      builder: (context) => _CustomLeadDialog(minutes: selected.inMinutes),
-    );
-    if (minutes != null && minutes > 0) {
-      onSelected(Duration(minutes: minutes));
-    }
-  }
-}
-
-/// Ввод своего срока. Поле принадлежит диалогу: закрывается он с анимацией,
-/// и контроллер должен дожить до её конца.
-class _CustomLeadDialog extends StatefulWidget {
-  const _CustomLeadDialog({required this.minutes});
-
-  final int minutes;
-
-  @override
-  State<_CustomLeadDialog> createState() => _CustomLeadDialogState();
-}
-
-class _CustomLeadDialogState extends State<_CustomLeadDialog> {
-  late final TextEditingController _field = TextEditingController(
-    text: '${widget.minutes}',
-  );
-
-  @override
-  void dispose() {
-    _field.dispose();
-    super.dispose();
-  }
-
-  void _done([String? value]) =>
-      Navigator.of(context).pop(int.tryParse(value ?? _field.text));
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      icon: const Icon(Symbols.timer),
-      title: const Text('За сколько напоминать?'),
-      content: TextField(
-        controller: _field,
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        decoration: const InputDecoration(
-          labelText: 'Минут до начала',
-          helperText: 'От 1 до 180',
-          border: OutlineInputBorder(),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-        ),
-        onSubmitted: _done,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
-        ),
-        TextButton(onPressed: () => _done(), child: const Text('Готово')),
-      ],
-    );
-  }
+/// Что включено: «Пары, изменения, зачёты» или «Все выключены».
+String _notificationsSummary(Settings settings, {required bool linked}) {
+  final List<String> on = [
+    if (settings.lessonReminders) 'пары',
+    if (settings.scheduleChanges) 'изменения',
+    if (settings.newWeekAlerts) 'новая неделя',
+    if (settings.assessmentAlerts) 'зачёты',
+    if (linked && settings.balanceAlerts) 'долг',
+  ];
+  if (on.isEmpty) return 'Все выключены';
+  final String list = on.join(', ');
+  return '${list[0].toUpperCase()}${list.substring(1)}';
 }
 
 /// Подпись внизу настроек: нажатие открывает сайт студии.

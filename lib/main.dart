@@ -9,8 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'features/widget_mode/app_window.dart';
+import 'data/background_tasks.dart';
 import 'data/balance_alerts.dart';
 import 'data/balance_background.dart';
+import 'data/schedule_watch.dart';
 import 'state/settings_controller.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -26,14 +28,15 @@ Future<void> main(List<String> arguments) async {
 
   final SharedPreferences preferences = await SharedPreferences.getInstance();
 
-  // Уведомление о долге и фоновая проверка баланса раз в шесть часов —
-  // только на телефоне: плагины уведомлений и фоновых задач настольной
-  // сборки не знают. Сбой плагина не должен мешать запуску: без уведомлений
-  // приложение работает, а вот застрять на сплэше из-за них недопустимо.
+  // Уведомления и фоновые проверки — только на телефоне: плагинов для них в
+  // настольной сборке нет. Сбой плагина не должен мешать запуску: без
+  // уведомлений приложение работает, а вот застрять на сплэше из-за них
+  // недопустимо.
   try {
     if (Platform.isAndroid) {
       await BalanceAlerts.init();
-      await BalanceBackground.initialize();
+      await BackgroundTasks.initialize();
+      await ScheduleWatch.sync(enabled: ScheduleWatch.watches(preferences));
       await BalanceBackground.sync(
         enabled:
             preferences.getBool(SettingsController.balanceAlertsKey) ?? true,
@@ -45,7 +48,7 @@ Future<void> main(List<String> arguments) async {
         exception: error,
         stack: stack,
         library: 'mitso_schedule',
-        context: ErrorDescription('настройка уведомлений о балансе'),
+        context: ErrorDescription('настройка фоновых задач'),
       ),
     );
   }

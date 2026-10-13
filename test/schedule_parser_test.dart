@@ -144,9 +144,46 @@ void main() {
       expect(lesson.teacher, 'Пайгерт Е. А.');
     });
 
+    test('зачёт, экзамен и консультация — свои типы', () {
+      expect(ScheduleParser.parseType('экз'), (LessonType.exam, 'Экзамен'));
+      expect(ScheduleParser.parseType('зач'), (LessonType.credit, 'Зачёт'));
+      expect(ScheduleParser.parseType('дифф.зач'), (
+        LessonType.credit,
+        'Зачёт',
+      ));
+      expect(ScheduleParser.parseType('конс'), (
+        LessonType.consultation,
+        'Консультация',
+      ));
+    });
+
     test('незнакомые типы сохраняют подпись сайта', () {
-      expect(ScheduleParser.parseType('экз'), (LessonType.other, 'Экзамен'));
       expect(ScheduleParser.parseType('кср'), (LessonType.other, 'Кср'));
+    });
+
+    test('день с зачётом подписан в сводке', () {
+      final ScheduleDay day = ScheduleDay(
+        date: DateTime(2026, 10, 19),
+        lessons: const [
+          Lesson(
+            start: '09:45',
+            end: '11:05',
+            title: 'Системы баз данных',
+            type: LessonType.credit,
+            typeLabel: 'Зачёт',
+          ),
+          Lesson(
+            start: '11:15',
+            end: '12:35',
+            title: 'Маркетинг',
+            type: LessonType.lecture,
+            typeLabel: 'Лекция',
+          ),
+        ],
+      );
+
+      expect(day.summary, '2 пары · 09:45—12:35 · зачёт');
+      expect(day.assessments, [LessonType.credit]);
     });
 
     test('множественное число пар', () {

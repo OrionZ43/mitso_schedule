@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
-/// Цвета статусов справок — дополнительные цвета темы.
+/// Дополнительные цвета темы: статусы справок, зачёт и экзамен.
 ///
 /// В M3 нет ролей «ожидает» и «одобрено», поэтому они заведены по правилам
 /// custom colors (https://m3.material.io/styles/color/advanced; MDC
@@ -23,6 +23,8 @@ class StatusColors extends ThemeExtension<StatusColors> {
     required this.onApproved,
     required this.rejected,
     required this.onRejected,
+    required this.exam,
+    required this.onExam,
   });
 
   /// Контейнер и текст статуса «В обработке».
@@ -37,11 +39,19 @@ class StatusColors extends ThemeExtension<StatusColors> {
   final Color rejected;
   final Color onRejected;
 
+  /// Контейнер и текст метки «Экзамен».
+  final Color exam;
+  final Color onExam;
+
   /// Опорный цвет «В обработке» (янтарный из макета).
   static const Color pendingSource = Color(0xFFFFE1A6);
 
   /// Опорный цвет «Одобрено» (зелёный из макета).
   static const Color approvedSource = Color(0xFFBFF0D2);
+
+  /// Опорный цвет «Экзамен» — тёплый красно-оранжевый. Роли `error` для него
+  /// не годятся: экзамен не ошибка, а гайдлайн отводит error под ошибки.
+  static const Color examSource = Color(0xFFFFCDBE);
 
   factory StatusColors.fromScheme(ColorScheme scheme) {
     final bool light = scheme.brightness == Brightness.light;
@@ -64,6 +74,7 @@ class StatusColors extends ThemeExtension<StatusColors> {
 
     final (Color pending, Color onPending) = roles(pendingSource);
     final (Color approved, Color onApproved) = roles(approvedSource);
+    final (Color exam, Color onExam) = roles(examSource);
     return StatusColors(
       pending: pending,
       onPending: onPending,
@@ -71,6 +82,8 @@ class StatusColors extends ThemeExtension<StatusColors> {
       onApproved: onApproved,
       rejected: scheme.errorContainer,
       onRejected: scheme.onErrorContainer,
+      exam: exam,
+      onExam: onExam,
     );
   }
 
@@ -86,6 +99,8 @@ class StatusColors extends ThemeExtension<StatusColors> {
     Color? onApproved,
     Color? rejected,
     Color? onRejected,
+    Color? exam,
+    Color? onExam,
   }) {
     return StatusColors(
       pending: pending ?? this.pending,
@@ -94,6 +109,8 @@ class StatusColors extends ThemeExtension<StatusColors> {
       onApproved: onApproved ?? this.onApproved,
       rejected: rejected ?? this.rejected,
       onRejected: onRejected ?? this.onRejected,
+      exam: exam ?? this.exam,
+      onExam: onExam ?? this.onExam,
     );
   }
 
@@ -107,6 +124,8 @@ class StatusColors extends ThemeExtension<StatusColors> {
       onApproved: Color.lerp(onApproved, other.onApproved, t)!,
       rejected: Color.lerp(rejected, other.rejected, t)!,
       onRejected: Color.lerp(onRejected, other.onRejected, t)!,
+      exam: Color.lerp(exam, other.exam, t)!,
+      onExam: Color.lerp(onExam, other.onExam, t)!,
     );
   }
 }

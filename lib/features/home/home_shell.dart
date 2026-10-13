@@ -7,6 +7,8 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_transitions.dart';
 import '../../widgets/m3_fab.dart';
 import '../../widgets/m3_navigation_bar.dart';
+import '../../data/release_notes.dart';
+import '../../state/whats_new_controller.dart';
 import '../../widgets/m3_snackbar.dart';
 import '../notes/notes_screen.dart';
 import '../notes/task_sheet.dart';
@@ -14,6 +16,7 @@ import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
 import '../updater/update_provider.dart';
 import '../updater/update_section.dart';
+import '../whats_new/whats_new_dialog.dart';
 
 /// Хост снекбаров над navigation bar. Глобальный, потому что сообщения
 /// приходят и из шитов, которые живут в отдельных маршрутах.
@@ -36,6 +39,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   /// Раздел, чей FAB показан. Меняется после перехода между разделами.
   int _fabIndex = 0;
+
+  /// Окно «Что нового» показывается один раз за запуск.
+  bool _whatsNewShown = false;
 
   final List<ScrollController> _scrollControllers = [
     for (int i = 0; i < 3; i++) ScrollController(),
@@ -64,6 +70,27 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   /// Отступ FAB от краёв окна.
   static const double fabMargin = AppSpacing.space200;
+
+  @override
+  void initState() {
+    super.initState();
+    // После обновления — рассказать, что изменилось.
+    ref.listenManual<AsyncValue<List<ReleaseNotes>>>(
+      whatsNewProvider,
+      (previous, next) => _showWhatsNew(next.value),
+      fireImmediately: true,
+    );
+  }
+
+  Future<void> _showWhatsNew(List<ReleaseNotes>? releases) async {
+    if (_whatsNewShown || releases == null || releases.isEmpty) return;
+    _whatsNewShown = true;
+    // Кадр, в котором пришли данные, ещё строится — ждём следующего.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await showWhatsNewDialog(context, releases);
+    if (mounted) await WhatsNew.markSeen(ref);
+  }
 
   @override
   void dispose() {

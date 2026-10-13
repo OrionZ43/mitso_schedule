@@ -9,6 +9,7 @@ Lesson _lesson({
   required String start,
   required String end,
   String title = 'Веб-дизайн и шаблоны проектирования',
+  LessonType type = LessonType.lecture,
   String? room = '71',
   String? group,
   int? subgroup,
@@ -16,8 +17,8 @@ Lesson _lesson({
   start: start,
   end: end,
   title: title,
-  type: LessonType.lecture,
-  typeLabel: 'Лекция',
+  type: type,
+  typeLabel: type.label,
   room: room,
   group: group,
   subgroup: subgroup,
@@ -133,6 +134,63 @@ void main() {
       DateTime(2026, 9, 18, 12, 45),
       DateTime(2026, 9, 19, 11, 0),
     ]);
+  });
+
+  test('о зачёте напоминает накануне вечером', () {
+    final List<LessonReminder> reminders = planAssessmentReminders(
+      days: [
+        // Прошедший зачёт не считается.
+        _day(14, [
+          _lesson(start: '09:45', end: '11:05', type: LessonType.credit),
+        ]),
+        _day(21, [
+          _lesson(start: '09:45', end: '11:05', type: LessonType.credit),
+          _lesson(start: '11:15', end: '12:35', title: 'Маркетинг'),
+        ]),
+      ],
+      now: now,
+    );
+
+    expect(reminders, hasLength(1));
+    expect(reminders.single.id, kAssessmentBaseId);
+    expect(reminders.single.when, DateTime(2026, 9, 20, kAssessmentHour));
+    expect(reminders.single.title, 'Завтра зачёт');
+    expect(
+      reminders.single.body,
+      'Веб-дизайн и шаблоны проектирования, 09:45, ауд. 71',
+    );
+  });
+
+  test('зачёт и экзамен в один день — одно напоминание', () {
+    final List<LessonReminder> reminders = planAssessmentReminders(
+      days: [
+        _day(21, [
+          _lesson(start: '09:45', end: '11:05', type: LessonType.credit),
+          _lesson(
+            start: '11:15',
+            end: '12:35',
+            title: 'Маркетинг',
+            type: LessonType.exam,
+          ),
+        ]),
+      ],
+      now: now,
+    );
+
+    expect(reminders.single.title, 'Завтра зачёт и экзамен');
+    expect(reminders.single.body, contains('Маркетинг, 11:15'));
+  });
+
+  test('обычные пары напоминаний о зачётах не дают', () {
+    expect(
+      planAssessmentReminders(
+        days: [
+          _day(21, [_lesson(start: '09:45', end: '11:05')]),
+        ],
+        now: now,
+      ),
+      isEmpty,
+    );
   });
 
   test('выходные пропускаются, расписание без пар ничего не планирует', () {

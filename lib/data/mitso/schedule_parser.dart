@@ -160,9 +160,13 @@ abstract final class ScheduleParser {
     if (t.contains('практ') || t.contains('сем')) {
       return (LessonType.practice, LessonType.practice.label);
     }
-    if (t.startsWith('экз')) return (LessonType.other, 'Экзамен');
-    if (t.startsWith('зач')) return (LessonType.other, 'Зачёт');
-    if (t.startsWith('конс')) return (LessonType.other, 'Консультация');
+    // Зачёт и экзамен — отдельные типы: на карточке у них свой цвет.
+    // «дифф.зач» и «зачёт с оценкой» — тоже зачёт.
+    if (t.contains('экз')) return (LessonType.exam, LessonType.exam.label);
+    if (t.contains('зач')) return (LessonType.credit, LessonType.credit.label);
+    if (t.startsWith('конс')) {
+      return (LessonType.consultation, LessonType.consultation.label);
+    }
     if (t.isEmpty) return (LessonType.other, LessonType.other.label);
     return (LessonType.other, raw[0].toUpperCase() + raw.substring(1));
   }

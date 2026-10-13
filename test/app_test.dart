@@ -45,6 +45,7 @@ Future<FakeMitsoApi> pumpApp(
   FakeStudentApi? student,
   FakeBalanceAlerts? alerts,
   Map<String, Object> preferences = const {},
+  String appVersion = '1.0.0 (1)',
   List<Override> overrides = const [],
 }) async {
   // По умолчанию тестовый экран 800x600 — это не телефон. Берём метрики
@@ -76,7 +77,7 @@ Future<FakeMitsoApi> pumpApp(
         ),
         balanceAlertsProvider.overrideWithValue(alerts ?? FakeBalanceAlerts()),
         // Версия читается плагином из платформы, которой в тестах нет.
-        appVersionProvider.overrideWith((ref) async => '1.0.0 (1)'),
+        appVersionProvider.overrideWith((ref) async => appVersion),
         ...overrides,
       ],
       child: const ScheduleApp(),
@@ -248,7 +249,7 @@ void main() {
     expect(find.text('Сегодня'), findsOneWidget);
   });
 
-  testWidgets('переключатель недель открывает тот же день следующей недели', (
+  testWidgets('переключатель недель открывает её с понедельника', (
     tester,
   ) async {
     await pumpApp(tester);
@@ -260,7 +261,8 @@ void main() {
     await settle(tester);
     await settle(tester);
     expect(find.text('21–26 сентября'), findsOneWidget);
-    expect(find.text('23 сентября'), findsOneWidget);
+    // Не «та же среда», а начало недели.
+    expect(find.text('21 сентября'), findsOneWidget);
 
     // Обратно — сегодняшний день.
     await tester.tap(find.text('Эта неделя'));
@@ -600,6 +602,20 @@ void main() {
     await settle(tester);
   }
 
+  /// Открывает экран уведомлений: настройки → «Уведомления».
+  Future<void> openNotifications(WidgetTester tester) async {
+    await openSettings(tester);
+    await tester.scrollUntilVisible(
+      find.text('Уведомления').last,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await settle(tester);
+    await tester.tap(find.text('Уведомления').last);
+    await settle(tester);
+    await settle(tester);
+  }
+
   testWidgets('лицевой счёт подключается и показывает долг', (tester) async {
     final FakeStudentApi api = FakeStudentApi();
     final FakeBalanceAlerts alerts = FakeBalanceAlerts();
@@ -719,20 +735,13 @@ void main() {
       tester,
       overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
     );
-    await openSettings(tester);
+    await openNotifications(tester);
 
-    await tester.scrollUntilVisible(
-      find.text('Напоминать о паре'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await settle(tester);
     // Выключены — ничего не запланировано, сроки не предлагаются.
     expect(reminders.planned, isEmpty);
     expect(find.text('За 15 мин'), findsNothing);
 
-    await tester.tap(find.text('Напоминать о паре'));
-    await settle(tester);
+    await tapInSheet(tester, find.text('Перед началом пары'));
 
     expect(reminders.permissionRequests, 1);
     // Среда 16 сентября, 10:30: ближайшая пара — лаба подгрупп в 11:15.
@@ -751,8 +760,7 @@ void main() {
     expect(reminders.planned.first.when, DateTime(2026, 9, 16, 10, 45));
 
     // Выключение снимает всё запланированное.
-    await tester.tap(find.text('Напоминать о паре'));
-    await settle(tester);
+    await tapInSheet(tester, find.text('Перед началом пары'));
     expect(reminders.planned, isEmpty);
   });
 
@@ -762,16 +770,8 @@ void main() {
       tester,
       overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
     );
-    await openSettings(tester);
-
-    await tester.scrollUntilVisible(
-      find.text('Напоминать о паре'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await settle(tester);
-    await tester.tap(find.text('Напоминать о паре'));
-    await settle(tester);
+    await openNotifications(tester);
+    await tapInSheet(tester, find.text('Перед началом пары'));
 
     expect(reminders.permissionRequests, 1);
     expect(reminders.planned, isEmpty);
@@ -786,16 +786,8 @@ void main() {
       preferences: {'settings.lessonReminders': true},
       overrides: [lessonReminderPortProvider.overrideWithValue(reminders)],
     );
-    await openSettings(tester);
-
-    await tester.scrollUntilVisible(
-      find.text('Свой срок'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await settle(tester);
-    await tester.tap(find.text('Свой срок'));
-    await settle(tester);
+    await openNotifications(tester);
+    await tapInSheet(tester, find.text('Свой срок'));
 
     await tester.enterText(find.byType(TextField), '20');
     await tester.tap(find.widgetWithText(TextButton, 'Готово'));
@@ -805,6 +797,47 @@ void main() {
     expect(preferences.getInt('settings.reminderLeadMinutes'), 20);
     expect(find.text('За 20 мин'), findsOneWidget);
     expect(reminders.planned.first.when, DateTime(2026, 9, 16, 10, 55));
+  });
+
+  testWidgets('после обновления показывается «Что нового»', (tester) async {
+    await pumpApp(
+      tester,
+      preferences: {'app.lastSeenVersion': '1.2.0'},
+      appVersion: '1.3.0 (6)',
+    );
+    await settle(tester);
+
+    expect(find.text('Версия 1.3.0'), findsOneWidget);
+    expect(find.text('Пару добавили — вы узнаете'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(M3Button, 'Понятно'));
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.text('Версия 1.3.0'), findsNothing);
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('app.lastSeenVersion'), '1.3.0');
+  });
+
+  testWidgets('кто обновился со старой версии, тоже увидит «Что нового»', (
+    tester,
+  ) async {
+    // Ключ с версией появился только в 1.3.0: у обновившихся его нет, но
+    // группа выбрана — значит это обновление, а не первый запуск.
+    await pumpApp(tester, appVersion: '1.3.0 (6)');
+    await settle(tester);
+
+    expect(find.text('Версия 1.3.0'), findsOneWidget);
+  });
+
+  testWidgets('на свежей установке «Что нового» не всплывает', (tester) async {
+    await pumpApp(tester, withGroup: false, appVersion: '1.3.0 (6)');
+    await settle(tester);
+
+    expect(find.text('Версия 1.3.0'), findsNothing);
+    // Версия запомнена: после следующего обновления окно появится.
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('app.lastSeenVersion'), '1.3.0');
   });
 
   testWidgets('выбор темы переключает ThemeMode и сохраняется', (tester) async {

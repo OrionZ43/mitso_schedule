@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/mitso/mitso_client.dart';
 import '../data/models/group_ref.dart';
 import '../data/models/lesson.dart';
+import '../data/schedule_diff.dart';
 import 'mitso_providers.dart';
 import 'settings_controller.dart';
 
@@ -16,9 +17,14 @@ class ScheduleState {
     required this.weeks,
     required this.fetchedAt,
     this.refreshError,
+    this.diff,
   });
 
   final List<ScheduleWeek> weeks;
+
+  /// Чем свежая загрузка отличается от прежней: `null` — сравнивать было не с
+  /// чем или пользователь уже посмотрел.
+  final ScheduleDiff? diff;
 
   /// Когда данные были получены с сайта.
   final DateTime fetchedAt;
@@ -29,8 +35,19 @@ class ScheduleState {
   /// Все дни всех недель подряд.
   List<ScheduleDay> get days => [for (final w in weeks) ...w.days];
 
-  ScheduleState withRefreshError(MitsoException? error) =>
-      ScheduleState(weeks: weeks, fetchedAt: fetchedAt, refreshError: error);
+  ScheduleState withRefreshError(MitsoException? error) => ScheduleState(
+    weeks: weeks,
+    fetchedAt: fetchedAt,
+    refreshError: error,
+    diff: diff,
+  );
+
+  /// Изменения показаны — убираем плашку.
+  ScheduleState get seen => ScheduleState(
+    weeks: weeks,
+    fetchedAt: fetchedAt,
+    refreshError: refreshError,
+  );
 }
 
 final scheduleControllerProvider =
@@ -79,15 +96,30 @@ class ScheduleController extends AsyncNotifier<ScheduleState?> {
     }
   }
 
+  /// Пользователь прочитал, что изменилось.
+  void markChangesSeen() {
+    final ScheduleState? current = state.value;
+    if (current?.diff == null) return;
+    state = AsyncData(current!.seen);
+  }
+
   Future<ScheduleState> _fetch(ScheduleTarget target) async {
     final MitsoApi api = await ref.read(mitsoApiProvider.future);
     final List<ScheduleWeek> weeks = switch (target) {
       GroupTarget(:final GroupRef group) => await api.groupSchedule(group),
       TeacherTarget(:final String name) => await api.teacherSchedule(name),
     };
+    // Сравниваем с тем, что лежало в кэше: так изменение видно и тогда,
+    // когда его нашла не фоновая проверка, а само приложение.
+    final ScheduleState? previous = _readCache(target);
+    final ScheduleDiff diff = diffSchedules(
+      before: previous?.weeks ?? const [],
+      after: weeks,
+    );
     final ScheduleState result = ScheduleState(
       weeks: weeks,
       fetchedAt: ref.read(clockProvider)(),
+      diff: diff.isEmpty ? null : diff,
     );
     _writeCache(target, result);
     return result;

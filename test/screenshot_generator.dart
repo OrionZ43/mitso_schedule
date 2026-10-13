@@ -19,6 +19,8 @@ import 'package:mitso_schedule/data/models/student_account.dart';
 import 'package:mitso_schedule/data/photo_picker.dart';
 import 'package:mitso_schedule/widgets/m3_navigation_bar.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
+import 'package:mitso_schedule/data/models/lesson.dart';
+import 'package:mitso_schedule/features/updater/update_provider.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -65,6 +67,8 @@ Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
   double balance = 67,
+  String appVersion = '1.3.0 (6)',
+  List<ScheduleWeek>? weeks,
   Map<String, Object> preferences = const {},
 }) async {
   tester.view.physicalSize = _physicalSize;
@@ -80,6 +84,8 @@ Future<void> _pumpApp(
     // Лицевой счёт подключён: профиль на скриншотах с балансом и СДО.
     'student.number': FakeStudentApi.number,
     'profile.avatar': _avatarPath,
+    // Окно «Что нового» всплывает только там, где оно и нужно.
+    'app.lastSeenVersion': '1.3.0',
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -90,12 +96,16 @@ Future<void> _pumpApp(
         sharedPreferencesProvider.overrideWithValue(prefs),
         appBootProvider.overrideWith((ref) async {}),
         // Настоящая страница 2423 УИР и фиксированное время вместо сети.
-        mitsoApiProvider.overrideWith((ref) async => FakeMitsoApi()),
+        mitsoApiProvider.overrideWith(
+          (ref) async => FakeMitsoApi(weeks: weeks),
+        ),
         clockProvider.overrideWithValue(() => fakeNow),
         photoPickerProvider.overrideWithValue(FakePhotoPicker()),
         studentApiProvider.overrideWith(
           (ref) async => FakeStudentApi(account: _account(balance: balance)),
         ),
+        // Версию читает плагин, которого в тестах нет.
+        appVersionProvider.overrideWith((ref) async => appVersion),
         balanceAlertsProvider.overrideWithValue(FakeBalanceAlerts()),
       ],
       child: RepaintBoundary(key: _rootKey, child: const ScheduleApp()),
@@ -270,6 +280,63 @@ void main() {
     });
   }
 
+  _shot('скриншот зачёта и экзамена', (tester) async {
+    Lesson lesson(String start, String end, String title, LessonType type) =>
+        Lesson(
+          start: start,
+          end: end,
+          title: title,
+          type: type,
+          typeLabel: type.label,
+          teacher: 'Гардейчик С. М.',
+          room: '71',
+        );
+
+    await _pumpApp(
+      tester,
+      dark: false,
+      weeks: [
+        ScheduleWeek(
+          label: 'Текущая неделя',
+          days: [
+            ScheduleDay(
+              date: fakeNow,
+              lessons: [
+                lesson('09:45', '11:05', 'Системы баз данных', LessonType.exam),
+                lesson('11:15', '12:35', 'Маркетинг', LessonType.credit),
+                lesson(
+                  '13:05',
+                  '14:25',
+                  'Эконометрика',
+                  LessonType.consultation,
+                ),
+                lesson(
+                  '14:35',
+                  '15:55',
+                  'Веб-дизайн и шаблоны проектирования',
+                  LessonType.lecture,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    await _frames(tester, 900);
+    await _capture(tester, '14-assessments-light');
+  });
+
+  _shot('скриншот «Что нового»', (tester) async {
+    await _pumpApp(
+      tester,
+      dark: false,
+      preferences: {'app.lastSeenVersion': '1.2.0'},
+    );
+    await _frames(tester, 900);
+    await _loadImages(tester);
+    await _capture(tester, '13-whats-new-light');
+  });
+
   _shot('скриншот пустого дня — суббота', (tester) async {
     await _pumpApp(tester, dark: false);
     await tester.tap(find.text('Сб').first);
@@ -302,6 +369,29 @@ void main() {
     await _frames(tester, 600);
     await _loadImages(tester);
     await _capture(tester, '10-settings-light');
+  });
+
+  _shot('скриншот экрана уведомлений', (tester) async {
+    await _pumpApp(
+      tester,
+      dark: false,
+      preferences: {'settings.lessonReminders': true},
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(M3NavigationBar),
+        matching: find.text('Профиль'),
+      ),
+    );
+    await tester.pump();
+    await _frames(tester, 600);
+    await tester.tap(find.byTooltip('Настройки'));
+    await tester.pump();
+    await _frames(tester, 600);
+    await tester.tap(find.text('Уведомления').last);
+    await tester.pump();
+    await _frames(tester, 700);
+    await _capture(tester, '15-notifications-light');
   });
 
   _shot('скриншот подробностей пары', (tester) async {

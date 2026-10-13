@@ -14,6 +14,9 @@ class Settings {
     this.balanceAlerts = true,
     this.lessonReminders = false,
     this.reminderLead = const Duration(minutes: 15),
+    this.scheduleChanges = true,
+    this.newWeekAlerts = true,
+    this.assessmentAlerts = true,
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -34,6 +37,20 @@ class Settings {
   /// За сколько до начала пары напоминать.
   final Duration reminderLead;
 
+  /// Сообщать, когда пару добавили, перенесли или убрали.
+  final bool scheduleChanges;
+
+  /// Сообщать, когда сайт выложил следующую неделю.
+  final bool newWeekAlerts;
+
+  /// Напоминать накануне вечером о зачёте и экзамене.
+  final bool assessmentAlerts;
+
+  /// Хоть одно уведомление о расписании включено — значит фоновая проверка
+  /// нужна.
+  bool get watchesSchedule =>
+      scheduleChanges || newWeekAlerts || assessmentAlerts;
+
   ThemeMode get themeMode => switch (darkOverride) {
     null => ThemeMode.system,
     true => ThemeMode.dark,
@@ -48,6 +65,9 @@ class Settings {
     bool? balanceAlerts,
     bool? lessonReminders,
     Duration? reminderLead,
+    bool? scheduleChanges,
+    bool? newWeekAlerts,
+    bool? assessmentAlerts,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -58,6 +78,9 @@ class Settings {
       balanceAlerts: balanceAlerts ?? this.balanceAlerts,
       lessonReminders: lessonReminders ?? this.lessonReminders,
       reminderLead: reminderLead ?? this.reminderLead,
+      scheduleChanges: scheduleChanges ?? this.scheduleChanges,
+      newWeekAlerts: newWeekAlerts ?? this.newWeekAlerts,
+      assessmentAlerts: assessmentAlerts ?? this.assessmentAlerts,
     );
   }
 }
@@ -82,11 +105,22 @@ class SettingsController extends Notifier<Settings> {
   static const String _remindersKey = 'settings.lessonReminders';
   static const String _leadKey = 'settings.reminderLeadMinutes';
 
+  /// Те же ключи читает фоновая проверка расписания.
+  static const String scheduleChangesKey = 'settings.scheduleChanges';
+  static const String newWeekKey = 'settings.newWeekAlerts';
+  static const String assessmentsKey = 'settings.assessmentAlerts';
+
+  /// Один переключатель на всё расписание из версии 1.3.0: если он остался
+  /// выключенным, выключены и три новых.
+  static const String legacyWatchKey = 'settings.scheduleWatch';
+
   SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
 
   @override
   Settings build() {
     final prefs = _prefs;
+    // Старый общий переключатель — значение по умолчанию для трёх новых.
+    final bool legacy = prefs.getBool(legacyWatchKey) ?? true;
     return Settings(
       darkOverride: prefs.getBool(_darkKey),
       dynamicColor: prefs.getBool(_dynamicKey) ?? true,
@@ -94,6 +128,9 @@ class SettingsController extends Notifier<Settings> {
       balanceAlerts: prefs.getBool(balanceAlertsKey) ?? true,
       lessonReminders: prefs.getBool(_remindersKey) ?? false,
       reminderLead: Duration(minutes: prefs.getInt(_leadKey) ?? 15),
+      scheduleChanges: prefs.getBool(scheduleChangesKey) ?? legacy,
+      newWeekAlerts: prefs.getBool(newWeekKey) ?? legacy,
+      assessmentAlerts: prefs.getBool(assessmentsKey) ?? legacy,
     );
   }
 
@@ -122,6 +159,21 @@ class SettingsController extends Notifier<Settings> {
   void setBalanceAlerts(bool value) {
     state = state.copyWith(balanceAlerts: value);
     _prefs.setBool(balanceAlertsKey, value);
+  }
+
+  void setScheduleChanges(bool value) {
+    state = state.copyWith(scheduleChanges: value);
+    _prefs.setBool(scheduleChangesKey, value);
+  }
+
+  void setNewWeekAlerts(bool value) {
+    state = state.copyWith(newWeekAlerts: value);
+    _prefs.setBool(newWeekKey, value);
+  }
+
+  void setAssessmentAlerts(bool value) {
+    state = state.copyWith(assessmentAlerts: value);
+    _prefs.setBool(assessmentsKey, value);
   }
 
   void setLessonReminders(bool value) {
