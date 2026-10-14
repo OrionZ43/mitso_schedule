@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/m3_buttons.dart';
@@ -74,9 +75,49 @@ class UpdateSection extends ConsumerWidget {
   }
 }
 
+/// Плашка обновления над расписанием.
+///
+/// О новой версии человек узнаёт на входе, а не когда сам дойдёт до
+/// настроек. Появляется и уходит пружиной, как плашка изменений; «Позже»
+/// прячет её до следующего запуска, обязательное обновление не прячется.
+class UpdateBanner extends ConsumerWidget {
+  const UpdateBanner({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool visible = ref.watch(updateBadgeProvider);
+
+    return AnimatedSize(
+      duration: AppMotion.defaultSpatial.duration,
+      curve: AppMotion.defaultSpatial.curve,
+      alignment: Alignment.topCenter,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: AppMotion.defaultEffects.duration,
+        curve: AppMotion.defaultEffects.curve,
+        child: visible
+            ? Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.screenMargin(context),
+                  AppSpacing.space150,
+                  AppSpacing.screenMargin(context),
+                  0,
+                ),
+                child: const UpdateCard(maxNotesLines: 3),
+              )
+            : const SizedBox(width: double.infinity),
+      ),
+    );
+  }
+}
+
 /// Найденное обновление: версия, что нового, загрузка и установка.
 class UpdateCard extends ConsumerWidget {
-  const UpdateCard({super.key});
+  const UpdateCard({super.key, this.maxNotesLines});
+
+  /// Сколько строк описания показывать: на экране расписания карточка не
+  /// должна занимать его целиком.
+  final int? maxNotesLines;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,6 +159,8 @@ class UpdateCard extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space100),
               Text(
                 update.manifest.notes,
+                maxLines: maxNotesLines,
+                overflow: maxNotesLines == null ? null : TextOverflow.ellipsis,
                 style: text.bodyMedium!.copyWith(
                   color: colors.onSurfaceVariant,
                 ),

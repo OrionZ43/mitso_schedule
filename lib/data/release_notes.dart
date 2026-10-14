@@ -75,6 +75,13 @@ const List<ReleaseNotes> kReleaseNotes = [
             'чище.',
       ),
       ReleaseNote(
+        icon: Symbols.system_update,
+        title: 'Обновление видно сразу',
+        text:
+            'Новая версия встречает плашкой на расписании, а не ждёт, пока '
+            'вы заглянете в настройки.',
+      ),
+      ReleaseNote(
         icon: Symbols.bedtime,
         title: 'Каким будет завтра',
         text:

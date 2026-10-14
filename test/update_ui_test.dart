@@ -113,6 +113,33 @@ void main() {
     expect(installer.installed.single.path, endsWith('app.apk'));
   });
 
+  testWidgets('плашка обновления встречает на расписании', (tester) async {
+    await publish();
+    await pumpApp(tester, overrides: overrides());
+    await settle(tester);
+
+    // Не в настройках, а сразу на первом экране.
+    expect(find.text('Доступно обновление'), findsOneWidget);
+    expect(find.text('Версия 1.1.0'), findsOneWidget);
+
+    await tester.tap(find.text('Позже'));
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.text('Доступно обновление'), findsNothing);
+  });
+
+  testWidgets('с плашки обновление и ставится', (tester) async {
+    await publish();
+    await pumpApp(tester, overrides: overrides());
+    await settle(tester);
+
+    await tester.tap(find.text('Обновить'));
+    await settle(tester);
+
+    expect(installer.installed, hasLength(1));
+  });
+
   testWidgets('точка ведёт от вкладки к настройкам', (tester) async {
     await publish();
     await pumpApp(tester, overrides: overrides());

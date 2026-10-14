@@ -24,6 +24,7 @@ import '../../widgets/m3_pull_to_refresh.dart';
 import '../group_picker/group_picker_sheet.dart';
 import '../home/home_shell.dart';
 import '../widget_mode/app_window.dart';
+import '../updater/update_section.dart';
 import 'lesson_card.dart';
 import 'schedule_changes_card.dart';
 import 'lesson_details_page.dart';
@@ -220,7 +221,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: EmptyState(title: 'На сайте пока нет расписания'),
         )
       else ...[
-        // Что изменилось с прошлой загрузки — первым делом.
+        // Новая версия — самое верхнее: о ней узнают на входе.
+        const SliverToBoxAdapter(child: UpdateBanner()),
+        // Что изменилось с прошлой загрузки — следом.
         SliverToBoxAdapter(child: ScheduleChangesSlot(diff: data.diff)),
         SliverToBoxAdapter(
           child: Padding(
