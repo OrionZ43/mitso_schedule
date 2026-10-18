@@ -116,6 +116,34 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity-alias>
+        <!-- Вариант значка «Ночная тыква» (Хэллоуин): включается из настроек приложения. -->
+        <activity-alias
+            android:name=".MainActivityPumpkinNight"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_pumpkin_night"
+            android:roundIcon="@mipmap/ic_launcher_pumpkin_night_round"
+            android:label="Расписание">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <!-- Вариант значка «Тыква» (Хэллоуин): включается из настроек приложения. -->
+        <activity-alias
+            android:name=".MainActivityPumpkin"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_pumpkin"
+            android:roundIcon="@mipmap/ic_launcher_pumpkin_round"
+            android:label="Расписание">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
         <!-- Приёмники flutter_local_notifications: первый показывает
              запланированное уведомление, второй восстанавливает расписание
              уведомлений после перезагрузки и обновления приложения.

@@ -62,7 +62,7 @@
 
 **Внешний вид**
 - Material 3 Expressive: цвета из обоев Android, светлая и тёмная тема, пять запасных палитр
-- Сезонное оформление: на Хэллоуин тыквы и падающие листья, на Новый год снежинки — выключается одним переключателем
+- Сезонное оформление: на Хэллоуин у каждой вкладки своя картина, летучая мышь на шкале пары, кот в тыкве на пустых экранах и значки-тыквы; на Новый год, весну и 1 сентября — свои цвета. Выключается одним переключателем
 - Значок приложения на выбор, уважение к системной настройке «Удалить анимации»
 - Приложение обновляет себя само — из подписанного релиза на GitHub
 
@@ -82,6 +82,13 @@
 </table>
 
 <div align="center">
+
+**Хэллоуин** — своя картина на каждой вкладке, летучая мышь на шкале пары и кот в тыкве, когда пусто
+
+<img src="docs/screenshots/22-halloween-1-schedule-dark.png" alt="Расписание на Хэллоуин" width="200" />
+<img src="docs/screenshots/22-halloween-2-notes-dark.png" alt="Заметки на Хэллоуин" width="200" />
+<img src="docs/screenshots/22-halloween-3-profile-dark.png" alt="Профиль на Хэллоуин" width="200" />
+<img src="docs/screenshots/23-halloween-empty-1-schedule-light.png" alt="Кот в тыкве, когда пар нет" width="200" />
 
 **Сезоны** — Хэллоуин, Новый год, весна и первое сентября, в светлой и тёмной теме
 
@@ -176,7 +183,11 @@ cd android && ./gradlew :wear:assembleRelease      # часы
 
 ## 🧩 Технологии
 
-[Flutter](https://flutter.dev) · [Riverpod](https://riverpod.dev) · [material_new_shapes](https://pub.dev/packages/material_new_shapes) (формы M3) · [html](https://pub.dev/packages/html) (разбор страниц сайта) · [cryptography](https://pub.dev/packages/cryptography) (подпись обновлений) · Kotlin и [Compose for Wear OS](https://developer.android.com/training/wearables/compose) · [Inno Setup](https://jrsoftware.org/isinfo.php) (установщик для Windows)
+[Flutter](https://flutter.dev) · [Riverpod](https://riverpod.dev) · [material_new_shapes](https://pub.dev/packages/material_new_shapes) (формы M3) · [flutter_svg](https://pub.dev/packages/flutter_svg) (сезонные картины) · [html](https://pub.dev/packages/html) (разбор страниц сайта) · [cryptography](https://pub.dev/packages/cryptography) (подпись обновлений) · Kotlin и [Compose for Wear OS](https://developer.android.com/training/wearables/compose) · [Inno Setup](https://jrsoftware.org/isinfo.php) (установщик для Windows)
+
+## 🎃 Иллюстрации
+
+Сезонные картины — [Illustrations by Storyset](https://storyset.com): дом с привидениями, тыквенная лавка, праздничный стол, кот в тыкве и летучая мышь (стиль Amico; что в них поменяно — в [`assets/seasons/`](assets/seasons/README.md)). Силуэт тыквы в значках — [Pinhead icons](https://commons.wikimedia.org/wiki/File:Pumpkin_Pinhead_icon.svg), CC0.
 
 ## ⚖️ Дисклеймер
 

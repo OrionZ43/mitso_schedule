@@ -2,4 +2,6 @@
 <!-- Фон иконки — primary эталонной схемы M3 (`AppPalette.baseline`). -->
 <resources>
     <color name="ic_launcher_background">#6750A4</color>
+    <!-- Фон значка «Ночная тыква»: ночь, как в хэллоуинской теме. -->
+    <color name="ic_launcher_background_pumpkin_night">#2B1609</color>
 </resources>

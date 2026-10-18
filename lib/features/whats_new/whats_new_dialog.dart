@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/release_notes.dart';
@@ -221,6 +222,10 @@ class _NoteRow extends StatelessWidget {
   /// Кружок значка — как `ListTokens.ItemLeadingAvatar*`: 40dp.
   static const double avatarSize = 40;
 
+  /// Своя картинка — в живой области значка (20dp из 24dp), чтобы по весу не
+  /// выбивалась из Material Symbols.
+  static const double imageSize = 20;
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = context.colors;
@@ -246,11 +251,24 @@ class _NoteRow extends StatelessWidget {
                 color: colors.secondaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                note.icon,
-                color: colors.onSecondaryContainer,
-                fill: 1,
-              ),
+              child: note.image != null
+                  ? Center(
+                      child: SvgPicture.asset(
+                        note.image!,
+                        width: imageSize,
+                        height: imageSize,
+                        excludeFromSemantics: true,
+                        colorFilter: ColorFilter.mode(
+                          colors.onSecondaryContainer,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      note.icon,
+                      color: colors.onSecondaryContainer,
+                      fill: 1,
+                    ),
             ),
             const SizedBox(width: AppSpacing.space200),
             Expanded(

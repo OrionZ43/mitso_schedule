@@ -60,6 +60,7 @@ dependencies:
   crypto: ^3.0.7
   package_info_plus: ^10.2.1
   path: ^1.9.1
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -91,6 +92,8 @@ flutter:
     - assets/certs/
     # Образцы значков приложения для выбора в настройках.
     - assets/app_icons/
+    # Картины сезонов — иллюстрации Storyset, см. README там же.
+    - assets/seasons/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

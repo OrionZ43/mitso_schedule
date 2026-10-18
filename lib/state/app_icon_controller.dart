@@ -11,9 +11,23 @@ enum AppIcon {
   cookieCap('', 'Печенька и шапка', 'assets/app_icons/default.png'),
   cap('cap', 'Шапка', 'assets/app_icons/cap.png'),
   clock('clock', 'Печенька и часы', 'assets/app_icons/clock.png'),
-  card('card', 'Карточка и шапка', 'assets/app_icons/card.png');
+  card('card', 'Карточка и шапка', 'assets/app_icons/card.png'),
 
-  const AppIcon(this.name, this.title, this.asset);
+  /// Хэллоуин: шапка в тыкве.
+  pumpkinNight(
+    'pumpkinNight',
+    'Ночная тыква',
+    'assets/app_icons/pumpkin-night.png',
+    season: 'halloween',
+  ),
+  pumpkin(
+    'pumpkin',
+    'Тыква',
+    'assets/app_icons/pumpkin.png',
+    season: 'halloween',
+  );
+
+  const AppIcon(this.name, this.title, this.asset, {this.season});
 
   /// Имя варианта в манифесте; у значка по умолчанию пусто.
   final String name;
@@ -22,6 +36,16 @@ enum AppIcon {
 
   /// Образец для выбора в настройках.
   final String asset;
+
+  /// Сезон, на время которого значок есть в выборе (`Season.id`); `null` —
+  /// есть всегда. Выбранный сезонный значок остаётся и после сезона —
+  /// приложение его само не меняет.
+  final String? season;
+
+  /// Показывать ли значок в выборе, когда идёт сезон [seasonId] и выбран
+  /// [selected].
+  bool offeredIn({String? seasonId, AppIcon? selected}) =>
+      season == null || season == seasonId || this == selected;
 
   static AppIcon byName(String? name) => AppIcon.values.firstWhere(
     (icon) => icon.name == name,

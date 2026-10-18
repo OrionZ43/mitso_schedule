@@ -253,6 +253,9 @@
   обратно так же.
 - Цвета интерполируются в Oklab, как `lerp(Color, Color)` и `animateColorAsState` в Compose, а не в sRGB, как
   `Color.lerp`. Статические `containerColorFor` у обоих баров отдают эту функцию.
+- `containerColor` у `SliverMediumFlexibleAppBar` — как у `TopAppBarColors`: в сезон с картиной заметки,
+  расписание и профиль ставят `Colors.transparent`, и картина идёт под баром; при прокрутке цвет —
+  обычный `surfaceContainer`. Отступление — `docs/development.md`, п. 24.
 - Отступления:
   1. **Доводка — отдельный виджет.** В Compose её включает `scrollBehavior`, во Flutter нужен
      `NotificationListener`, поэтому список оборачивают в `M3AppBarSettle`. Без него бар не доводится.

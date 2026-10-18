@@ -5,12 +5,18 @@ import 'package:material_symbols_icons/symbols.dart';
 @immutable
 class ReleaseNote {
   const ReleaseNote({
-    required this.icon,
+    this.icon,
+    this.image,
     required this.title,
     required this.text,
-  });
+  }) : assert((icon == null) != (image == null), 'Нужен значок или картинка');
 
-  final IconData icon;
+  /// Значок Material Symbols.
+  final IconData? icon;
+
+  /// Своя одноцветная картинка вместо значка — SVG из ассетов (силуэт
+  /// тыквы); красится цветом значка.
+  final String? image;
 
   /// Коротко: «Расписание под присмотром».
   final String title;
@@ -43,37 +49,16 @@ class ReleaseNotes {
 /// показывается один раз после обновления.
 const List<ReleaseNotes> kReleaseNotes = [
   ReleaseNotes(
-    version: '1.5.1',
-    headline: 'Сезоны держатся дольше',
+    version: '1.6.0',
+    headline: 'Happy Halloween!',
     notes: [
       ReleaseNote(
-        icon: Symbols.event_repeat,
-        title: 'Праздничные недели, а не дни',
+        image: 'assets/seasons/pumpkin.svg',
+        title: 'Расписание нарядилось',
         text:
-            'Хэллоуин — с 18 октября по 2 ноября, Новый год — с 5 декабря по '
-            '15 января, весна — первая половина марта, первое сентября — две '
-            'первые недели учебного года.',
-      ),
-    ],
-  ),
-  ReleaseNotes(
-    version: '1.5.0',
-    headline: 'Приложение знает про праздники',
-    notes: [
-      ReleaseNote(
-        icon: Symbols.mode_night,
-        title: 'Сезонное оформление',
-        text:
-            'На Хэллоуин расписание становится тыквенным, сверху падают '
-            'листья, а номер аудитории сидит в тыкве. Дальше — Новый год, '
-            'весна и первое сентября.',
-      ),
-      ReleaseNote(
-        icon: Symbols.toggle_off,
-        title: 'Не нравится — выключается',
-        text:
-            'Переключатель «Сезонное оформление» в настройках, в разделе '
-            '«Вид». Там же видно, какой сезон идёт сейчас.',
+            'До 2 ноября у каждой вкладки своя картина: дом с привидениями, '
+            'тыквенная лавка и праздничный стол. Отключить можно в '
+            'настройках, в разделе «Вид».',
       ),
     ],
   ),

@@ -15,6 +15,7 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        restoreLauncherIcon()
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mitso/system_colors")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -131,6 +132,9 @@ class MainActivity : FlutterActivity() {
         "cap" to ".MainActivityCap",
         "clock" to ".MainActivityClock",
         "card" to ".MainActivityCard",
+        // Хэллоуин: в настройках видны на время сезона.
+        "pumpkinNight" to ".MainActivityPumpkinNight",
+        "pumpkin" to ".MainActivityPumpkin",
     )
 
     private fun component(alias: String) = ComponentName(packageName, packageName + alias)
@@ -142,6 +146,31 @@ class MainActivity : FlutterActivity() {
         }
         // Ни один не переключали — включён тот, что enabled="true" в манифесте.
         return ""
+    }
+
+    /**
+     * Возвращает значок, если приложение осталось без него: включённый алиас
+     * пропал из манифеста (поставили сборку с другим набором значков), а
+     * остальные выключены. Тогда включается основной — иначе приложение не
+     * открыть из лаунчера.
+     */
+    private fun restoreLauncherIcon() {
+        val anyEnabled = aliases.values.any {
+            packageManager.getComponentEnabledSetting(component(it)) ==
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        }
+        val main = component(aliases.getValue(""))
+        if (anyEnabled ||
+            packageManager.getComponentEnabledSetting(main) !=
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        ) {
+            return
+        }
+        packageManager.setComponentEnabledSetting(
+            main,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP,
+        )
     }
 
     private fun selectIcon(name: String) {

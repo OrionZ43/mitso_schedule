@@ -4,15 +4,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_new_shapes/material_new_shapes.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_typography.dart';
+import '../theme/seasons.dart';
 
 /// Пустое состояние с геометрической иллюстрацией.
 ///
 /// Иллюстрация собрана из фигур библиотеки M3, поэтому переезжает между
-/// палитрами и темами без отдельных ассетов.
+/// палитрами и темами без отдельных ассетов. В сезон со своей картинкой
+/// ([Season.emptyArt], например кот в тыкве на Хэллоуин) на месте фигур — она.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -36,15 +39,22 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? seasonArt = Theme.of(
+      context,
+    ).extension<SeasonTheme>()?.season?.emptyArt;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _GeometricIllustration(
-            size: illustrationSize,
-            withAccentDot: withAccentDot,
-          ),
+          if (seasonArt != null)
+            _SeasonIllustration(asset: seasonArt)
+          else
+            _GeometricIllustration(
+              size: illustrationSize,
+              withAccentDot: withAccentDot,
+            ),
           const SizedBox(height: 20),
           Text(
             title,
@@ -65,6 +75,23 @@ class EmptyState extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Картинка сезона на месте геометрической композиции — готовая иллюстрация
+/// (`assets/seasons`, Storyset). Статична и, как фигуры, скрыта от screen
+/// reader: это декор.
+class _SeasonIllustration extends StatelessWidget {
+  const _SeasonIllustration({required this.asset});
+
+  final String asset;
+
+  /// Высота: подробному рисунку нужно больше места, чем трём фигурам.
+  static const double height = 176;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(child: SvgPicture.asset(asset, height: height));
   }
 }
 

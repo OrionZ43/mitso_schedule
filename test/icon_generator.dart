@@ -34,6 +34,12 @@ const Color onPrimary = Color(0xFFFFFFFF);
 const Color primaryContainer = Color(0xFFEADDFF);
 const Color onPrimaryContainer = Color(0xFF21005D);
 
+/// Ночь для хэллоуинской тыквы: тёмный фон и тёмная шапка.
+const Color pumpkinNight = Color(0xFF2B1609);
+
+/// Тыквенный оранжевый — сид сезона Хэллоуин, осветлённый для фигуры.
+const Color pumpkinOrange = Color(0xFFF08A3C);
+
 typedef IconPainter = void Function(Canvas canvas, Size size);
 
 /// Рисует значок Material Symbols по центру [center] размером [size].
@@ -386,7 +392,12 @@ class Logo {
     required this.title,
     required this.foreground,
     required this.monochrome,
+    this.background = primary,
   });
+
+  /// Фон адаптивной иконки; у ночной тыквы он свой — ресурс
+  /// `ic_launcher_background_<name>`.
+  final Color background;
 
   /// Суффикс ресурсов: `ic_launcher_<name>`; у варианта по умолчанию пусто.
   final String name;
@@ -409,14 +420,14 @@ class Logo {
     c.clipRRect(
       RRect.fromRectAndRadius(visibleRect, Radius.circular(visible * 0.28)),
     );
-    _background(c, primary);
+    _background(c, background);
     foreground(c, size);
     c.restore();
   }
 
   /// Образец для настроек: фон и передний слой без маски.
   void preview(Canvas c, Size size) {
-    _background(c, primary);
+    _background(c, background);
     foreground(c, size);
   }
 
@@ -432,7 +443,7 @@ class Logo {
         ),
       ),
     );
-    _background(c, primary);
+    _background(c, background);
     foreground(c, size);
     c.restore();
   }
@@ -496,6 +507,72 @@ void _clockHands(
   c.drawLine(center, center + Offset(safe * 0.19, 0), hand);
 }
 
+/// Силуэт тыквы — Pinhead icons, «Pumpkin», CC0 (без двух внутренних
+/// полумесяцев), viewBox 15 × 15.
+Path _pumpkinUnit() => Path()
+  ..moveTo(8.06, 1)
+  ..cubicTo(7.11, 1.52, 6.6, 2.37, 6.52, 3.55)
+  ..cubicTo(6.08, 3.67, 5.66, 3.87, 5.28, 4.13)
+  ..cubicTo(4.74, 3.65, 4.17, 3.41, 3.56, 3.41)
+  ..cubicTo(2.69, 3.41, 1.89, 3.86, 1.15, 4.76)
+  ..cubicTo(0.38, 5.71, 0, 6.8, 0, 8.04)
+  ..cubicTo(0, 8.42, 0.04, 8.78, 0.13, 9.14)
+  ..cubicTo(0.4, 10.48, 1.04, 11.65, 2.04, 12.65)
+  ..cubicTo(2.95, 13.55, 3.8, 14, 4.58, 14)
+  ..cubicTo(5, 14, 5.38, 13.8, 5.74, 13.41)
+  ..cubicTo(6.35, 13.8, 6.92, 14, 7.46, 14)
+  ..cubicTo(8.03, 14, 8.64, 13.79, 9.27, 13.37)
+  ..cubicTo(9.64, 13.79, 10.03, 14, 10.45, 14)
+  ..cubicTo(11.26, 14, 12.12, 13.55, 13.05, 12.65)
+  ..cubicTo(14.08, 11.65, 14.7, 10.47, 14.93, 9.14)
+  ..cubicTo(14.98, 8.81, 15, 8.47, 15, 8.15)
+  ..cubicTo(15, 6.85, 14.63, 5.73, 13.88, 4.78)
+  ..cubicTo(13.16, 3.87, 12.37, 3.41, 11.49, 3.41)
+  ..cubicTo(10.86, 3.41, 10.27, 3.66, 9.72, 4.17)
+  ..cubicTo(9.17, 3.76, 8.57, 3.52, 7.93, 3.44)
+  ..cubicTo(7.96, 3.23, 8.01, 3.02, 8.09, 2.82)
+  ..cubicTo(8.29, 2.36, 8.61, 1.99, 9.04, 1.71)
+  ..lineTo(8.06, 1)
+  ..close();
+
+/// Тыква вписана в безопасный круг с запасом: дольки не упираются в маску.
+Rect get _pumpkinRect => Rect.fromCenter(
+  center: const Offset(canvas / 2, canvas / 2),
+  width: safe * 0.84,
+  height: safe * 0.84,
+);
+
+void _pumpkinPlate(Canvas c, Size size, {required Color color}) {
+  final Rect rect = _pumpkinRect;
+  // viewBox силуэта с полями: -0.3 0.7 15.6 13.6 → в квадрат rect.
+  final Path path = _pumpkinUnit().transform(
+    (Matrix4.translationValues(rect.left, rect.top, 0)
+          ..multiply(
+            Matrix4.diagonal3Values(rect.width / 15.6, rect.height / 13.6, 1),
+          )
+          ..multiply(Matrix4.translationValues(0.3, -0.7, 0)))
+        .storage,
+  );
+  c.drawPath(path, Paint()..color = color);
+}
+
+/// Шапка в теле тыквы: тело ниже центра из-за хвостика.
+void _pumpkinCap(
+  Canvas c, {
+  required Color color,
+  BlendMode blendMode = BlendMode.srcOver,
+}) {
+  final Rect rect = _pumpkinRect;
+  _symbol(
+    c,
+    icon: Symbols.school,
+    center: Offset(rect.center.dx, rect.top + rect.height * 0.6),
+    size: rect.width * 0.56,
+    color: color,
+    blendMode: blendMode,
+  );
+}
+
 /// Варианты значка приложения; первый — по умолчанию.
 final List<Logo> logos = [
   Logo(
@@ -534,6 +611,36 @@ final List<Logo> logos = [
       plate: _cookiePlate,
       glyph: (c, s) =>
           _clockHands(c, color: onPrimary, blendMode: BlendMode.dstOut),
+    ),
+  ),
+  // Хэллоуин: в выборе значков на время сезона.
+  Logo(
+    name: 'pumpkin_night',
+    title: 'Ночная тыква',
+    background: pumpkinNight,
+    foreground: (c, s) {
+      _pumpkinPlate(c, s, color: pumpkinOrange);
+      _pumpkinCap(c, color: pumpkinNight);
+    },
+    monochrome: (c, s) => _cutout(
+      c,
+      plate: (c, s) => _pumpkinPlate(c, s, color: onPrimary),
+      glyph: (c, s) =>
+          _pumpkinCap(c, color: onPrimary, blendMode: BlendMode.dstOut),
+    ),
+  ),
+  Logo(
+    name: 'pumpkin',
+    title: 'Тыква',
+    foreground: (c, s) {
+      _pumpkinPlate(c, s, color: onPrimary);
+      _pumpkinCap(c, color: primary);
+    },
+    monochrome: (c, s) => _cutout(
+      c,
+      plate: (c, s) => _pumpkinPlate(c, s, color: onPrimary),
+      glyph: (c, s) =>
+          _pumpkinCap(c, color: onPrimary, blendMode: BlendMode.dstOut),
     ),
   ),
   Logo(
@@ -739,7 +846,7 @@ void main() {
       }
       // Образец для выбора значка в настройках.
       await _writePng(
-        'assets/app_icons/${logo.name.isEmpty ? 'default' : logo.name}.png',
+        'assets/app_icons/${logo.name.isEmpty ? 'default' : logo.name.replaceAll('_', '-')}.png',
         logo.preview,
         tester,
         size: 192,

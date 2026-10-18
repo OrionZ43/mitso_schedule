@@ -137,8 +137,8 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
       // Compose `MaterialTheme` меняет схему сразу, без анимации. Твин темы
       // Flutter перестраивал бы на каждом кадре всё приложение.
       themeAnimationDuration: Duration.zero,
-      theme: buildTheme(scheme(Brightness.light)),
-      darkTheme: buildTheme(scheme(Brightness.dark)),
+      theme: buildTheme(scheme(Brightness.light), season: season),
+      darkTheme: buildTheme(scheme(Brightness.dark), season: season),
       locale: ScheduleApp.locale,
       supportedLocales: const [ScheduleApp.locale],
       localizationsDelegates: const [
@@ -179,8 +179,9 @@ class _BootGate extends ConsumerWidget {
   }
 }
 
-/// Сборка темы из готовой [ColorScheme].
-ThemeData buildTheme(ColorScheme scheme) {
+/// Сборка темы из готовой [ColorScheme]; [season] — для сезонных картинок
+/// общих виджетов ([SeasonTheme]).
+ThemeData buildTheme(ColorScheme scheme, {Season? season}) {
   final bool isLight = scheme.brightness == Brightness.light;
   final TextTheme textTheme = AppTypography.textTheme().apply(
     bodyColor: scheme.onSurface,
@@ -192,7 +193,10 @@ ThemeData buildTheme(ColorScheme scheme) {
     colorScheme: scheme,
     textTheme: textTheme,
     scaffoldBackgroundColor: scheme.surface,
-    extensions: [StatusColors.fromScheme(scheme)],
+    extensions: [
+      StatusColors.fromScheme(scheme),
+      SeasonTheme(season: season),
+    ],
 
     // Material Symbols: https://m3.material.io/styles/icons — вес 400,
     // оптический размер по размеру иконки (24dp), grade 0 для тёмных иконок

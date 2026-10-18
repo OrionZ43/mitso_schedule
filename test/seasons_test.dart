@@ -1,10 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mitso_schedule/app.dart';
+import 'package:mitso_schedule/state/app_icon_controller.dart';
 import 'package:mitso_schedule/state/mitso_providers.dart';
 import 'package:mitso_schedule/state/season_controller.dart';
 import 'package:mitso_schedule/state/settings_controller.dart';
 import 'package:mitso_schedule/theme/app_color_schemes.dart';
 import 'package:mitso_schedule/theme/seasons.dart';
+import 'package:mitso_schedule/widgets/empty_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
@@ -73,10 +79,54 @@ void main() {
 
   test('у каждого сезона есть чем украшать', () {
     for (final Season season in kSeasons) {
-      expect(season.decorShapes, isNotEmpty, reason: season.id);
       expect(season.name, isNotEmpty);
-      expect(season.decorHint, isNotEmpty);
+      expect(season.decorHint, isNotEmpty, reason: season.id);
     }
+  });
+
+  test('картины сезонов лежат в ассетах', () {
+    for (final Season season in kSeasons) {
+      final List<String> assets = [
+        ...season.backdrops.values,
+        if (season.marker != null) season.marker!,
+        if (season.emptyArt != null) season.emptyArt!,
+      ];
+      for (final String asset in assets) {
+        expect(File(asset).existsSync(), isTrue, reason: asset);
+      }
+    }
+  });
+
+  testWidgets('в сезон с картинкой пустое состояние показывает её', (
+    tester,
+  ) async {
+    final Season halloween = kSeasons.firstWhere((s) => s.id == 'halloween');
+    final ColorScheme scheme = ColorScheme.fromSeed(seedColor: halloween.seed);
+    Future<void> pump(Season? season) => tester.pumpWidget(
+      MaterialApp(
+        // Как в приложении: тема меняется сразу, без анимации.
+        themeAnimationDuration: Duration.zero,
+        theme: buildTheme(scheme, season: season),
+        home: const Scaffold(body: EmptyState(title: 'Занятий нет')),
+      ),
+    );
+
+    await pump(halloween);
+    expect(find.byType(SvgPicture), findsOneWidget);
+
+    // Вне сезона — геометрическая композиция, картинки нет.
+    await pump(null);
+    expect(find.byType(SvgPicture), findsNothing);
+  });
+
+  test('тыквы в выборе значков — на Хэллоуин или пока выбраны', () {
+    expect(AppIcon.pumpkin.offeredIn(seasonId: 'halloween'), isTrue);
+    expect(AppIcon.pumpkinNight.offeredIn(seasonId: 'halloween'), isTrue);
+    expect(AppIcon.pumpkin.offeredIn(seasonId: 'newYear'), isFalse);
+    expect(AppIcon.pumpkin.offeredIn(), isFalse);
+    // Выбранную тыкву после сезона не прячем: её видно в лаунчере.
+    expect(AppIcon.pumpkin.offeredIn(selected: AppIcon.pumpkin), isTrue);
+    expect(AppIcon.cookieCap.offeredIn(), isTrue);
   });
 
   test('выключённое оформление сезона не даёт', () async {

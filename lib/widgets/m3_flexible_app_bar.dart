@@ -56,10 +56,19 @@ class SliverMediumFlexibleAppBar extends StatefulWidget {
     this.subtitle,
     this.leading,
     this.actions = const [],
+    this.containerColor,
   });
 
   final String title;
   final String? subtitle;
+
+  /// Цвет контейнера в развёрнутом состоянии вместо `surface`.
+  ///
+  /// `Colors.transparent` показывает то, что лежит под баром, — так сквозь
+  /// заголовок видно сезонное оформление. В Compose это штатный случай:
+  /// `TopAppBarDefaults.mediumFlexibleTopAppBarColors(containerColor = …)`.
+  /// Прокрученное состояние остаётся `surfaceContainer`, как в спеке.
+  final Color? containerColor;
 
   /// Кнопка «Назад» или «Меню». Цвет по умолчанию — `onSurface`
   /// (`md.comp.app-bar.leading-icon.color`).
@@ -209,6 +218,7 @@ class _SliverMediumFlexibleAppBarState extends State<SliverMediumFlexibleAppBar>
         hasSubtitle ? largeSubtitleStyle : largeTitleStyle,
       ),
       colors: colors,
+      containerColor: widget.containerColor ?? colors.surface,
       textDirection: Directionality.of(context),
       navigationIcon: _NavigationIconSlot(
         leading: widget.leading,
@@ -771,6 +781,7 @@ class _SliverTwoRowsTopAppBar
     required this.titleBottomPadding,
     required this.largeTitleLastLineDescent,
     required this.colors,
+    required this.containerColor,
     required this.textDirection,
     required this.navigationIcon,
     required this.smallTitle,
@@ -785,6 +796,7 @@ class _SliverTwoRowsTopAppBar
   final double titleBottomPadding;
   final double largeTitleLastLineDescent;
   final ColorScheme colors;
+  final Color containerColor;
   final TextDirection textDirection;
   final Widget navigationIcon;
   final Widget smallTitle;
@@ -811,7 +823,7 @@ class _SliverTwoRowsTopAppBar
       expandedHeight: expandedHeight,
       titleBottomPadding: titleBottomPadding,
       largeTitleLastLineDescent: largeTitleLastLineDescent,
-      containerColor: colors.surface,
+      containerColor: containerColor,
       scrolledContainerColor: colors.surfaceContainer,
       textDirection: textDirection,
     );
@@ -829,7 +841,7 @@ class _SliverTwoRowsTopAppBar
       ..expandedHeight = expandedHeight
       ..titleBottomPadding = titleBottomPadding
       ..largeTitleLastLineDescent = largeTitleLastLineDescent
-      ..containerColor = colors.surface
+      ..containerColor = containerColor
       ..scrolledContainerColor = colors.surfaceContainer
       ..textDirection = textDirection;
   }
@@ -1126,7 +1138,11 @@ class _RenderSliverTwoRowsTopAppBar extends RenderSliver
     );
     context.pushLayer(
       AnnotatedRegionLayer<SystemUiOverlayStyle>(
-        _systemOverlayStyleFor(background),
+        // Прозрачный контейнер ничего не говорит о светлоте фона: значки
+        // статус-бара считаем по цвету прокрученного состояния.
+        _systemOverlayStyleFor(
+          background.a < 0.5 ? _scrolledContainerColor : background,
+        ),
         size: size,
         offset: offset,
       ),

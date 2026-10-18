@@ -157,13 +157,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       child: M3AppBarSettle(
         child: Stack(
           children: [
-            // Сезонное украшение — позади расписания, у самого верха.
+            // Картина сезона — на весь фон, позади расписания.
             if (season != null)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SeasonDecor(season: season),
+              Positioned.fill(
+                child: SeasonBackdrop(
+                  season: season,
+                  page: SeasonPage.schedule,
+                ),
               ),
             CustomScrollView(
               controller: widget.scrollController,
@@ -172,6 +172,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 SliverMediumFlexibleAppBar(
                   title: 'Расписание',
                   subtitle: target?.appBarSubtitle,
+                  // Картина сезона лежит под баром: в покое контейнер
+                  // прозрачный, при прокрутке — surfaceContainer, как в спеке.
+                  containerColor: season != null ? Colors.transparent : null,
                   actions: [
                     if (data != null && data.days.isNotEmpty)
                       ScheduleSearchButton(days: data.days),

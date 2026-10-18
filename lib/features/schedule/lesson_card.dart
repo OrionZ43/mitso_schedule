@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -91,6 +92,9 @@ class LessonCard extends ConsumerWidget {
                 progress: status.progress,
                 startsInMinutes: status.startsIn,
                 roomShape: season?.accentShape ?? MaterialShapes.cookie9Sided,
+                // Сезонная фигура стоит: тыква не должна крутиться.
+                rotateRoom: season == null,
+                marker: season?.marker,
               ),
             ),
           ),
@@ -108,6 +112,8 @@ class _CardContent extends StatelessWidget {
     required this.progress,
     required this.startsInMinutes,
     required this.roomShape,
+    this.rotateRoom = true,
+    this.marker,
   });
 
   final LessonSlot slot;
@@ -118,6 +124,12 @@ class _CardContent extends StatelessWidget {
 
   /// Фигура под номером аудитории: в праздники сезонная.
   final RoundedPolygon roomShape;
+
+  /// Медленно вращать фигуру; в сезон она стоит.
+  final bool rotateRoom;
+
+  /// Значок на шкале идущей пары (`assets/seasons/…svg`); `null` — без него.
+  final String? marker;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +263,7 @@ class _CardContent extends StatelessWidget {
           ),
           if (isNow) ...[
             const SizedBox(height: 18),
-            _NowSection(progress: progress!),
+            _NowSection(progress: progress!, marker: marker),
           ] else if (startsInMinutes != null) ...[
             const SizedBox(height: 14),
             _StartsIn(minutes: startsInMinutes!),
@@ -278,6 +290,7 @@ class _CardContent extends StatelessWidget {
             computer: computerRoom,
             colors: accent,
             polygon: roomShape,
+            rotate: rotateRoom,
           ),
         ),
         // Значок аудитории — в самом углу карточки, над формой. У
@@ -399,6 +412,7 @@ class _RoomShape extends StatefulWidget {
     required this.room,
     required this.colors,
     required this.polygon,
+    this.rotate = true,
     this.computer = false,
   });
 
@@ -410,6 +424,9 @@ class _RoomShape extends StatefulWidget {
 
   /// Компьютерный класс — об этом говорит значок в углу карточки.
   final bool computer;
+
+  /// Медленно вращать фигуру. В сезон — нет: тыква стоит на месте.
+  final bool rotate;
 
   /// Сторона формы.
   static const double size = 132;
@@ -437,8 +454,20 @@ class _RoomShapeState extends State<_RoomShape>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (reduceMotionOf(context)) {
-      _turn.stop();
+    _syncTurn();
+  }
+
+  @override
+  void didUpdateWidget(_RoomShape old) {
+    super.didUpdateWidget(old);
+    if (old.rotate != widget.rotate) _syncTurn();
+  }
+
+  void _syncTurn() {
+    if (reduceMotionOf(context) || !widget.rotate) {
+      _turn
+        ..stop()
+        ..value = 0;
     } else if (!_turn.isAnimating) {
       _turn.repeat();
     }
@@ -739,9 +768,20 @@ class _StartsIn extends StatelessWidget {
 
 /// Блок текущей пары: метка с пульсирующей точкой, остаток и шкала прогресса.
 class _NowSection extends StatelessWidget {
-  const _NowSection({required this.progress});
+  const _NowSection({required this.progress, this.marker});
 
   final LessonProgress progress;
+
+  /// Значок у головы шкалы — летучая мышь летит по линии, волна за ней.
+  final String? marker;
+
+  /// Размер мыши: та же, что на картине, повёрнута по ходу полёта вправо
+  /// (пропорции 0,7 : 1).
+  static const double markerWidth = 20;
+  static const double markerHeight = 29;
+
+  /// Зазор между кончиком волны и крыльями мыши.
+  static const double markerGap = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -783,11 +823,37 @@ class _NowSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.space100),
         // Карточка залита primary, поэтому токенные цвета шкалы (primary на
         // secondaryContainer) здесь не читаются — onPrimary, как в макете.
-        M3WavyLinearProgress(
-          value: progress.fraction,
-          color: colors.onPrimary,
-          trackColor: colors.onPrimary.withValues(alpha: 0.32),
-          semanticsLabel: 'Прогресс пары',
+        LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            clipBehavior: Clip.none,
+            children: [
+              M3WavyLinearProgress(
+                value: progress.fraction,
+                color: colors.onPrimary,
+                trackColor: colors.onPrimary.withValues(alpha: 0.32),
+                semanticsLabel: 'Прогресс пары',
+              ),
+              // Мышь летит чуть впереди волны, не цепляясь за неё: волна —
+              // её след, трек впереди — путь до конца пары.
+              if (marker != null)
+                Positioned(
+                  left: (constraints.maxWidth * progress.fraction + markerGap)
+                      .clamp(0.0, constraints.maxWidth - markerWidth),
+                  top: (M3WavyLinearProgress.height - markerHeight) / 2,
+                  child: ExcludeSemantics(
+                    child: SvgPicture.asset(
+                      marker!,
+                      width: markerWidth,
+                      height: markerHeight,
+                      colorFilter: ColorFilter.mode(
+                        colors.onPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );

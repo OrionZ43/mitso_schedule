@@ -67,7 +67,7 @@ Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
   double balance = 67,
-  String appVersion = '1.5.1 (9)',
+  String appVersion = '1.6.0 (12)',
   List<ScheduleWeek>? weeks,
   DateTime? now,
   Map<String, Object> preferences = const {},
@@ -86,7 +86,7 @@ Future<void> _pumpApp(
     'student.number': FakeStudentApi.number,
     'profile.avatar': _avatarPath,
     // Окно «Что нового» всплывает только там, где оно и нужно.
-    'app.lastSeenVersion': '1.5.1',
+    'app.lastSeenVersion': '1.6.0',
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -415,6 +415,125 @@ void main() {
     await _capture(tester, '18-teacher-load-light');
   });
 
+  // Хэллоуин целиком: каждая вкладка и настройки, светлая и тёмная тема.
+  for (final bool halloweenDark in [false, true]) {
+    final String theme = halloweenDark ? 'dark' : 'light';
+    _shot('хэллоуин целиком — $theme', (tester) async {
+      final DateTime day = DateTime(2026, 10, 30, 10, 30);
+      Lesson lesson(String start, String end, String title, String room) =>
+          Lesson(
+            start: start,
+            end: end,
+            title: title,
+            type: LessonType.lecture,
+            typeLabel: LessonType.lecture.label,
+            teacher: 'Гардейчик С. М.',
+            room: room,
+          );
+      String task(String id, String text, String? subject, int dueDay) =>
+          '{"id":"$id","text":"$text","subject":${subject == null ? 'null' : '"$subject"'},'
+          '"dueAt":"2026-10-${dueDay.toString().padLeft(2, '0')}T00:00:00.000","isDone":false}';
+      await _pumpApp(
+        tester,
+        dark: halloweenDark,
+        now: day,
+        preferences: {
+          'tasks.items':
+              '[${task('1', 'Лабораторная по базам данных', 'Системы баз данных', 30)},'
+              '${task('2', 'Купить тетради', null, 30)},'
+              '${task('3', 'Доклад по маркетингу', 'Маркетинг', 31)}]',
+        },
+        weeks: [
+          ScheduleWeek(
+            label: 'Текущая неделя',
+            days: [
+              ScheduleDay(
+                date: day,
+                lessons: [
+                  lesson('09:45', '11:05', 'Системы баз данных', '62 (к)'),
+                  lesson('11:15', '12:35', 'Маркетинг', '71'),
+                  lesson('13:05', '14:25', 'Эконометрика', '71'),
+                ],
+              ),
+              ScheduleDay(
+                date: day.add(const Duration(days: 1)),
+                lessons: [lesson('09:45', '11:05', 'Маркетинг', '71')],
+              ),
+            ],
+          ),
+        ],
+      );
+      await _frames(tester, 1500);
+      for (int i = 0; i < _tabs.length; i++) {
+        await tester.tap(
+          find.descendant(
+            of: find.byType(M3NavigationBar),
+            matching: find.text(_tabs[i]),
+          ),
+        );
+        await tester.pump();
+        await _frames(tester, 900);
+        await _loadImages(tester);
+        await _capture(tester, '22-halloween-${_fileNames[i]}-$theme');
+      }
+      await tester.tap(find.byTooltip('Настройки'));
+      await tester.pump();
+      await _frames(tester, 900);
+      // Образцы значков приложения — картинки из ассетов.
+      await _loadImages(tester);
+      await _capture(tester, '22-halloween-4-settings-$theme');
+    });
+  }
+
+  // Пустые экраны Хэллоуина: день без пар и заметки без задач — кот в тыкве
+  // на месте фигур.
+  for (final bool emptyDark in [false, true]) {
+    final String theme = emptyDark ? 'dark' : 'light';
+    _shot('хэллоуин пусто — $theme', (tester) async {
+      final DateTime day = DateTime(2026, 10, 30, 10, 30);
+      await _pumpApp(
+        tester,
+        dark: emptyDark,
+        now: day,
+        weeks: [
+          ScheduleWeek(
+            label: 'Текущая неделя',
+            days: [
+              ScheduleDay(date: day, lessons: const []),
+              ScheduleDay(
+                date: day.add(const Duration(days: 1)),
+                lessons: [
+                  Lesson(
+                    start: '09:45',
+                    end: '11:05',
+                    title: 'Маркетинг',
+                    type: LessonType.lecture,
+                    typeLabel: LessonType.lecture.label,
+                    teacher: 'Гардейчик С. М.',
+                    room: '71',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+      await _frames(tester, 1500);
+      for (int i = 0; i < 2; i++) {
+        await tester.tap(
+          find.descendant(
+            of: find.byType(M3NavigationBar),
+            matching: find.text(_tabs[i]),
+          ),
+        );
+        await tester.pump();
+        await _frames(tester, 900);
+        await _loadImages(tester);
+        await _capture(tester, '23-halloween-empty-${_fileNames[i]}-$theme');
+      }
+    });
+  }
+
   // Каждый сезон в обеих темах: один и тот же день, чтобы сравнивать.
   final List<(String, DateTime)> seasonDays = [
     ('halloween', DateTime(2026, 10, 30, 10, 30)),
@@ -475,7 +594,7 @@ void main() {
     await _pumpApp(
       tester,
       dark: false,
-      preferences: {'app.lastSeenVersion': '1.5.0'},
+      preferences: {'app.lastSeenVersion': '1.4.0'},
     );
     await _frames(tester, 900);
     await _loadImages(tester);

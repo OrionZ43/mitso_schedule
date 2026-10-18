@@ -116,6 +116,34 @@ class SettingsScreen extends ConsumerWidget {
                   // Значок меняется переключением activity-alias — это есть
                   // только в Android.
                   if (AppPlatform.isPhone) const _AppIconPicker(),
+                  // Сезонное оформление — тоже внешний вид: в разделе «Вид»,
+                  // отдельной группой с отступом от подписей значков.
+                  const SizedBox(height: AppSpacing.space300),
+                  SegmentedList(
+                    children: [
+                      M3ListItem(
+                        leading: Icon(season?.icon ?? Symbols.auto_awesome),
+                        headline: const Text('Сезонное оформление'),
+                        supporting: Text(
+                          season == null
+                              ? _nextSeasonLine(ref.watch(nowProvider))
+                              : 'Сейчас: ${season.name} — ${season.decorHint}',
+                        ),
+                        trailing: ExcludeSemantics(
+                          child: M3Switch(
+                            value: settings.seasonalTheme,
+                            onChanged: controller.setSeasonalTheme,
+                          ),
+                        ),
+                        onTap: () => controller.setSeasonalTheme(
+                          !settings.seasonalTheme,
+                        ),
+                        semanticsLabel:
+                            'Сезонное оформление, '
+                            '${settings.seasonalTheme ? 'включено' : 'выключено'}',
+                      ),
+                    ],
+                  ),
 
                   // ─── Устройства: это окно, компьютер и часы рядом.
                   if (AppPlatform.isDesktop || watches.isNotEmpty) ...[
@@ -173,32 +201,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
 
-                  // ─── Сезонное оформление: праздничные цвета и украшения.
-                  SegmentedList(
-                    children: [
-                      M3ListItem(
-                        leading: Icon(season?.icon ?? Symbols.auto_awesome),
-                        headline: const Text('Сезонное оформление'),
-                        supporting: Text(
-                          season == null
-                              ? _nextSeasonLine(ref.watch(nowProvider))
-                              : 'Сейчас: ${season.name} — ${season.decorHint}',
-                        ),
-                        trailing: ExcludeSemantics(
-                          child: M3Switch(
-                            value: settings.seasonalTheme,
-                            onChanged: controller.setSeasonalTheme,
-                          ),
-                        ),
-                        onTap: () => controller.setSeasonalTheme(
-                          !settings.seasonalTheme,
-                        ),
-                        semanticsLabel:
-                            'Сезонное оформление, '
-                            '${settings.seasonalTheme ? 'включено' : 'выключено'}',
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: AppSpacing.space100),
 
                   // ─── Уведомления: подробности на своём экране, чтобы
@@ -293,6 +295,9 @@ class _AppIconPickerState extends ConsumerState<_AppIconPicker> {
   @override
   Widget build(BuildContext context) {
     final AppIcon? selected = ref.watch(appIconControllerProvider).value;
+    // Сезонные значки — в свой сезон (если оформление включено) или пока
+    // выбраны.
+    final String? seasonId = ref.watch(activeSeasonProvider)?.id;
     final ColorScheme colors = context.colors;
 
     return Padding(
@@ -312,54 +317,58 @@ class _AppIconPickerState extends ConsumerState<_AppIconPicker> {
             runSpacing: AppSpacing.space150,
             children: [
               for (final AppIcon icon in AppIcon.values)
-                Semantics(
-                  selected: icon == selected,
-                  button: true,
-                  label: 'Значок «${icon.title}»',
-                  excludeSemantics: true,
-                  child: InkWell(
-                    onTap: () => _select(icon),
-                    borderRadius: BorderRadius.circular(size),
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.space50),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: size,
-                            height: size,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: icon == selected
-                                    ? colors.primary
-                                    : Colors.transparent,
-                                width: 3,
+                if (icon.offeredIn(seasonId: seasonId, selected: selected))
+                  Semantics(
+                    selected: icon == selected,
+                    button: true,
+                    label: 'Значок «${icon.title}»',
+                    excludeSemantics: true,
+                    child: InkWell(
+                      onTap: () => _select(icon),
+                      borderRadius: BorderRadius.circular(size),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.space50),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: size,
+                              height: size,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: icon == selected
+                                      ? colors.primary
+                                      : Colors.transparent,
+                                  width: 3,
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(3),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  icon.asset,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                            padding: const EdgeInsets.all(3),
-                            child: ClipOval(
-                              child: Image.asset(icon.asset, fit: BoxFit.cover),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.space50),
-                          SizedBox(
-                            width: size + AppSpacing.space200,
-                            child: Text(
-                              icon.title,
-                              textAlign: TextAlign.center,
-                              style: context.text.labelSmall!.copyWith(
-                                color: icon == selected
-                                    ? colors.primary
-                                    : colors.onSurfaceVariant,
+                            const SizedBox(height: AppSpacing.space50),
+                            SizedBox(
+                              width: size + AppSpacing.space200,
+                              child: Text(
+                                icon.title,
+                                textAlign: TextAlign.center,
+                                style: context.text.labelSmall!.copyWith(
+                                  color: icon == selected
+                                      ? colors.primary
+                                      : colors.onSurfaceVariant,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
             ],
           ),
           if (_message != null)
@@ -479,18 +488,30 @@ String _notificationsSummary(Settings settings, {required bool linked}) {
   return '${list[0].toUpperCase()}${list.substring(1)}';
 }
 
-/// Подпись внизу настроек: нажатие открывает сайт студии.
+/// Подпись внизу настроек: кто сделал и чьи картинки. Нажатие открывает сайт.
+///
+/// Картины сезонов — Storyset: их лицензия бесплатна при указании авторства
+/// со ссылкой (`assets/seasons/README.md`).
 class _StudioSignature extends StatelessWidget {
   const _StudioSignature();
 
   static final Uri _site = Uri.parse('https://z43-studios.vercel.app/');
+  static final Uri _storyset = Uri.parse('https://storyset.com');
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: M3Button(
-      onPressed: () => launchUrl(_site, mode: LaunchMode.externalApplication),
-      color: M3ButtonColor.text,
-      child: const Text('Сделано с ♥ в Z43 Studios'),
-    ),
+  Widget build(BuildContext context) => Column(
+    children: [
+      M3Button(
+        onPressed: () => launchUrl(_site, mode: LaunchMode.externalApplication),
+        color: M3ButtonColor.text,
+        child: const Text('Сделано с ♥ в Z43 Studios'),
+      ),
+      M3Button(
+        onPressed: () =>
+            launchUrl(_storyset, mode: LaunchMode.externalApplication),
+        color: M3ButtonColor.text,
+        child: const Text('Illustrations by Storyset'),
+      ),
+    ],
   );
 }

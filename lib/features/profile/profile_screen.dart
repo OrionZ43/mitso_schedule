@@ -15,13 +15,16 @@ import '../../data/models/lesson.dart';
 import '../../data/teacher_load.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
+import '../../state/season_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../theme/seasons.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/m3_loading_indicator.dart';
+import '../../widgets/season_decor.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import '../../widgets/shape_avatar.dart';
@@ -74,67 +77,82 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final bool isStudent = target is! TeacherTarget;
     final bool hasUpdate = ref.watch(updateBadgeProvider);
     final double margin = AppSpacing.screenMargin(context);
+    final Season? season = ref.watch(activeSeasonProvider);
 
     return M3AppBarSettle(
-      child: CustomScrollView(
-        controller: widget.scrollController,
-        slivers: [
-          SliverMediumFlexibleAppBar(
-            title: 'Профиль',
-            actions: [
-              M3IconButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => const SettingsScreen(),
+      child: Stack(
+        children: [
+          // Картина сезона — на весь фон, позади профиля.
+          if (season != null)
+            Positioned.fill(
+              child: SeasonBackdrop(season: season, page: SeasonPage.profile),
+            ),
+          CustomScrollView(
+            controller: widget.scrollController,
+            slivers: [
+              SliverMediumFlexibleAppBar(
+                title: 'Профиль',
+                // Картина лежит под баром: в покое контейнер прозрачный.
+                containerColor: season != null ? Colors.transparent : null,
+                actions: [
+                  M3IconButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    ),
+                    // Точка на значке настроек, пока обновление не показано:
+                    // обновления живут в разделе «О приложении».
+                    icon: Badge(
+                      isLabelVisible: hasUpdate,
+                      child: const Icon(Symbols.settings),
+                    ),
+                    color: M3IconButtonColor.standard,
+                    tooltip: hasUpdate
+                        ? 'Настройки, доступно обновление'
+                        : 'Настройки',
                   ),
+                ],
+              ),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                sliver: SliverList.list(
+                  children: [
+                    _ProfileHero(
+                      target: target,
+                      account: account,
+                      onPick: () => showGroupPicker(context),
+                    ),
+
+                    // Преподавателю — его нагрузка; счёта у него нет.
+                    if (!isStudent) const _TeacherLoadSection(),
+
+                    if (isStudent) ...[
+                      const SectionHeader('Лицевой счёт'),
+                      if (account == null)
+                        _LinkCard(
+                          loading: student.isLoading,
+                          error: student.error,
+                        )
+                      else ...[
+                        _BalanceCard(
+                          account: account,
+                          now: ref.watch(nowProvider),
+                          refreshing: _refreshing,
+                          onRefresh: _refresh,
+                        ),
+                      ],
+
+                      if (account?.moodle != null) ...[
+                        const SectionHeader('Дистанционное обучение'),
+                        _MoodleCard(moodle: account!.moodle!),
+                      ],
+                    ],
+                    const SizedBox(height: AppSpacing.space800),
+                  ],
                 ),
-                // Точка на значке настроек, пока обновление не показано:
-                // обновления живут в разделе «О приложении».
-                icon: Badge(
-                  isLabelVisible: hasUpdate,
-                  child: const Icon(Symbols.settings),
-                ),
-                color: M3IconButtonColor.standard,
-                tooltip: hasUpdate
-                    ? 'Настройки, доступно обновление'
-                    : 'Настройки',
               ),
             ],
-          ),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: margin),
-            sliver: SliverList.list(
-              children: [
-                _ProfileHero(
-                  target: target,
-                  account: account,
-                  onPick: () => showGroupPicker(context),
-                ),
-
-                // Преподавателю — его нагрузка; счёта у него нет.
-                if (!isStudent) const _TeacherLoadSection(),
-
-                if (isStudent) ...[
-                  const SectionHeader('Лицевой счёт'),
-                  if (account == null)
-                    _LinkCard(loading: student.isLoading, error: student.error)
-                  else ...[
-                    _BalanceCard(
-                      account: account,
-                      now: ref.watch(nowProvider),
-                      refreshing: _refreshing,
-                      onRefresh: _refresh,
-                    ),
-                  ],
-
-                  if (account?.moodle != null) ...[
-                    const SectionHeader('Дистанционное обучение'),
-                    _MoodleCard(moodle: account!.moodle!),
-                  ],
-                ],
-                const SizedBox(height: AppSpacing.space800),
-              ],
-            ),
           ),
         ],
       ),

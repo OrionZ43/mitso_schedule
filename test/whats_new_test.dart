@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mitso_schedule/data/release_notes.dart';
@@ -61,6 +63,9 @@ void main() {
       for (final ReleaseNote note in release.notes) {
         expect(note.title, isNotEmpty);
         expect(note.text, isNotEmpty);
+        if (note.image != null) {
+          expect(File(note.image!).existsSync(), isTrue, reason: note.image);
+        }
       }
     }
   });

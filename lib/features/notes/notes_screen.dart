@@ -5,13 +5,16 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models/task_item.dart';
 import '../../state/mitso_providers.dart';
+import '../../state/season_controller.dart';
 import '../../state/tasks_controller.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../theme/seasons.dart';
 import '../../widgets/connected_button_group.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/m3_checkbox.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
+import '../../widgets/season_decor.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/segmented_list.dart';
 import 'task_sheet.dart';
@@ -33,65 +36,83 @@ class NotesScreen extends ConsumerWidget {
     final TaskFilter filter = ref.watch(taskFilterProvider);
     final String summary = ref.watch(tasksSummaryProvider);
     final DateTime now = ref.watch(nowProvider);
+    final Season? season = ref.watch(activeSeasonProvider);
     final double margin = AppSpacing.screenMargin(context);
 
     return M3AppBarSettle(
-      child: CustomScrollView(
-        controller: scrollController,
-        slivers: [
-          SliverMediumFlexibleAppBar(title: 'Заметки', subtitle: summary),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: margin),
-            sliver: SliverList.list(
-              children: [
-                // Переключение вида списка — connected button group
-                // (segmented button в M3 Expressive устарел).
-                ConnectedButtonGroup<TaskFilter>(
-                  values: TaskFilter.values,
-                  labelOf: (filter) => filter.label,
-                  selected: filter,
-                  onSelected: ref.read(taskFilterProvider.notifier).select,
-                ),
-                if (groups.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.space200),
-                    child: EmptyState(
-                      title: filter == TaskFilter.active
-                          ? 'Задач нет,\nможно отдыхать!'
-                          : 'Выполненных задач нет',
-                      description: filter == TaskFilter.active
-                          ? 'Добавьте, что нужно сделать: к паре, к сессии '
-                                'или просто на неделю.'
-                          : 'Отмеченные задачи переедут сюда.',
-                      withAccentDot: true,
-                      illustrationSize: const Size(148, 132),
+      child: Stack(
+        children: [
+          // Картина сезона — на весь фон, позади заметок.
+          if (season != null)
+            Positioned.fill(
+              child: SeasonBackdrop(season: season, page: SeasonPage.notes),
+            ),
+          CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              SliverMediumFlexibleAppBar(
+                title: 'Заметки',
+                subtitle: summary,
+                // Картина лежит под баром: в покое контейнер прозрачный.
+                containerColor: season != null ? Colors.transparent : null,
+              ),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                sliver: SliverList.list(
+                  children: [
+                    // Переключение вида списка — connected button group
+                    // (segmented button в M3 Expressive устарел).
+                    ConnectedButtonGroup<TaskFilter>(
+                      values: TaskFilter.values,
+                      labelOf: (filter) => filter.label,
+                      selected: filter,
+                      onSelected: ref.read(taskFilterProvider.notifier).select,
                     ),
-                  )
-                else
-                  for (final MapEntry<TaskGroup, List<TaskItem>> group
-                      in groups.entries) ...[
-                    SectionHeader(group.key.title),
-                    SegmentedList(
-                      children: [
-                        for (final TaskItem task in group.value)
-                          _taskItem(
-                            context,
-                            task: task,
-                            now: now,
-                            onToggle: () => ref
-                                .read(tasksControllerProvider.notifier)
-                                .toggle(task.id),
-                            onEdit: () => showTaskSheet(context, task: task),
-                          ),
+                    if (groups.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.space200,
+                        ),
+                        child: EmptyState(
+                          title: filter == TaskFilter.active
+                              ? 'Задач нет,\nможно отдыхать!'
+                              : 'Выполненных задач нет',
+                          description: filter == TaskFilter.active
+                              ? 'Добавьте, что нужно сделать: к паре, к сессии '
+                                    'или просто на неделю.'
+                              : 'Отмеченные задачи переедут сюда.',
+                          withAccentDot: true,
+                          illustrationSize: const Size(148, 132),
+                        ),
+                      )
+                    else
+                      for (final MapEntry<TaskGroup, List<TaskItem>> group
+                          in groups.entries) ...[
+                        SectionHeader(group.key.title),
+                        SegmentedList(
+                          children: [
+                            for (final TaskItem task in group.value)
+                              _taskItem(
+                                context,
+                                task: task,
+                                now: now,
+                                onToggle: () => ref
+                                    .read(tasksControllerProvider.notifier)
+                                    .toggle(task.id),
+                                onEdit: () =>
+                                    showTaskSheet(context, task: task),
+                              ),
+                          ],
+                        ),
                       ],
+                    // Место под medium FAB.
+                    const SizedBox(
+                      height: AppSpacing.space800 + AppSpacing.space800,
                     ),
                   ],
-                // Место под medium FAB.
-                const SizedBox(
-                  height: AppSpacing.space800 + AppSpacing.space800,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
