@@ -134,6 +134,23 @@ final List<Season> kSeasons = [
   ),
 ];
 
+/// Ближайший сезон после [date] и дата его начала.
+///
+/// Показывается в настройках, когда праздников сейчас нет: видно, чего ждать
+/// и что именно включено.
+(Season season, DateTime starts) nextSeasonAfter(DateTime date) {
+  final DateTime today = DateTime(date.year, date.month, date.day);
+  (Season, DateTime)? best;
+  for (final Season season in kSeasons) {
+    for (final int year in [today.year, today.year + 1]) {
+      final DateTime start = DateTime(year, season.from.$1, season.from.$2);
+      if (!start.isAfter(today)) continue;
+      if (best == null || start.isBefore(best.$2)) best = (season, start);
+    }
+  }
+  return best!;
+}
+
 /// Какой сезон идёт в [date]; `null` — обычные дни.
 Season? seasonOn(DateTime date) {
   for (final Season season in kSeasons) {

@@ -42,6 +42,28 @@ void main() {
     expect(seasonOn(DateTime(2026, 10, 13)), isNull);
   });
 
+  test('ближайший сезон — следующий по календарю', () {
+    final (Season season, DateTime starts) = nextSeasonAfter(
+      DateTime(2026, 10, 18),
+    );
+    expect(season.id, 'halloween');
+    expect(starts, DateTime(2026, 10, 25));
+
+    // Хэллоуин позади — ближайший Новый год.
+    final (Season after, DateTime afterStarts) = nextSeasonAfter(
+      DateTime(2026, 11, 10),
+    );
+    expect(after.id, 'newYear');
+    expect(afterStarts, DateTime(2026, 12, 15));
+
+    // В январе всё сезоны этого года уже прошли, кроме весны.
+    final (Season spring, DateTime springStarts) = nextSeasonAfter(
+      DateTime(2027, 1, 20),
+    );
+    expect(spring.id, 'spring');
+    expect(springStarts, DateTime(2027, 3, 1));
+  });
+
   test('у каждого сезона есть чем украшать', () {
     for (final Season season in kSeasons) {
       expect(season.decorShapes, isNotEmpty, reason: season.id);

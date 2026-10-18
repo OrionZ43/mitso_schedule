@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,6 +8,7 @@ import '../../app_platform.dart';
 import '../../data/models/student_account.dart';
 import '../../data/wear_sync.dart';
 import '../../state/app_icon_controller.dart';
+import '../../state/mitso_providers.dart';
 import '../../state/season_controller.dart';
 import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
@@ -179,8 +181,7 @@ class SettingsScreen extends ConsumerWidget {
                         headline: const Text('Сезонное оформление'),
                         supporting: Text(
                           season == null
-                              ? 'В праздники приложение меняет цвета и '
-                                    'добавляет украшения'
+                              ? _nextSeasonLine(ref.watch(nowProvider))
                               : 'Сейчас: ${season.name} — ${season.decorHint}',
                         ),
                         trailing: ExcludeSemantics(
@@ -455,6 +456,13 @@ Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
   if (confirmed ?? false) {
     await ref.read(studentControllerProvider.notifier).unlink();
   }
+}
+
+/// «Ближайший — Хэллоуин, с 25 октября».
+String _nextSeasonLine(DateTime now) {
+  final (Season season, DateTime starts) = nextSeasonAfter(now);
+  return 'Ближайший — ${season.name}, '
+      'с ${DateFormat('d MMMM', 'ru').format(starts)}';
 }
 
 /// Что включено: «Пары, изменения, зачёты» или «Все выключены».
