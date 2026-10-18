@@ -43,6 +43,27 @@ class ReleaseNotes {
 /// показывается один раз после обновления.
 const List<ReleaseNotes> kReleaseNotes = [
   ReleaseNotes(
+    version: '1.5.0',
+    headline: 'Приложение знает про праздники',
+    notes: [
+      ReleaseNote(
+        icon: Symbols.mode_night,
+        title: 'Сезонное оформление',
+        text:
+            'На Хэллоуин расписание становится тыквенным, сверху падают '
+            'листья, а номер аудитории сидит в тыкве. Дальше — Новый год, '
+            'весна и первое сентября.',
+      ),
+      ReleaseNote(
+        icon: Symbols.toggle_off,
+        title: 'Не нравится — выключается',
+        text:
+            'Переключатель «Сезонное оформление» в настройках, в разделе '
+            '«Вид». Там же видно, какой сезон идёт сейчас.',
+      ),
+    ],
+  ),
+  ReleaseNotes(
     version: '1.4.0',
     headline: 'Удобнее преподавателям',
     notes: [

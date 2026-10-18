@@ -11,10 +11,13 @@ import '../../data/day_text.dart';
 import '../../data/models/lesson.dart';
 import '../../state/mitso_providers.dart';
 import '../../state/schedule_controller.dart';
+import '../../state/season_controller.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/seasons.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/day_selector.dart';
+import '../../widgets/season_decor.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_flexible_app_bar.dart';
 import '../../widgets/empty_state.dart';
@@ -139,6 +142,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
 
     final bool hasSubtitle = target != null;
+    final Season? season = ref.watch(activeSeasonProvider);
+
     return M3PullToRefresh(
       onRefresh: ref.read(scheduleControllerProvider.notifier).refresh,
       isRefreshing: _refreshingByButton,
@@ -150,46 +155,60 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ? SliverMediumFlexibleAppBar.expandedHeightWithSubtitle
               : SliverMediumFlexibleAppBar.expandedHeight),
       child: M3AppBarSettle(
-        child: CustomScrollView(
-          controller: widget.scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverMediumFlexibleAppBar(
-              title: 'Расписание',
-              subtitle: target?.appBarSubtitle,
-              actions: [
-                if (data != null && data.days.isNotEmpty)
-                  ScheduleSearchButton(days: data.days),
-                // Альтернатива жесту pull-to-refresh — гайдлайн loading
-                // indicator, Accessibility.
-                if (target != null)
-                  M3IconButton(
-                    onPressed: _refreshingByButton ? null : _refreshByButton,
-                    icon: const Icon(Symbols.refresh),
-                    color: M3IconButtonColor.standard,
-                    tooltip: 'Обновить',
-                  ),
-                // Компактное окно — только на компьютере.
-                if (AppPlatform.isDesktop)
-                  M3IconButton(
-                    onPressed: () =>
-                        ref.read(widgetModeProvider.notifier).set(true),
-                    icon: const Icon(Symbols.picture_in_picture),
-                    color: M3IconButtonColor.standard,
-                    tooltip: 'Компактное окно',
-                  ),
-                // Одна trailing-кнопка может быть tonal (app bars → Usage).
-                M3IconButton(
-                  onPressed: () => showGroupPicker(context),
-                  icon: const Icon(Symbols.groups, fill: 1),
-                  color: M3IconButtonColor.tonal,
-                  tooltip: target == null
-                      ? 'Выбрать расписание'
-                      : 'Сменить расписание',
+        child: Stack(
+          children: [
+            // Сезонное украшение — позади расписания, у самого верха.
+            if (season != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SeasonDecor(season: season),
+              ),
+            CustomScrollView(
+              controller: widget.scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverMediumFlexibleAppBar(
+                  title: 'Расписание',
+                  subtitle: target?.appBarSubtitle,
+                  actions: [
+                    if (data != null && data.days.isNotEmpty)
+                      ScheduleSearchButton(days: data.days),
+                    // Альтернатива жесту pull-to-refresh — гайдлайн loading
+                    // indicator, Accessibility.
+                    if (target != null)
+                      M3IconButton(
+                        onPressed: _refreshingByButton
+                            ? null
+                            : _refreshByButton,
+                        icon: const Icon(Symbols.refresh),
+                        color: M3IconButtonColor.standard,
+                        tooltip: 'Обновить',
+                      ),
+                    // Компактное окно — только на компьютере.
+                    if (AppPlatform.isDesktop)
+                      M3IconButton(
+                        onPressed: () =>
+                            ref.read(widgetModeProvider.notifier).set(true),
+                        icon: const Icon(Symbols.picture_in_picture),
+                        color: M3IconButtonColor.standard,
+                        tooltip: 'Компактное окно',
+                      ),
+                    // Одна trailing-кнопка может быть tonal (app bars → Usage).
+                    M3IconButton(
+                      onPressed: () => showGroupPicker(context),
+                      icon: const Icon(Symbols.groups, fill: 1),
+                      color: M3IconButtonColor.tonal,
+                      tooltip: target == null
+                          ? 'Выбрать расписание'
+                          : 'Сменить расписание',
+                    ),
+                  ],
                 ),
+                ...body,
               ],
             ),
-            ...body,
           ],
         ),
       ),

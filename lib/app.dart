@@ -12,6 +12,7 @@ import 'features/widget_mode/compact_screen.dart';
 import 'state/mitso_providers.dart';
 import 'state/reminders_controller.dart';
 import 'state/schedule_controller.dart';
+import 'state/season_controller.dart';
 import 'state/settings_controller.dart';
 import 'state/student_controller.dart';
 import 'theme/app_color_schemes.dart';
@@ -19,6 +20,7 @@ import 'theme/app_shapes.dart';
 import 'theme/app_state_layer.dart';
 import 'theme/app_transitions.dart';
 import 'theme/app_typography.dart';
+import 'theme/seasons.dart';
 import 'theme/status_colors.dart';
 import 'theme/system_color_roles.dart';
 
@@ -115,6 +117,7 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   Widget build(BuildContext context) {
     final Settings settings = ref.watch(settingsControllerProvider);
     final dynamicColors = ref.watch(dynamicColorsProvider).value;
+    final Season? season = ref.watch(activeSeasonProvider);
 
     ColorScheme scheme(Brightness brightness) => AppColorSchemes.resolve(
       palette: settings.palette,
@@ -124,6 +127,7 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
           ? dynamicColors?.light
           : dynamicColors?.dark,
       wallpaperSeed: dynamicColors?.seed,
+      seasonSeed: season?.seed,
     );
 
     return MaterialApp(

@@ -7,10 +7,12 @@ import '../../app_platform.dart';
 import '../../data/models/student_account.dart';
 import '../../data/wear_sync.dart';
 import '../../state/app_icon_controller.dart';
+import '../../state/season_controller.dart';
 import '../../state/settings_controller.dart';
 import '../../state/student_controller.dart';
 import '../../theme/app_color_schemes.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/seasons.dart';
 import '../../widgets/connected_button_group.dart';
 import '../../widgets/m3_buttons.dart';
 import '../../widgets/m3_filter_chip.dart';
@@ -37,6 +39,9 @@ class SettingsScreen extends ConsumerWidget {
       settingsControllerProvider.notifier,
     );
     final bool autostart = ref.watch(autostartProvider).value ?? false;
+    // Сезон показываем и при выключенном оформлении — чтобы было видно,
+    // что именно предлагается.
+    final Season? season = ref.watch(seasonTodayProvider);
     // Раздел счёта показывается, только когда счёт подключён.
     final StudentAccount? account = ref.watch(studentControllerProvider).value;
     final List<String> watches =
@@ -165,6 +170,35 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ],
+
+                  // ─── Сезонное оформление: праздничные цвета и украшения.
+                  SegmentedList(
+                    children: [
+                      M3ListItem(
+                        leading: Icon(season?.icon ?? Symbols.auto_awesome),
+                        headline: const Text('Сезонное оформление'),
+                        supporting: Text(
+                          season == null
+                              ? 'В праздники приложение меняет цвета и '
+                                    'добавляет украшения'
+                              : 'Сейчас: ${season.name} — ${season.decorHint}',
+                        ),
+                        trailing: ExcludeSemantics(
+                          child: M3Switch(
+                            value: settings.seasonalTheme,
+                            onChanged: controller.setSeasonalTheme,
+                          ),
+                        ),
+                        onTap: () => controller.setSeasonalTheme(
+                          !settings.seasonalTheme,
+                        ),
+                        semanticsLabel:
+                            'Сезонное оформление, '
+                            '${settings.seasonalTheme ? 'включено' : 'выключено'}',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space100),
 
                   // ─── Уведомления: подробности на своём экране, чтобы
                   // настройки не превращались в простыню.

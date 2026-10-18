@@ -18,6 +18,7 @@ class Settings {
     this.newWeekAlerts = true,
     this.assessmentAlerts = true,
     this.dayDigest = false,
+    this.seasonalTheme = true,
   });
 
   /// `null` — следовать системной теме, иначе явный выбор пользователя.
@@ -50,6 +51,9 @@ class Settings {
   /// Вечером рассказывать, каким будет завтрашний день.
   final bool dayDigest;
 
+  /// Сезонное оформление: свои цвета и украшения в праздничные дни.
+  final bool seasonalTheme;
+
   /// Хоть одно уведомление о расписании включено — значит фоновая проверка
   /// нужна.
   bool get watchesSchedule =>
@@ -73,6 +77,7 @@ class Settings {
     bool? newWeekAlerts,
     bool? assessmentAlerts,
     bool? dayDigest,
+    bool? seasonalTheme,
   }) {
     return Settings(
       darkOverride: clearDarkOverride
@@ -87,6 +92,7 @@ class Settings {
       newWeekAlerts: newWeekAlerts ?? this.newWeekAlerts,
       assessmentAlerts: assessmentAlerts ?? this.assessmentAlerts,
       dayDigest: dayDigest ?? this.dayDigest,
+      seasonalTheme: seasonalTheme ?? this.seasonalTheme,
     );
   }
 }
@@ -116,6 +122,7 @@ class SettingsController extends Notifier<Settings> {
   static const String newWeekKey = 'settings.newWeekAlerts';
   static const String assessmentsKey = 'settings.assessmentAlerts';
   static const String digestKey = 'settings.dayDigest';
+  static const String seasonalKey = 'settings.seasonalTheme';
 
   /// Один переключатель на всё расписание из версии 1.3.0: если он остался
   /// выключенным, выключены и три новых.
@@ -139,6 +146,7 @@ class SettingsController extends Notifier<Settings> {
       newWeekAlerts: prefs.getBool(newWeekKey) ?? legacy,
       assessmentAlerts: prefs.getBool(assessmentsKey) ?? legacy,
       dayDigest: prefs.getBool(digestKey) ?? false,
+      seasonalTheme: prefs.getBool(seasonalKey) ?? true,
     );
   }
 
@@ -177,6 +185,11 @@ class SettingsController extends Notifier<Settings> {
   void setNewWeekAlerts(bool value) {
     state = state.copyWith(newWeekAlerts: value);
     _prefs.setBool(newWeekKey, value);
+  }
+
+  void setSeasonalTheme(bool value) {
+    state = state.copyWith(seasonalTheme: value);
+    _prefs.setBool(seasonalKey, value);
   }
 
   void setDayDigest(bool value) {

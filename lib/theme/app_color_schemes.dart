@@ -33,6 +33,13 @@ abstract final class AppColorSchemes {
   static const DynamicSchemeVariant paletteVariant =
       DynamicSchemeVariant.expressive;
 
+  /// Сезон должен остаться узнаваемым: тыква — оранжевой, ёлка — зелёной.
+  /// `expressive` поворачивает оттенок сида, поэтому здесь `fidelity` —
+  /// вариант, который держится исходного цвета
+  /// (https://m3.material.io/styles/color/advanced → scheme variants).
+  static const DynamicSchemeVariant seasonVariant =
+      DynamicSchemeVariant.fidelity;
+
   /// Android 12–13: системных ролей нет, есть только палитры обоев. Android
   /// сам строит схему обоев вариантом tonal spot, поэтому и здесь он.
   static const DynamicSchemeVariant wallpaperVariant =
@@ -74,7 +81,17 @@ abstract final class AppColorSchemes {
     required bool dynamicEnabled,
     ColorScheme? systemScheme,
     Color? wallpaperSeed,
+    Color? seasonSeed,
   }) {
+    // Сезон — событие на неделю-другую, поэтому он перебивает и палитру, и
+    // цвета обоев. Не нравится — выключается одним переключателем.
+    if (seasonSeed != null) {
+      return ColorScheme.fromSeed(
+        seedColor: seasonSeed,
+        brightness: brightness,
+        dynamicSchemeVariant: seasonVariant,
+      );
+    }
     if (dynamicEnabled) {
       if (systemScheme != null) return systemScheme;
       if (wallpaperSeed != null) {

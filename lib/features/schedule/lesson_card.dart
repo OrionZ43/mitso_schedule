@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models/lesson.dart';
 import '../../theme/app_motion.dart';
+import '../../state/season_controller.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../theme/seasons.dart';
 import '../../theme/status_colors.dart';
 import '../../widgets/m3_wavy_linear_progress.dart';
 import 'lesson_timing.dart';
@@ -23,7 +26,7 @@ import 'lesson_timing.dart';
 /// Expressive, которая выходит из правого верхнего угла и очень медленно
 /// вращается; значок двери прижат к самому углу, у подгрупп — плашки в их
 /// строках. Нажатие открывает подробности.
-class LessonCard extends StatelessWidget {
+class LessonCard extends ConsumerWidget {
   const LessonCard({
     super.key,
     required this.slot,
@@ -39,8 +42,10 @@ class LessonCard extends StatelessWidget {
   static const double gap = AppSpacing.space150;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme colors = context.colors;
+    // В праздники номер аудитории сидит в сезонной фигуре: тыква, снежинка.
+    final Season? season = ref.watch(activeSeasonProvider);
     final bool isNow =
         status.timing == SlotTiming.now && status.progress != null;
     final bool past = status.timing == SlotTiming.past;
@@ -85,6 +90,7 @@ class LessonCard extends StatelessWidget {
                 past: past,
                 progress: status.progress,
                 startsInMinutes: status.startsIn,
+                roomShape: season?.accentShape ?? MaterialShapes.cookie9Sided,
               ),
             ),
           ),
@@ -101,6 +107,7 @@ class _CardContent extends StatelessWidget {
     required this.past,
     required this.progress,
     required this.startsInMinutes,
+    required this.roomShape,
   });
 
   final LessonSlot slot;
@@ -108,6 +115,9 @@ class _CardContent extends StatelessWidget {
   final bool past;
   final LessonProgress? progress;
   final int? startsInMinutes;
+
+  /// Фигура под номером аудитории: в праздники сезонная.
+  final RoundedPolygon roomShape;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +273,12 @@ class _CardContent extends StatelessWidget {
         PositionedDirectional(
           top: -_RoomShape.overflow,
           end: -_RoomShape.overflow,
-          child: _RoomShape(room: room, computer: computerRoom, colors: accent),
+          child: _RoomShape(
+            room: room,
+            computer: computerRoom,
+            colors: accent,
+            polygon: roomShape,
+          ),
         ),
         // Значок аудитории — в самом углу карточки, над формой. У
         // компьютерного класса вместо двери монитор.
@@ -383,11 +398,15 @@ class _RoomShape extends StatefulWidget {
   const _RoomShape({
     required this.room,
     required this.colors,
+    required this.polygon,
     this.computer = false,
   });
 
   final String room;
   final _AccentColors colors;
+
+  /// Фигура под номером: обычно `cookie9Sided`, в праздники — сезонная.
+  final RoundedPolygon polygon;
 
   /// Компьютерный класс — об этом говорит значок в углу карточки.
   final bool computer;
@@ -450,7 +469,7 @@ class _RoomShapeState extends State<_RoomShape>
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: _ShapePainter(
-                        MaterialShapes.cookie9Sided,
+                        widget.polygon,
                         widget.colors.container,
                       ),
                     ),
