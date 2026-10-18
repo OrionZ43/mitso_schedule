@@ -49,6 +49,13 @@
   (Cookie9Sided из правого верхнего угла, выбор заказчика 17.09.2026). Гайд советует абстрактные
   формы для декора, а не для текстовых контейнеров; здесь форма несёт короткий номер и
   обрезана краем карточки — записано в README, п. 21.
+- Сезонное оформление (`lib/theme/seasons.dart`, `lib/widgets/season_decor.dart`): в праздники
+  форма под номером аудитории меняется на сезонную (Puffy — тыква, Sunny — снежинка,
+  Flower — весна, Cookie9Sided — первое сентября), а сверху расписания падает слой фигур
+  (Arch, Fan, Clover4Leaf, Ghostish). Основание — то же «Emphasize aesthetic moments with
+  shape» и «Use abstract shapes on imagery and decorative UI»; слой неинтерактивный,
+  скрыт от screen reader и стоит при «Удалить анимации». Отступление — в
+  `docs/development.md`, п. 24.
 - Пустое состояние (`lib/widgets/empty_state.dart`): три слоя, каждый морфится по своему циклу
   форм и медленно вращается. Основания в гайде: «Emphasize aesthetic moments with shape»
   (декоративные, неинтерактивные места), «Shape is versatile, not semantic — **Progress could

@@ -69,6 +69,10 @@
 
 - `lib/theme/app_color_schemes.dart`: `AppPalette` — 4 сида из макета; `variant = DynamicSchemeVariant.expressive`; `resolve()`: dynamic выключен → `fromSeed(baselineSeed #6750A4, expressive)`; включён → схема устройства (`DynamicColorBuilder`), иначе сид-акцент устройства, иначе сид палитры.
 - `lib/app.dart` `buildTheme`: nav bar `surfaceContainer` + `secondaryContainer` + подпись `secondary`; search `surfaceContainerHigh`; filter chip — `secondaryContainer`, обводка невыбранного **`outline`**; card `surface` + `outlineVariant`; FAB `primaryContainer`; bottom sheet `surfaceContainerLow`; tooltip **`primary` / `onPrimary`**; snackbar `inverseSurface`; divider `outlineVariant`; app bar `surface` с `scrolledUnderElevation: 0`.
+- Сезон (`lib/theme/seasons.dart`): в праздничные дни `resolve()` берёт сид сезона и
+  **`DynamicSchemeVariant.fidelity`** — он держится исходного цвета, тогда как `expressive`
+  поворачивает тыквенный оранжевый в зелёный (см. расхождение 1 ниже: тот же поворот даёт
+  «бирюзовую» baseline). Сезон перебивает и палитру, и цвета обоев; выключается в настройках.
 - `lib/theme/status_colors.dart` — `StatusColors` (pending / approved / rejected) из hex макета, отдельно для светлой и тёмной темы.
 - `lib/theme/app_typography.dart` — цвет текста `0xFF1C1B20` / `0xFFE8E1EC` (перекрывается `.apply(bodyColor: onSurface)` в `buildTheme`).
 - Виджеты: `lesson_card.dart`, `day_selector.dart`, `status_badge.dart`, `absence_donut.dart` — роли с изменённой прозрачностью.
