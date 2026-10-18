@@ -83,6 +83,14 @@
 
 <div align="center">
 
+**Сезоны** — Хэллоуин, Новый год, весна и первое сентября, в светлой и тёмной теме
+
+<img src="docs/screenshots/20-seasons.png" alt="Сезонное оформление" />
+
+</div>
+
+<div align="center">
+
 **Windows** — то же приложение и компактное окно на рабочем столе
 
 <img src="docs/screenshots/11-windows-dark.png" alt="Расписание на Windows" width="300" />

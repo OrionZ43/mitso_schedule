@@ -67,7 +67,7 @@ Future<void> _pumpApp(
   WidgetTester tester, {
   required bool dark,
   double balance = 67,
-  String appVersion = '1.5.0 (8)',
+  String appVersion = '1.5.1 (9)',
   List<ScheduleWeek>? weeks,
   DateTime? now,
   Map<String, Object> preferences = const {},
@@ -86,7 +86,7 @@ Future<void> _pumpApp(
     'student.number': FakeStudentApi.number,
     'profile.avatar': _avatarPath,
     // Окно «Что нового» всплывает только там, где оно и нужно.
-    'app.lastSeenVersion': '1.5.0',
+    'app.lastSeenVersion': '1.5.1',
     ...preferences,
   });
   final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -415,60 +415,67 @@ void main() {
     await _capture(tester, '18-teacher-load-light');
   });
 
-  for (final bool seasonDark in [false, true]) {
-    _shot('скриншот сезонного оформления — ${seasonDark ? 'dark' : 'light'}', (
-      tester,
-    ) async {
-      // Канун Хэллоуина: тыквенная схема и падающие листья.
-      final DateTime halloween = DateTime(2026, 10, 30, 10, 30);
-      Lesson lesson(String start, String end, String title, String room) =>
-          Lesson(
-            start: start,
-            end: end,
-            title: title,
-            type: LessonType.lecture,
-            typeLabel: LessonType.lecture.label,
-            teacher: 'Гардейчик С. М.',
-            room: room,
-          );
+  // Каждый сезон в обеих темах: один и тот же день, чтобы сравнивать.
+  final List<(String, DateTime)> seasonDays = [
+    ('halloween', DateTime(2026, 10, 30, 10, 30)),
+    ('new-year', DateTime(2026, 12, 25, 10, 30)),
+    ('spring', DateTime(2027, 3, 4, 10, 30)),
+    ('first-bell', DateTime(2026, 9, 2, 10, 30)),
+  ];
+  for (final (String id, DateTime day) in seasonDays) {
+    for (final bool seasonDark in [false, true]) {
+      _shot('скриншот сезона $id — ${seasonDark ? 'dark' : 'light'}', (
+        tester,
+      ) async {
+        Lesson lesson(String start, String end, String title, String room) =>
+            Lesson(
+              start: start,
+              end: end,
+              title: title,
+              type: LessonType.lecture,
+              typeLabel: LessonType.lecture.label,
+              teacher: 'Гардейчик С. М.',
+              room: room,
+            );
 
-      await _pumpApp(
-        tester,
-        dark: seasonDark,
-        now: halloween,
-        weeks: [
-          ScheduleWeek(
-            label: 'Текущая неделя',
-            days: [
-              ScheduleDay(
-                date: halloween,
-                lessons: [
-                  lesson('09:45', '11:05', 'Системы баз данных', '62 (к)'),
-                  lesson('11:15', '12:35', 'Маркетинг', '71'),
-                  lesson('13:05', '14:25', 'Эконометрика', '71'),
-                ],
-              ),
-              ScheduleDay(
-                date: halloween.add(const Duration(days: 1)),
-                lessons: [lesson('09:45', '11:05', 'Маркетинг', '71')],
-              ),
-            ],
-          ),
-        ],
-      );
-      await _frames(tester, 1500);
-      await _capture(
-        tester,
-        '19-season-halloween-${seasonDark ? 'dark' : 'light'}',
-      );
-    });
+        await _pumpApp(
+          tester,
+          dark: seasonDark,
+          now: day,
+          weeks: [
+            ScheduleWeek(
+              label: 'Текущая неделя',
+              days: [
+                ScheduleDay(
+                  date: day,
+                  lessons: [
+                    lesson('09:45', '11:05', 'Системы баз данных', '62 (к)'),
+                    lesson('11:15', '12:35', 'Маркетинг', '71'),
+                    lesson('13:05', '14:25', 'Эконометрика', '71'),
+                  ],
+                ),
+                ScheduleDay(
+                  date: day.add(const Duration(days: 1)),
+                  lessons: [lesson('09:45', '11:05', 'Маркетинг', '71')],
+                ),
+              ],
+            ),
+          ],
+        );
+        await _frames(tester, 1500);
+        await _capture(
+          tester,
+          '19-season-$id-${seasonDark ? 'dark' : 'light'}',
+        );
+      });
+    }
   }
 
   _shot('скриншот «Что нового»', (tester) async {
     await _pumpApp(
       tester,
       dark: false,
-      preferences: {'app.lastSeenVersion': '1.4.0'},
+      preferences: {'app.lastSeenVersion': '1.5.0'},
     );
     await _frames(tester, 900);
     await _loadImages(tester);

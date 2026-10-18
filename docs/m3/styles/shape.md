@@ -49,7 +49,7 @@
   (Cookie9Sided из правого верхнего угла, выбор заказчика 17.09.2026). Гайд советует абстрактные
   формы для декора, а не для текстовых контейнеров; здесь форма несёт короткий номер и
   обрезана краем карточки — записано в README, п. 21.
-- Сезонное оформление (`lib/theme/seasons.dart`, `lib/widgets/season_decor.dart`): в праздники
+- Сезонное оформление (`lib/theme/seasons.dart`, `lib/widgets/season_decor.dart`): в праздничные недели
   форма под номером аудитории меняется на сезонную (Puffy — тыква, Sunny — снежинка,
   Flower — весна, Cookie9Sided — первое сентября), а сверху расписания падает слой фигур
   (Arch, Fan, Clover4Leaf, Ghostish). Основание — то же «Emphasize aesthetic moments with

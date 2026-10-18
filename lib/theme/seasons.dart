@@ -60,12 +60,14 @@ class Season {
 
 /// Сезоны по порядку в году.
 ///
-/// Узкие окна: оформление должно быть событием, а не фоном на полгода.
+/// Окна широкие: оформление должно успеть попасться на глаза, но не висеть
+/// полгода. Хэллоуин и первое сентября — по две недели, Новый год — от первых
+/// ёлок до старого Нового года, весна — первая половина марта.
 final List<Season> kSeasons = [
   Season(
     id: 'halloween',
     name: 'Хэллоуин',
-    from: (10, 25),
+    from: (10, 18),
     to: (11, 2),
     // Тыквенный оранжевый.
     seed: const Color(0xFFE8700A),
@@ -83,8 +85,8 @@ final List<Season> kSeasons = [
   Season(
     id: 'newYear',
     name: 'Новый год',
-    from: (12, 15),
-    to: (1, 10),
+    from: (12, 5),
+    to: (1, 15),
     // Хвойный зелёный.
     seed: const Color(0xFF1F7A4D),
     icon: Symbols.ac_unit,
@@ -102,7 +104,7 @@ final List<Season> kSeasons = [
     id: 'spring',
     name: 'Весна',
     from: (3, 1),
-    to: (3, 10),
+    to: (3, 15),
     // Цветущий розовый.
     seed: const Color(0xFFD9477E),
     icon: Symbols.local_florist,
@@ -119,7 +121,7 @@ final List<Season> kSeasons = [
     id: 'firstBell',
     name: 'Первое сентября',
     from: (9, 1),
-    to: (9, 7),
+    to: (9, 14),
     // Осенняя охра.
     seed: const Color(0xFFBE8A00),
     icon: Symbols.school,

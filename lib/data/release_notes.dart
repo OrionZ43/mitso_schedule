@@ -43,6 +43,20 @@ class ReleaseNotes {
 /// показывается один раз после обновления.
 const List<ReleaseNotes> kReleaseNotes = [
   ReleaseNotes(
+    version: '1.5.1',
+    headline: 'Сезоны держатся дольше',
+    notes: [
+      ReleaseNote(
+        icon: Symbols.event_repeat,
+        title: 'Праздничные недели, а не дни',
+        text:
+            'Хэллоуин — с 18 октября по 2 ноября, Новый год — с 5 декабря по '
+            '15 января, весна — первая половина марта, первое сентября — две '
+            'первые недели учебного года.',
+      ),
+    ],
+  ),
+  ReleaseNotes(
     version: '1.5.0',
     headline: 'Приложение знает про праздники',
     notes: [

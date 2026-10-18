@@ -25,17 +25,23 @@ Future<ProviderContainer> _container({
 void main() {
   test('сезон определяется по датам', () {
     expect(seasonOn(DateTime(2026, 10, 31))?.id, 'halloween');
-    expect(seasonOn(DateTime(2026, 10, 25))?.id, 'halloween');
+    expect(seasonOn(DateTime(2026, 10, 18))?.id, 'halloween');
     expect(seasonOn(DateTime(2026, 11, 2))?.id, 'halloween');
+    expect(seasonOn(DateTime(2026, 10, 17)), isNull);
     expect(seasonOn(DateTime(2026, 11, 3)), isNull);
     expect(seasonOn(DateTime(2026, 9, 1))?.id, 'firstBell');
+    expect(seasonOn(DateTime(2026, 9, 14))?.id, 'firstBell');
+    expect(seasonOn(DateTime(2026, 9, 15)), isNull);
     expect(seasonOn(DateTime(2026, 3, 8))?.id, 'spring');
+    expect(seasonOn(DateTime(2026, 3, 15))?.id, 'spring');
   });
 
   test('новогодний сезон переходит через декабрь и январь', () {
+    expect(seasonOn(DateTime(2026, 12, 5))?.id, 'newYear');
     expect(seasonOn(DateTime(2026, 12, 31))?.id, 'newYear');
-    expect(seasonOn(DateTime(2027, 1, 7))?.id, 'newYear');
-    expect(seasonOn(DateTime(2027, 1, 11)), isNull);
+    // Старый Новый год ещё в сезоне, 16 января — уже нет.
+    expect(seasonOn(DateTime(2027, 1, 14))?.id, 'newYear');
+    expect(seasonOn(DateTime(2027, 1, 16)), isNull);
   });
 
   test('обычный учебный день — без оформления', () {
@@ -44,22 +50,23 @@ void main() {
 
   test('ближайший сезон — следующий по календарю', () {
     final (Season season, DateTime starts) = nextSeasonAfter(
-      DateTime(2026, 10, 18),
+      DateTime(2026, 10, 1),
     );
     expect(season.id, 'halloween');
-    expect(starts, DateTime(2026, 10, 25));
+    expect(starts, DateTime(2026, 10, 18));
 
     // Хэллоуин позади — ближайший Новый год.
     final (Season after, DateTime afterStarts) = nextSeasonAfter(
       DateTime(2026, 11, 10),
     );
     expect(after.id, 'newYear');
-    expect(afterStarts, DateTime(2026, 12, 15));
+    expect(afterStarts, DateTime(2026, 12, 5));
 
     // В январе всё сезоны этого года уже прошли, кроме весны.
     final (Season spring, DateTime springStarts) = nextSeasonAfter(
       DateTime(2027, 1, 20),
     );
+    // 20 января сезон уже кончился.
     expect(spring.id, 'spring');
     expect(springStarts, DateTime(2027, 3, 1));
   });
