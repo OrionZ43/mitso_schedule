@@ -28,8 +28,8 @@ android {
         targetSdk = 36
         // Версия часов должна быть выше телефонной, если их когда-нибудь
         // выкладывать вместе в Play. Пока ставим сбоку, номер тот же.
-        versionCode = 9
-        versionName = "1.5.1"
+        versionCode = 12
+        versionName = "1.6.0"
     }
 
     buildFeatures {
